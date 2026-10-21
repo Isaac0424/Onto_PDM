@@ -1,0 +1,68 @@
+# =====================================================================
+# 분류체계(TBox) 검사 규칙 — 분류 에이전트가 새 분류 제안을 검사할 때 쓴다 (pySHACL, SHACL-SPARQL 사용).
+#   추론 전의 "선언된" TBox + 제안 변경분에 돌린다. 추론 결과에는 상위 분류가 여러 개로 펼쳐져 있어 맞지 않는다.
+#   Violation 이 있으면 제안을 관리자에게 넘기지 않는다. Warning 은 검토 화면에 표시한다.
+# =====================================================================
+@prefix opdmtx: <https://ontology.example.com/onto-pdm/taxonomy-shapes#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+
+# 분류는 트리: 상위 분류는 이미 있는 클래스 하나, 한국어 이름 하나, 정의 필수
+opdmtx:ClassShape a sh:NodeShape ;
+    sh:targetSubjectsOf rdfs:subClassOf ;
+    sh:property [
+        sh:path rdfs:subClassOf ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:nodeKind sh:IRI ;
+        sh:class owl:Class ;
+        sh:message "상위 분류는 이미 있는 클래스 하나여야 한다 (트리 구조)"@ko
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:qualifiedValueShape [ sh:languageIn ( "ko" ) ] ;
+        sh:qualifiedMinCount 1 ; sh:qualifiedMaxCount 1 ;
+        sh:message "한국어 이름(skos:prefLabel @ko)이 정확히 하나 필요하다"@ko
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:uniqueLang true
+    ] ;
+    sh:property [
+        sh:path skos:definition ;
+        sh:minCount 1 ;
+        sh:message "정의(skos:definition)가 필요하다"@ko
+    ] .
+
+# 같은 상위 분류 아래에 같은 이름(대표 이름 · 동의어)의 분류가 이미 있으면 중복
+opdmtx:UniqueSiblingLabelShape a sh:NodeShape ;
+    sh:targetSubjectsOf rdfs:subClassOf ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "같은 상위 분류 아래에 같은 이름의 분류가 이미 있다: {?other}"@ko ;
+        sh:select """
+            SELECT $this ?other WHERE {
+              $this <http://www.w3.org/2000/01/rdf-schema#subClassOf> ?parent ;
+                    <http://www.w3.org/2004/02/skos/core#prefLabel> ?label .
+              ?other <http://www.w3.org/2000/01/rdf-schema#subClassOf> ?parent ;
+                     <http://www.w3.org/2004/02/skos/core#prefLabel>|<http://www.w3.org/2004/02/skos/core#altLabel> ?label2 .
+              FILTER (?other != $this && lcase(str(?label)) = lcase(str(?label2)))
+            }
+        """
+    ] .
+
+# 규격 값(M3, 8x20, 10mm …)이 이름에 들어간 분류는 대개 분류가 아니라 속성 값이다 → 경고
+opdmtx:NoSpecValueInClassShape a sh:NodeShape ;
+    sh:targetSubjectsOf rdfs:subClassOf ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        a sh:SPARQLConstraint ;
+        sh:message "분류 이름에 규격 값이 들어 있다 ({?label}). 규격은 분류가 아니라 속성으로 둔다"@ko ;
+        sh:select """
+            SELECT $this ?label WHERE {
+              $this <http://www.w3.org/2004/02/skos/core#prefLabel> ?label .
+              FILTER regex(str(?label), "(^|[^A-Za-z])M[0-9]+|[0-9]+\\\\s*[xX×*]\\\\s*[0-9]+|[0-9]+(\\\\.[0-9]+)?\\\\s*(mm|㎜|cm|kg|kW|V)([^A-Za-z]|$)")
+            }
+        """
+    ] .

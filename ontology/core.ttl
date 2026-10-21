@@ -1,0 +1,192 @@
+# =====================================================================
+# Onto PDM 핵심 온톨로지 (TBox 뼈대)
+#   분류체계(표준 기반)는 opdm:Item(부품 분류) · opdm:Material(재료 분류) 아래에 붙는다.
+#   GraphDB 저장소 규칙셋: OWL2-RL. 이 파일이 쓰는 추론은 하위 클래스 · 하위 속성 · 속성 사슬 · 이행 관계뿐이다.
+#
+#   주의 (일부러 쓰지 않은 것)
+#   - owl:FunctionalProperty · owl:InverseFunctionalProperty · owl:hasKey · owl:sameAs:
+#     값이 둘이면 추론기가 두 개체를 같은 것으로 합쳐 버린다. "하나만" 규칙은 SHACL(shapes-data.ttl)로 검사한다.
+#   - 값 검사(필수 · 범위)는 OWL이 아니라 SHACL로 한다. OWL은 열린 세계 가정이라 빠진 값을 위반으로 보지 않는다.
+#
+#   네임스페이스는 예시(ontology.example.com)다. 회사 도메인이 정해지면 바꾼다 (미정).
+#   품목 IRI 끝부분은 PDM item.iri_key (발급 당시 품번, 이후 고정). 품번이 바뀌어도 IRI는 그대로다.
+# =====================================================================
+@prefix opdm:         <https://ontology.example.com/onto-pdm/core#> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:          <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix dct:          <http://purl.org/dc/terms/> .
+@prefix prov:         <http://www.w3.org/ns/prov#> .
+@prefix qudt:         <http://qudt.org/schema/qudt/> .
+@prefix unit:         <http://qudt.org/vocab/unit/> .
+@prefix quantitykind: <http://qudt.org/vocab/quantitykind/> .
+
+<https://ontology.example.com/onto-pdm/core>
+    a owl:Ontology ;
+    owl:versionIRI <https://ontology.example.com/onto-pdm/core/0.1.0> ;
+    rdfs:label "Onto PDM 핵심 온톨로지"@ko , "Onto PDM core ontology"@en ;
+    dct:description "품목 · 재료 · 승인 BOM의 뼈대. PDM(PostgreSQL)의 승인본이 발행되어 ABox가 된다."@ko .
+
+# ---------------------------------------------------------------------
+# 다른 어휘에서 빌려 쓰는 주석 속성 (OWL에서 주석으로 쓰겠다고 선언)
+# ---------------------------------------------------------------------
+skos:prefLabel       a owl:AnnotationProperty .
+skos:altLabel        a owl:AnnotationProperty .
+skos:definition      a owl:AnnotationProperty .
+skos:exactMatch      a owl:AnnotationProperty .      # 표준 분류(ECLASS · IEC CDD 등)와 같은 개념
+skos:closeMatch      a owl:AnnotationProperty .      # 표준 분류와 비슷한 개념
+dct:isReplacedBy     a owl:AnnotationProperty .      # 폐기된 분류 · 품목의 대체
+dct:source           a owl:AnnotationProperty .      # 근거 (사양서 구절 등)
+prov:wasGeneratedBy  a owl:AnnotationProperty .      # 분류 에이전트 실행 기록
+
+# ECLASS · IEC CDD 의 클래스 · 속성 식별자. IRDI(ISO/IEC 11179)는 IRI가 아니므로 문자열로 둔다.
+#   예 형식: ECLASS "0173-1#01-…#…", IEC CDD "0112/2///61360_4#…". 하나의 분류가 두 표준에 모두 대응될 수 있다.
+opdm:standardIrdi a owl:AnnotationProperty ;
+    skos:prefLabel "표준 IRDI"@ko ;
+    skos:definition "이 분류 · 속성에 대응하는 표준 사전(ECLASS, IEC CDD)의 IRDI"@ko .
+
+# 속성 정의의 수량 종류 · 단위. 값은 QUDT IRI(QUDT는 CC BY 4.0).
+#   QUDT 스키마의 qudt:hasUnit · qudt:hasQuantityKind 는 ObjectProperty 라서, 속성 정의에 주석으로 쓰면
+#   QUDT를 같은 저장소에 올렸을 때 속성 종류가 충돌한다. 그래서 우리 주석 속성을 따로 둔다.
+opdm:quantityKind a owl:AnnotationProperty ;
+    skos:prefLabel "수량 종류"@ko ;
+    skos:definition "이 속성 값의 수량 종류 (QUDT quantitykind IRI)"@ko .
+opdm:unit a owl:AnnotationProperty ;
+    skos:prefLabel "단위"@ko ;
+    skos:definition "이 속성 값의 단위 (QUDT unit IRI). 값은 항상 이 단위로 저장한다."@ko .
+opdm:unitIrdi a owl:AnnotationProperty ;
+    skos:prefLabel "단위 IRDI"@ko ;
+    skos:definition "IEC 62720(IEC CDD) 단위 IRDI. QUDT 단위의 qudt:iec61360Code 값을 쓴다. AAS · ECLASS 데이터와 주고받을 때 쓴다."@ko .
+
+opdm:proposalId a owl:AnnotationProperty ;
+    skos:prefLabel "분류 제안 번호"@ko ;
+    skos:definition "이 분류를 만든 PDM class_proposal.id"@ko .
+
+# ---------------------------------------------------------------------
+# 클래스
+# ---------------------------------------------------------------------
+opdm:Product a owl:Class ;
+    skos:prefLabel "제품(모델)"@ko , "Product"@en ;
+    skos:definition "HCR3A 같은 판매 모델. 최상위 조립품 하나를 가리킨다."@ko .
+
+opdm:Item a owl:Class ;
+    skos:prefLabel "품목"@ko , "Item"@en ;
+    skos:definition "대표 품번 하나로 식별되는 부품 또는 조립품. 부품 분류체계의 뿌리."@ko .
+
+# 조달 구분 (PDM item.item_type). 분류(무엇인가)와는 독립이라 품목은 둘 다의 개체가 된다.
+opdm:Assembly         a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "조립품"@ko , "Assembly"@en ;           skos:definition "하위 BOM을 가진 품목"@ko .
+opdm:ManufacturedPart a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "가공품"@ko , "Manufactured part"@en ;  skos:definition "자체 도면으로 만드는 부품"@ko .
+opdm:PurchasedPart    a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "구매품"@ko , "Purchased part"@en ;     skos:definition "공급사에서 사는 부품"@ko .
+opdm:StandardPart     a owl:Class ; rdfs:subClassOf opdm:PurchasedPart ;
+    skos:prefLabel "표준품"@ko , "Standard part"@en ;      skos:definition "규격으로 정의되는 구매품 (볼트 · 너트 · 베어링 …)"@ko .
+
+opdm:ItemRevision a owl:Class ;
+    skos:prefLabel "품목 리비전(승인본)"@ko , "Item revision"@en ;
+    skos:definition "승인된 리비전만 발행된다. 작업중 리비전은 그래프에 없다."@ko .
+
+opdm:BomLine a owl:Class ;
+    skos:prefLabel "BOM 줄"@ko , "BOM line"@en ;
+    skos:definition "부모 리비전과 자식 품목 사이의 관계. 수량 · 도면 번호가 관계의 속성이라 노드로 둔다."@ko .
+
+opdm:Material a owl:Class ;
+    skos:prefLabel "재료"@ko , "Material"@en ;
+    skos:definition "재료 분류체계의 뿌리. 계열(스테인리스강 …)은 하위 클래스, 등급(SUS304 …)은 개체."@ko .
+
+# ---------------------------------------------------------------------
+# 관계 (object property)
+# ---------------------------------------------------------------------
+opdm:rootItem a owl:ObjectProperty ;
+    rdfs:domain opdm:Product ; rdfs:range opdm:Item ;
+    skos:prefLabel "최상위 조립품"@ko .
+
+opdm:hasMaterial a owl:ObjectProperty ;
+    rdfs:domain opdm:Item ; rdfs:range opdm:Material ;
+    skos:prefLabel "재료"@ko .
+
+opdm:hasRevision a owl:ObjectProperty ;
+    rdfs:domain opdm:Item ; rdfs:range opdm:ItemRevision ;
+    skos:prefLabel "리비전"@ko .
+
+opdm:currentRevision a owl:ObjectProperty ;
+    rdfs:subPropertyOf opdm:hasRevision ;
+    skos:prefLabel "현재 승인 리비전"@ko ;
+    skos:definition "새 리비전이 승인되면 발행기가 바꾼다. 하나만 있어야 한다 (SHACL로 검사)."@ko .
+
+opdm:hasBomLine a owl:ObjectProperty ;
+    rdfs:domain opdm:ItemRevision ; rdfs:range opdm:BomLine ;
+    skos:prefLabel "BOM 줄"@ko .
+
+opdm:child a owl:ObjectProperty ;
+    rdfs:domain opdm:BomLine ; rdfs:range opdm:Item ;
+    skos:prefLabel "자식 품목"@ko .
+
+# 현재 승인 BOM을 따라 한 단계 아래 품목: 품목 → 현재 리비전 → BOM 줄 → 자식 품목 (속성 사슬, OWL2-RL 지원)
+opdm:hasComponent a owl:ObjectProperty ;
+    owl:propertyChainAxiom ( opdm:currentRevision opdm:hasBomLine opdm:child ) ;
+    rdfs:subPropertyOf opdm:hasComponentTransitive ;
+    skos:prefLabel "직접 하위 품목"@ko .
+
+# 모든 단계의 하위 품목 ("이 재료가 들어간 모든 제품" 질의용). 수량 누적은 PostgreSQL bom_explode 가 계산한다.
+opdm:hasComponentTransitive a owl:ObjectProperty , owl:TransitiveProperty ;
+    skos:prefLabel "하위 품목(전 단계)"@ko .
+
+# ---------------------------------------------------------------------
+# 값 (datatype property)
+# ---------------------------------------------------------------------
+opdm:partNumber a owl:DatatypeProperty ;
+    rdfs:domain opdm:Item ; rdfs:range xsd:string ;
+    skos:prefLabel "대표 품번"@ko .
+
+# 별칭: 종류별 하위 속성. 추론으로 모두 opdm:altPartNumber 가 되어 한 번에 찾을 수 있다.
+opdm:altPartNumber a owl:DatatypeProperty ;
+    rdfs:domain opdm:Item ; rdfs:range xsd:string ;
+    skos:prefLabel "별칭 품번"@ko .
+opdm:legacyPartNumber   a owl:DatatypeProperty ; rdfs:subPropertyOf opdm:altPartNumber ; skos:prefLabel "레거시 품번"@ko .
+opdm:erpCode            a owl:DatatypeProperty ; rdfs:subPropertyOf opdm:altPartNumber ; skos:prefLabel "ERP 코드"@ko .
+opdm:mesCode            a owl:DatatypeProperty ; rdfs:subPropertyOf opdm:altPartNumber ; skos:prefLabel "MES 코드"@ko .
+opdm:supplierPartNumber a owl:DatatypeProperty ; rdfs:subPropertyOf opdm:altPartNumber ; skos:prefLabel "공급사 품번"@ko .
+opdm:cadName            a owl:DatatypeProperty ; rdfs:subPropertyOf opdm:altPartNumber ; skos:prefLabel "CAD 이름"@ko .
+
+opdm:revisionLabel a owl:DatatypeProperty ;
+    rdfs:domain opdm:ItemRevision ; rdfs:range xsd:string ;
+    skos:prefLabel "리비전 표기"@ko .
+opdm:releasedAt a owl:DatatypeProperty ;
+    rdfs:domain opdm:ItemRevision ; rdfs:range xsd:dateTime ;
+    skos:prefLabel "승인 시각"@ko .
+
+opdm:quantity a owl:DatatypeProperty ;
+    rdfs:domain opdm:BomLine ;
+    skos:prefLabel "수량"@ko .
+opdm:findNo a owl:DatatypeProperty ;
+    rdfs:domain opdm:BomLine ; rdfs:range xsd:integer ;
+    skos:prefLabel "도면 번호"@ko .
+opdm:uom a owl:DatatypeProperty ;
+    rdfs:domain opdm:Item ; rdfs:range xsd:string ;
+    skos:prefLabel "관리 단위"@ko ;
+    skos:definition "EA · M · KG 같은 재고 · BOM 단위 코드 (ERP와 같은 코드)"@ko .
+
+# 물성 · 질량: 속성 정의에 수량 종류와 단위를 고정한다 (값은 그 단위의 숫자).
+#   단위가 섞여 들어오는 속성이 생기면 qudt:QuantityValue 노드(값 + 단위) 방식으로 바꾼다.
+opdm:density a owl:DatatypeProperty ;
+    rdfs:domain opdm:Material ; rdfs:range xsd:decimal ;
+    opdm:quantityKind quantitykind:Density ;
+    opdm:unit unit:GM-PER-CentiM3 ;
+    opdm:unitIrdi "0112/2///62720#UAA469" ;
+    skos:prefLabel "밀도"@ko , "Density"@en .
+
+opdm:mass a owl:DatatypeProperty ;
+    rdfs:domain opdm:Item ; rdfs:range xsd:decimal ;
+    opdm:quantityKind quantitykind:Mass ;
+    opdm:unit unit:KiloGM ;
+    opdm:unitIrdi "0112/2///62720#UAA594" ;
+    skos:prefLabel "질량"@ko , "Mass"@en .
+
+opdm:massSource a owl:DatatypeProperty ;
+    rdfs:domain opdm:Item ; rdfs:range xsd:string ;
+    skos:prefLabel "질량 출처"@ko ;
+    skos:definition "cad_mass(CAD 질량 값) · cad_estimate(메시 부피 × 밀도, 추정) · measured(실측)"@ko .

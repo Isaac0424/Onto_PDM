@@ -1,0 +1,112 @@
+# =====================================================================
+# 데이터(ABox) 검사 규칙 — GraphDB 운영 저장소에서 SHACL 검사를 켜고 이 파일을 올린다.
+#   발행기가 넣는 승인본이 규칙을 어기면 그 커밋이 거부된다.
+#   SHACL 핵심 기능만 쓴다 (GraphDB / RDF4J SHACL 엔진이 지원하는 범위).
+# =====================================================================
+@prefix opdm:   <https://ontology.example.com/onto-pdm/core#> .
+@prefix opdmsh: <https://ontology.example.com/onto-pdm/shapes#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+
+opdmsh:ItemShape a sh:NodeShape ;
+    sh:targetClass opdm:Item ;
+    sh:property [
+        sh:path opdm:partNumber ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:pattern "^P[0-9]{7}$" ;      # 잠정 형식. 바꿀 때는 db/schema.sql 의 issue_item_no() 와 함께 바꾼다
+        sh:message "대표 품번은 정확히 하나, 형식은 P + 숫자 7자리"@ko
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:minCount 1 ;
+        sh:uniqueLang true ;
+        sh:message "이름(skos:prefLabel)은 하나 이상, 언어마다 하나"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:currentRevision ;
+        sh:maxCount 1 ;
+        sh:class opdm:ItemRevision ;
+        sh:message "현재 승인 리비전은 하나만"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:hasMaterial ;
+        sh:class opdm:Material ;
+        sh:message "재료는 재료 분류의 개체여야 한다"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:mass ;
+        sh:datatype xsd:decimal ;
+        sh:maxCount 1 ;
+        sh:minExclusive 0 ;
+        sh:message "질량은 kg 단위 양수 하나"@ko
+    ] .
+
+# 가공품 · 표준품은 재료가 있어야 한다 (조립품 · 일반 구매품은 없어도 된다)
+opdmsh:MaterialRequiredShape a sh:NodeShape ;
+    sh:targetClass opdm:ManufacturedPart , opdm:StandardPart ;
+    sh:property [
+        sh:path opdm:hasMaterial ;
+        sh:minCount 1 ;
+        sh:message "가공품 · 표준품은 재료가 필요하다"@ko
+    ] .
+
+opdmsh:MaterialShape a sh:NodeShape ;
+    sh:targetClass opdm:Material ;
+    sh:property [
+        sh:path skos:prefLabel ;
+        sh:minCount 1 ;
+        sh:message "재료 등급 이름 필수"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:density ;
+        sh:datatype xsd:decimal ;
+        sh:maxCount 1 ;
+        sh:minExclusive 0 ;
+        sh:message "밀도는 g/cm³ 단위 양수 하나"@ko
+    ] .
+
+opdmsh:ItemRevisionShape a sh:NodeShape ;
+    sh:targetClass opdm:ItemRevision ;
+    sh:property [
+        sh:path opdm:revisionLabel ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "리비전 표기 하나 필수"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:hasBomLine ;
+        sh:class opdm:BomLine
+    ] .
+
+opdmsh:BomLineShape a sh:NodeShape ;
+    sh:targetClass opdm:BomLine ;
+    sh:property [
+        sh:path opdm:child ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class opdm:Item ;
+        sh:message "BOM 줄의 자식 품목은 정확히 하나"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:quantity ;
+        sh:minCount 1 ; sh:maxCount 1 ;
+        sh:or ( [ sh:datatype xsd:decimal ] [ sh:datatype xsd:integer ] ) ;
+        sh:minExclusive 0 ;
+        sh:message "수량은 양수 하나"@ko
+    ] ;
+    sh:property [
+        sh:path opdm:findNo ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer
+    ] .
+
+opdmsh:ProductShape a sh:NodeShape ;
+    sh:targetClass opdm:Product ;
+    sh:property [
+        sh:path opdm:rootItem ;
+        sh:maxCount 1 ;
+        sh:class opdm:Assembly ;
+        sh:message "제품의 최상위 품목은 조립품 하나"@ko
+    ] .

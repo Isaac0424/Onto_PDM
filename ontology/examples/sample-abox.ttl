@@ -1,0 +1,120 @@
+# =====================================================================
+# 예시 데이터 — 분류 코드 · 재료 · 품번은 모두 설명용이다. 실제 분류체계표가 정해지면 바뀐다.
+#   분류 클래스 IRI는 의미 없는 코드(cls:C0101)로 두고 이름은 skos:prefLabel 에 둔다.
+#   그래서 이름이 바뀌어도 IRI와 이를 가리키는 데이터는 그대로다.
+# =====================================================================
+@prefix opdm: <https://ontology.example.com/onto-pdm/core#> .
+@prefix cls:  <https://ontology.example.com/onto-pdm/class/> .
+@prefix mat:  <https://ontology.example.com/onto-pdm/material/> .
+@prefix part: <https://ontology.example.com/onto-pdm/part/> .
+@prefix rev:  <https://ontology.example.com/onto-pdm/revision/> .
+@prefix bom:  <https://ontology.example.com/onto-pdm/bomline/> .
+@prefix prod: <https://ontology.example.com/onto-pdm/product/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# ---------- 부품 분류 (TBox, 예시) ----------
+cls:C0100 a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "체결류"@ko , "Fastener"@en ;
+    skos:definition "두 부품을 결합하는 부품"@ko .
+cls:C0101 a owl:Class ; rdfs:subClassOf cls:C0100 ;
+    skos:prefLabel "볼트"@ko , "Bolt"@en ;
+    skos:altLabel "보울트"@ko ;
+    skos:definition "머리와 수나사를 가진 체결 부품"@ko .
+cls:C0200 a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "브래킷"@ko , "Bracket"@en ;
+    skos:definition "부품을 다른 부품에 고정하는 받침 부품"@ko .
+cls:C0300 a owl:Class ; rdfs:subClassOf opdm:Item ;
+    skos:prefLabel "프레임 조립품"@ko , "Frame assembly"@en ;
+    skos:definition "구조를 이루는 조립 단위"@ko .
+
+# ---------- 재료 분류 (TBox, 예시) ----------
+cls:M0100 a owl:Class ; rdfs:subClassOf opdm:Material ;
+    skos:prefLabel "금속"@ko , "Metal"@en ; skos:definition "금속 재료"@ko .
+cls:M0110 a owl:Class ; rdfs:subClassOf cls:M0100 ;
+    skos:prefLabel "강"@ko , "Steel"@en ; skos:definition "철 기반 합금"@ko .
+cls:M0111 a owl:Class ; rdfs:subClassOf cls:M0110 ;
+    skos:prefLabel "스테인리스강"@ko , "Stainless steel"@en ; skos:definition "크롬 10.5% 이상의 내식강"@ko .
+cls:M0120 a owl:Class ; rdfs:subClassOf cls:M0100 ;
+    skos:prefLabel "알루미늄 합금"@ko , "Aluminium alloy"@en ; skos:definition "알루미늄 기반 합금"@ko .
+
+# ---------- 재료 등급 (ABox): 규격마다 다른 표기는 동의어로 ----------
+mat:M000001 a cls:M0111 ;
+    skos:prefLabel "SUS304"@ko ;
+    skos:altLabel "STS304" , "AISI 304" , "1.4301" ;
+    opdm:density 7.93 .
+mat:M000002 a cls:M0111 ;
+    skos:prefLabel "SUS316"@ko ;
+    skos:altLabel "STS316" , "AISI 316" , "1.4401" ;
+    opdm:density 7.98 .
+mat:M000003 a cls:M0120 ;
+    skos:prefLabel "A6061"@ko ;
+    skos:altLabel "AA 6061" ;
+    opdm:density 2.70 .
+
+# ---------- 품목 (ABox, 승인본) ----------
+part:P0000001 a cls:C0101 , opdm:StandardPart ;
+    opdm:partNumber "P0000001" ;
+    skos:prefLabel "볼트 M3x8"@ko , "Bolt M3x8"@en ;
+    opdm:cadName "M3x8" ;
+    opdm:legacyPartNumber "BLT-0038" ;
+    opdm:hasMaterial mat:M000001 ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000001-R00 .
+rev:P0000001-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+
+part:P0000002 a cls:C0200 , opdm:ManufacturedPart ;
+    opdm:partNumber "P0000002" ;
+    skos:prefLabel "브래킷 L"@ko ;
+    opdm:hasMaterial mat:M000003 ;
+    opdm:mass 0.042 ; opdm:massSource "cad_estimate" ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000002-R00 .
+rev:P0000002-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+
+part:P0000003 a cls:C0200 , opdm:ManufacturedPart ;
+    opdm:partNumber "P0000003" ;
+    skos:prefLabel "브래킷 T"@ko ;
+    opdm:hasMaterial mat:M000003 ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000003-R00 .
+rev:P0000003-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+
+# 프레임 조립품 R01: 볼트 4 + 브래킷 L 1
+part:P0000010 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P0000010" ;
+    skos:prefLabel "프레임"@ko ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000010-R01 .
+rev:P0000010-R01 a opdm:ItemRevision ;
+    opdm:revisionLabel "R01" ;
+    opdm:hasBomLine bom:P0000010-R01-1 , bom:P0000010-R01-2 .
+bom:P0000010-R01-1 a opdm:BomLine ; opdm:child part:P0000001 ; opdm:quantity 4 ; opdm:findNo 1 .
+bom:P0000010-R01-2 a opdm:BomLine ; opdm:child part:P0000002 ; opdm:quantity 1 ; opdm:findNo 2 .
+
+# 로봇 본체 (최상위): 프레임 1 → 볼트(스테인리스)는 두 단계 아래
+part:P0000020 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P0000020" ;
+    skos:prefLabel "HCR3A 본체"@ko ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000020-R00 .
+rev:P0000020-R00 a opdm:ItemRevision ;
+    opdm:revisionLabel "R00" ;
+    opdm:hasBomLine bom:P0000020-R00-1 .
+bom:P0000020-R00-1 a opdm:BomLine ; opdm:child part:P0000010 ; opdm:quantity 1 ; opdm:findNo 1 .
+
+# 다른 제품: 알루미늄 브래킷 T 하나뿐
+part:P0000030 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P0000030" ;
+    skos:prefLabel "커버 조립품"@ko ;
+    opdm:uom "EA" ;
+    opdm:currentRevision rev:P0000030-R00 .
+rev:P0000030-R00 a opdm:ItemRevision ;
+    opdm:revisionLabel "R00" ;
+    opdm:hasBomLine bom:P0000030-R00-1 .
+bom:P0000030-R00-1 a opdm:BomLine ; opdm:child part:P0000003 ; opdm:quantity 2 ; opdm:findNo 1 .
+
+prod:HCR3A a opdm:Product ; skos:prefLabel "HCR3A"@ko ; opdm:rootItem part:P0000020 .
+prod:HCR5A a opdm:Product ; skos:prefLabel "HCR5A"@ko ; opdm:rootItem part:P0000030 .

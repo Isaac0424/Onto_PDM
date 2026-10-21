@@ -7,6 +7,10 @@ npm-debug.log*
 .env.*
 !.env.example
 
+# Licensed standard dictionaries (ECLASS, IEC CDD): keep the downloads local, commit only the README
+standards/*
+!standards/README.md
+
 # Build and test output
 dist/
 coverage/

@@ -1,0 +1,1207 @@
+// ===== app =====
+const $ = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2, '0');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const KNUM = ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉', '열', '열한', '열두', '열세', '열네', '열다섯', '열여섯'];
+
+const S = {
+  parts: [], layers: [], deltas: [], axis: 2, axisMode: '2', N: 10, baseId: -1, baseHow: '', keepOrder: false,
+  motionMode: 'smart', motions: null, motionsKey: '', maxN: 16, animDur: 1.4,
+  phase: { pull: false, pullEnd: .3, cover: false, coverStart: 0, coverEnd: .4, layerStart: 0 },
+  t: 1, tTarget: 1, step: 1, labels: true, spin: false, style: 'solid', picked: -1,
+  meta: { title: '', summary: '', specs: [] }, unit: 'mm', modelName: '', specText: '', specName: '', source: 'demo', presetLayers: null,
+};
+
+// ---------- three ----------
+const canvas = $('gl'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, matchMedia('(pointer: coarse)').matches ? 1.5 : 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 1000);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotateSpeed = 0.9;
+scene.add(new THREE.HemisphereLight(0xf3eadb, 0x1a1c20, 0.9));
+const keyLight = new THREE.DirectionalLight(0xffffff, 0.9); keyLight.position.set(3, 5, 4); scene.add(keyLight);
+const rim = new THREE.DirectionalLight(0xe3a648, 0.35); rim.position.set(-4, -2, -3); scene.add(rim);
+const orient = new THREE.Group(); scene.add(orient);
+const shift = new THREE.Group(); orient.add(shift);
+let grid = null;
+let layerGroups = [], faceMeshes = [], fitted = { dist: 10, center: new THREE.Vector3() }, viewShift = 0;
+
+// skin: 'holo' (navy + glowing cyan) or 'classic'; remembered per viewer
+const skinHost = (canvas.closest && canvas.closest('.xs-root')) || document.documentElement;
+function applySkin(skin) {
+  S.skin = skin === 'classic' ? 'classic' : 'holo';
+  skinHost.dataset.skin = S.skin;
+  holoU.value = S.skin === 'holo' ? 1 : 0;
+  if (S.skin === 'holo') { pickFace.color.setHex(0x0b4a66); pickFace.emissive.setHex(0x8beeff); pickFace.emissiveIntensity = .9; pickFace.transparent = true; pickFace.opacity = .95; pickFace.blending = THREE.AdditiveBlending; pickEdge.color.setHex(0xffffff); }
+  else { pickFace.color.setHex(0x3a2a12); pickFace.emissive.setHex(0xe3a648); pickFace.emissiveIntensity = .35; pickFace.transparent = false; pickFace.opacity = 1; pickFace.blending = THREE.NormalBlending; pickEdge.color.setHex(0xffe2b0); }
+  pickFace.needsUpdate = true;
+  const b = $('tSkin'); if (b) b.setAttribute('aria-pressed', String(S.skin === 'holo'));
+  try { localStorage.setItem('xs-skin', S.skin); } catch (e) { /* storage may be blocked */ }
+}
+const COL = { ink: 0xd9d2c4, dim: 0x5d5b57, accent: 0xe3a648, face: 0x111316, steel: 0xa7acb3 };
+
+// hologram skin: surfaces glow at their silhouette (fresnel) and fade face-on; one shared switch, no recompiles
+const holoU = { value: 0 };
+const HOLO_FRAG = `{
+  float xsF = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.2);
+  diffuseColor.a = mix(diffuseColor.a, clamp(diffuseColor.a * (0.22 + 2.8 * xsF), 0.0, 1.0), xsHolo);
+  outgoingLight = mix(outgoingLight, outgoingLight * (0.55 + 2.0 * xsF), xsHolo);
+}
+`;
+function withHolo(mat) {
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.xsHolo = holoU;
+    sh.fragmentShader = 'uniform float xsHolo;\n' + sh.fragmentShader
+      .replace('#include <output_fragment>', HOLO_FRAG + '#include <output_fragment>')
+      .replace('#include <opaque_fragment>', HOLO_FRAG + '#include <opaque_fragment>');
+  };
+  return mat;
+}
+function makeLayerMats(L) {
+  const glass = !!L.glass;
+  return {
+    face: withHolo(new THREE.MeshStandardMaterial({ color: COL.face, metalness: .25, roughness: .75, transparent: true, opacity: glass ? .06 : .94, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, side: THREE.DoubleSide, depthWrite: !glass })),
+    edge: new THREE.LineBasicMaterial({ color: COL.ink, transparent: true, opacity: .85 }),
+    glass,
+  };
+}
+const pickFace = withHolo(new THREE.MeshStandardMaterial({ color: 0x3a2a12, emissive: 0xe3a648, emissiveIntensity: .35, metalness: .3, roughness: .6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, side: THREE.DoubleSide }));
+const pickEdge = new THREE.LineBasicMaterial({ color: 0xffe2b0 });
+let savedSkin = null; try { savedSkin = localStorage.getItem('xs-skin'); } catch (e) { /* none */ }
+applySkin(savedSkin || 'holo');
+
+function rawToGeometry(m) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+  if (m.idx) g.setIndex(new THREE.BufferAttribute(m.idx, 1));
+  if (m.nor && m.nor.length === m.pos.length) g.setAttribute('normal', new THREE.BufferAttribute(m.nor, 3)); else g.computeVertexNormals();
+  g.computeBoundingBox(); g.computeBoundingSphere();
+  return g;
+}
+
+function disposeScene() {
+  shift.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  layerGroups.forEach(g => { g.userData.mats.face.dispose(); g.userData.mats.edge.dispose(); });
+  shift.clear(); layerGroups = []; faceMeshes = [];
+  if (grid) { scene.remove(grid); grid.geometry.dispose(); grid = null; }
+}
+
+function buildScene(fit) {
+  // keep the part objects; only regroup them under new layer groups
+  layerGroups.forEach(g => { g.userData.mats.face.dispose(); g.userData.mats.edge.dispose(); });
+  shift.clear(); layerGroups = [];
+  const box = overallBox(S.parts);
+  shift.position.set(-box.center[0], -box.center[1], -box.center[2]);
+  const rot = [new THREE.Euler(0, 0, Math.PI / 2), new THREE.Euler(0, 0, 0), new THREE.Euler(-Math.PI / 2, 0, 0)][S.axis];
+  orient.rotation.copy(rot);
+  orient.scale.setScalar(10 / Math.max(...box.size, 1e-6));
+  S.layers.forEach((L, li) => {
+    const g = new THREE.Group();
+    g.userData.mats = makeLayerMats(L);
+    g.userData.layer = li;
+    L.partIds.forEach(id => {
+      const p = S.parts[id];
+      if (!p.obj) buildPartObject(p);
+      p.layer = li;
+      g.add(p.obj);
+    });
+    shift.add(g); layerGroups.push(g);
+  });
+  // the layers on screen are the units that move: more layers → finer explode, 1 layer → one block
+  const ML = S.layers;
+  ML.forEach((L, li) => L.partIds.forEach(id => { S.parts[id].mlayer = li; }));
+  S.baseLayer = ML.findIndex(L => L.partIds.includes(S.baseId));
+  const smart = S.motionMode === 'smart' && S.motions;
+  S.deltas = explodeDeltas(ML, S.parts, S.axis, S.baseLayer, smart ? S.motions : null);
+  if (smart) {
+    const up = Math.max(0, ...S.deltas), down = Math.min(0, ...S.deltas);
+    S.motions.forEach(m => { if (m.kind === 'cover') m.extra = m.dir[S.axis] > 0.5 ? up : m.dir[S.axis] < -0.5 ? -down : 0; });
+  }
+  // timeline: fasteners come out first, then covers swing away, then the layers lift apart
+  const hasPull = !!S.motions && (smart || S.motionMode === 'assembly') && S.motions.some(m => (m.kind === 'fastener' || m.kind === 'ring') && m.dist > 0);
+  const asm = S.motionMode === 'assembly' && S.plan;
+  if (asm) S.deltas = S.layers.map(() => 0);
+  const hasCover = !!S.motions && (asm || smart) && S.motions.some(m => m.kind === 'cover' || m.kind === 'local');
+  S.phase = { pull: hasPull, pullEnd: .3, cover: hasCover, coverStart: hasPull ? .2 : 0, coverEnd: hasPull ? .56 : .42, layerStart: hasPull ? .3 : hasCover ? .14 : 0 };
+  S.animDur = 1.4 + (hasPull ? .7 : 0) + (hasCover ? .3 : 0) + (asm ? Math.min(1.2, S.plan.maxDepth * .12) : 0);
+  buildGizmo();
+  applyMaterials(true);
+  placeLayers();
+  if (fit) fitCamera(); else computeBounds();
+}
+
+// base frame triad at the base part's bottom-centre (the frame's origin)
+const GIZ = [0xd4705a, 0x8fb36a, 0x6f9ad8];
+let gizmo = null;
+function buildGizmo() {
+  if (gizmo) { gizmo.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  gizmo = new THREE.Group();
+  if (S.baseId < 0) return;
+  const b = S.parts[S.baseId], len = Math.max(b.size[0], b.size[1], b.size[2] * 2) * .32;
+  gizmo.userData.tips = [];
+  [[1, 0, 0], [0, 1, 0], [0, 0, 1]].forEach((d, i) => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(d[0] * len, d[1] * len, d[2] * len)]);
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: GIZ[i], depthTest: false, transparent: true, opacity: .9 }));
+    line.renderOrder = 10; gizmo.add(line);
+    gizmo.userData.tips.push(new THREE.Vector3(d[0] * len * 1.12, d[1] * len * 1.12, d[2] * len * 1.12));
+  });
+  shift.add(gizmo);
+}
+const gizV = new THREE.Vector3();
+function updateGizmoLabels() {
+  const els = [$('gx'), $('gy'), $('gz')];
+  const show = gizmo && gizmo.userData.tips && S.step < 2;
+  if (gizmo) gizmo.visible = !!show;
+  els.forEach((el, i) => {
+    if (!show) { el.hidden = true; return; }
+    gizV.copy(gizmo.userData.tips[i]); shift.localToWorld(gizV); gizV.project(camera);
+    el.hidden = false;
+    el.style.left = ((gizV.x + 1) / 2 * stage.clientWidth - 5) + 'px';
+    el.style.top = ((1 - gizV.y) / 2 * stage.clientHeight - 8) + 'px';
+  });
+}
+
+function buildPartObject(p) {
+  const obj = new THREE.Group();
+  obj.userData.faces = []; obj.userData.edges = [];
+  p.meshes.forEach(m => {
+    const g = rawToGeometry(m);
+    const mesh = new THREE.Mesh(g); mesh.userData.partId = p.id;
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 24));
+    obj.add(mesh, e); obj.userData.faces.push(mesh); obj.userData.edges.push(e);
+    faceMeshes.push(mesh);
+    if (m.color) mesh.userData.cad = new THREE.Color(m.color[0], m.color[1], m.color[2]);
+  });
+  p.obj = obj;
+  p.disp = new THREE.Vector3();
+}
+
+// materials fade toward their target look instead of snapping (focus changes, style toggle)
+function applyMaterials(snap) {
+  const focus = S.step >= 2 ? S.step - 2 : -1;
+  layerGroups.forEach((g, li) => {
+    const m = g.userData.mats, on = focus === li, dim = focus >= 0 && !on;
+    const T = m.tgt || (m.tgt = { fc: new THREE.Color(), ec: new THREE.Color(), em: new THREE.Color() });
+    T.em.setHex(0x000000);
+    if (S.skin === 'holo') {
+      const solid = S.style === 'solid';
+      T.fc.setHex(on ? 0x1f7fa6 : 0x0a4560); T.metal = 0; T.rough = 1;
+      T.em.setHex(on ? 0x22b4ec : 0x0b6d96);
+      T.fo = m.glass ? .05 : dim ? (solid ? .1 : .04) : (solid ? (on ? .8 : .55) : .16);
+      T.ec.setHex(on ? 0xeafcff : 0x5fdcff);
+      T.eo = dim ? .12 : (on ? 1 : (solid ? .45 : .85));
+    } else if (S.style === 'line') {
+      T.fc.setHex(COL.face); T.metal = .25; T.rough = .75;
+      T.fo = m.glass ? .06 : (dim ? .35 : .94);
+      T.ec.setHex(on ? COL.accent : COL.ink);
+      T.eo = dim ? .14 : (on ? 1 : .85);
+    } else {
+      T.fc.setHex(on ? 0xd9a04c : COL.steel); T.metal = .12; T.rough = .5;
+      T.fo = m.glass ? .18 : (dim ? .22 : 1);
+      T.ec.setHex(on ? COL.accent : 0x2b2d31);
+      T.eo = dim ? .06 : (on ? .9 : .35);
+    }
+    if (snap) tickMaterial(m, 1);
+    const blend = S.skin === 'holo' ? THREE.AdditiveBlending : THREE.NormalBlending;
+    m.face.blending = blend; m.edge.blending = blend;
+    const dw = !m.glass && !dim && S.skin !== 'holo';
+    if (m.face.depthWrite !== dw) { m.face.depthWrite = dw; m.face.needsUpdate = true; }
+    g.children.forEach(obj => {
+      const picked = S.picked >= 0 && obj === S.parts[S.picked].obj;
+      obj.userData.faces.forEach(f => { f.material = picked ? pickFace : m.face; });
+      obj.userData.edges.forEach(e => { e.material = picked ? pickEdge : m.edge; });
+    });
+  });
+}
+
+function tickMaterial(m, k) {
+  const T = m.tgt; if (!T) return;
+  m.face.color.lerp(T.fc, k); m.edge.color.lerp(T.ec, k);
+  m.face.opacity += (T.fo - m.face.opacity) * k; m.edge.opacity += (T.eo - m.edge.opacity) * k;
+  m.face.metalness += (T.metal - m.face.metalness) * k; m.face.roughness += (T.rough - m.face.roughness) * k;
+  if (T.em) m.face.emissive.lerp(T.em, k);
+}
+const AXV = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+function layerProgress(li, t, n = S.layers.length) {
+  const rank = n > 1 ? (n - 1 - li) / (n - 1) : 0;
+  return ease(clamp(t * 1.35 - rank * .35, 0, 1));
+}
+function phaseAt(t) {
+  const P = S.phase;
+  return {
+    pull: P.pull ? ease(clamp(t / P.pullEnd, 0, 1)) : 0,
+    cover: P.cover ? ease(clamp((t - P.coverStart) / (P.coverEnd - P.coverStart), 0, 1)) : 0,
+    layer: clamp((t - P.layerStart) / (1 - P.layerStart), 0, 1),
+  };
+}
+const dirV = new THREE.Vector3();
+// every part gets its own displacement: bodies lift with their layer along Z, covers slide out,
+// fasteners back out along their own axis and then ride along with the part they hold
+function placeAssembly(t) {
+  const ph = phaseAt(t), P = S.plan, M = S.motions;
+  if (!P.gdisp) P.gdisp = P.groups.map(() => new THREE.Vector3());
+  P.order.forEach(gi => {
+    const g = P.groups[gi], v = P.gdisp[gi];
+    if (g.parent < 0) { v.set(0, 0, 0); return; }
+    if (S.parts[g.main].layer === S.parts[P.groups[g.parent].main].layer) { v.copy(P.gdisp[g.parent]); return; }
+    const rank = P.maxDepth > 1 ? (P.maxDepth - g.depth) / (P.maxDepth - 1) : 0;
+    const k = ease(clamp(ph.layer * 1.35 - rank * .35, 0, 1));
+    v.copy(P.gdisp[g.parent]).addScaledVector(dirV.fromArray(g.dir), g.gap * k);
+  });
+  // a part only leaves its sub-assembly's housing when it is on a layer of its own
+  const mainLayer = id => S.parts[P.groups[P.gOf[id]].main].layer;
+  const done = new Uint8Array(S.parts.length);
+  S.parts.forEach(p => {
+    const m = M[p.id];
+    if (m.kind === 'fastener' || m.kind === 'ring' || m.kind === 'follow') return;
+    p.disp.copy(P.gdisp[P.gOf[p.id]]);
+    if (m.kind === 'local' && p.layer !== mainLayer(p.id)) p.disp.addScaledVector(dirV.fromArray(m.dir), m.dist * ph.cover);
+    done[p.id] = 1;
+  });
+  for (let pass = 0; pass < 2; pass++) S.parts.forEach(p => {
+    if (done[p.id]) return;
+    const m = M[p.id], h = m.host >= 0 ? S.parts[m.host] : null;
+    if (h && !done[h.id] && pass === 0) return;
+    const hd = h && done[h.id];
+    if (m.kind === 'follow') p.disp.copy(hd ? h.disp : P.gdisp[P.gOf[p.id]]);
+    else if (hd && h.layer === p.layer) p.disp.copy(h.disp);                       // bolted to a piece on the same layer
+    else if (p.layer === mainLayer(p.id)) p.disp.copy(P.gdisp[P.gOf[p.id]]);        // stays in the housing
+    else { p.disp.copy(hd ? h.disp : P.gdisp[P.gOf[p.id]]); p.disp.addScaledVector(dirV.fromArray(m.dir), m.dist * ph.pull); }
+    done[p.id] = 1;
+  });
+  S.parts.forEach(p => { if (p.obj) p.obj.position.copy(p.disp); });
+}
+function placeLayers(t = S.t) {
+  if (!S.parts.length || !S.deltas.length || !S.parts[0].disp) return;
+  if (S.layers.length < 2) { S.parts.forEach(p => { if (p.obj) { p.disp.set(0, 0, 0); p.obj.position.set(0, 0, 0); } }); return; }
+  if (S.motionMode === 'assembly' && S.plan && S.motions) { placeAssembly(t); return; }
+  const ph = phaseAt(t), smart = S.motionMode === 'smart' && S.motions;
+  const nm = S.deltas.length, lp = S.deltas.map((d, li) => layerProgress(li, ph.layer, nm));
+  const ax = AXV[S.axis], done = new Uint8Array(S.parts.length);
+  const isF = m => m && (m.kind === 'fastener' || m.kind === 'ring');
+  S.parts.forEach(p => {
+    if (!p.obj) return;
+    const m = smart ? S.motions[p.id] : null;
+    if (isF(m) || (m && m.kind === 'follow')) return;
+    if (m && m.kind === 'core') p.disp.set(0, 0, 0);
+    else if (m && m.kind === 'cover') p.disp.fromArray(m.dir).multiplyScalar((m.dist + (m.extra || 0)) * ph.cover);
+    else p.disp.copy(ax).multiplyScalar((S.deltas[p.mlayer] || 0) * (lp[p.mlayer] || 0));
+    done[p.id] = 1;
+  });
+  S.parts.forEach(p => {
+    if (!p.obj || done[p.id]) return;
+    const m = S.motions[p.id], h = m.host >= 0 ? S.parts[m.host] : null;
+    if (h && done[h.id]) p.disp.copy(h.disp); else p.disp.copy(ax).multiplyScalar((S.deltas[p.mlayer] || 0) * (lp[p.mlayer] || 0));
+    if (m.kind !== 'follow') p.disp.addScaledVector(dirV.fromArray(m.dir), m.dist * ph.pull);
+  });
+  S.parts.forEach(p => { if (p.obj) p.obj.position.copy(p.disp); });
+}
+
+// bounds of assembled + exploded states; updates the "align view" target and the floor grid,
+// but never moves the camera by itself
+function computeBounds() {
+  const save = S.t;
+  placeLayers(1); orient.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(orient);
+  placeLayers(0); orient.updateMatrixWorld(true);
+  b.union(new THREE.Box3().setFromObject(orient));
+  placeLayers(save);
+  const sph = b.getBoundingSphere(new THREE.Sphere());
+  const asp = Math.max(camera.aspect, .3);
+  const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * asp);
+  const dist = sph.radius / Math.sin(Math.min(vf, hf)) * (asp < .95 ? 1.02 : .92);
+  fitted = { dist, center: sph.center.clone() };
+  camera.near = dist / 200; camera.far = dist * 20; camera.updateProjectionMatrix();
+  if (grid) { scene.remove(grid); grid.geometry.dispose(); }
+  grid = S.skin === 'holo' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x1b7395, 0x0d3a4f) : new THREE.PolarGridHelper(sph.radius * 1.15, 24, 6, 96, 0x24272c, 0x1a1c20);
+  grid.position.set(sph.center.x, b.min.y - sph.radius * .04, sph.center.z);
+  scene.add(grid);
+}
+// the only place the view is reset: new model, new base part, or the "시점 정렬" button
+// what "시점 정렬" frames: the tapped part, else the layer being explained, else the whole model
+function alignTarget() {
+  if (S.picked >= 0 && S.parts[S.picked].obj) return { obj: S.parts[S.picked].obj, name: S.parts[S.picked].name };
+  if (S.step >= 2 && layerGroups[S.step - 2]) return { obj: layerGroups[S.step - 2], name: S.layers[S.step - 2].title };
+  return null;
+}
+let camTween = null;
+function alignView(instant) {
+  let center = fitted.center.clone(), dist = fitted.dist;
+  const tg = instant ? null : alignTarget();
+  if (tg) {
+    placeLayers(S.tTarget); orient.updateMatrixWorld(true);       // frame where it will end up
+    const sph = new THREE.Box3().setFromObject(tg.obj).getBoundingSphere(new THREE.Sphere());
+    placeLayers(S.t); orient.updateMatrixWorld(true);
+    const asp = Math.max(camera.aspect, .3), vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * asp);
+    center = sph.center; dist = Math.max(sph.radius, fitted.dist * .02) / Math.sin(Math.min(vf, hf)) * 2.3;
+  }
+  const dir = new THREE.Vector3(1.05, .78, 1.4).normalize();
+  const pos = center.clone().addScaledVector(dir, dist);
+  if (instant) { camTween = null; controls.target.copy(center); camera.position.copy(pos); controls.update(); return; }
+  camTween = { t: 0, p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: center };
+}
+controls.addEventListener('start', () => { camTween = null; });
+function fitCamera() { computeBounds(); alignView(true); }
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+let sized = false;
+new ResizeObserver(() => { resize(); if (S.layers.length) { if (!sized) fitCamera(); else computeBounds(); } if (stage.clientWidth > 0) sized = true; }).observe(stage);
+
+// ---------- on the drawing: a numbered marker per layer, one name bubble ----------
+// Names live in one list (the layer list). The drawing only carries small numbers, so any number of
+// layers fits; the layer (or part) in focus gets a single name bubble.
+const tagEls = []; let bubble = null;
+function renderTags() {
+  tagKey = '';
+  const host = $('markers'); host.innerHTML = ''; tagEls.length = 0;
+  S.layers.forEach((L, li) => {
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'mk'; el.textContent = li + 1;
+    el.title = L.title; el.setAttribute('aria-label', `층 ${li + 1} · ${L.title}`);
+    el.onclick = () => go(li + 2);
+    host.appendChild(el); tagEls.push(el);
+  });
+  bubble = document.createElement('div'); bubble.className = 'mk-label'; bubble.hidden = true; host.appendChild(bubble);
+}
+const tmpV = new THREE.Vector3(), rightV = new THREE.Vector3();
+function screenOf(p) {
+  tmpV.set(p.center[0], p.center[1], p.center[2]);
+  if (p.disp) tmpV.add(p.disp);
+  shift.localToWorld(tmpV); tmpV.project(camera);
+  return { x: (tmpV.x + 1) / 2 * stage.clientWidth, y: (1 - tmpV.y) / 2 * stage.clientHeight, ok: tmpV.z < 1 };
+}
+function updateTags() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const show = S.labels && S.t > .55 && S.layers.length > 1;
+  if (!show) { tagEls.forEach(e => { e.hidden = true; }); if (bubble) bubble.hidden = true; return; }
+  const focus = S.step >= 2 ? S.step - 2 : -1;
+  let fx = null;
+  S.layers.forEach((L, li) => {
+    const el = tagEls[li]; if (!el) return;
+    const big = L.partIds.reduce((b, id) => S.parts[id].vol > S.parts[b].vol ? id : b, L.partIds[0]);
+    const s = screenOf(S.parts[big]);
+    const vis = s.ok && s.x > -10 && s.x < w + 10 && s.y > -10 && s.y < h + 10;
+    el.hidden = !vis;
+    if (!vis) return;
+    el.style.transform = `translate(${s.x.toFixed(1)}px, ${s.y.toFixed(1)}px) translate(-50%, -50%)`;
+    el.classList.toggle('on', li === focus);
+    if (li === focus) fx = s;
+  });
+  // the one name on the drawing: the picked part, else the layer in focus
+  const pk = S.picked >= 0 ? S.parts[S.picked] : null;
+  const at = pk ? screenOf(pk) : fx;
+  if (!bubble || !at || !at.ok || focus < 0) { if (bubble) bubble.hidden = true; return; }
+  bubble.hidden = false;
+  bubble.textContent = pk ? dispName(pk.name) : S.layers[focus].title;
+  const left = at.x > w * 0.55;
+  bubble.classList.toggle('left', left);
+  bubble.style.transform = `translate(${(left ? at.x - 16 : at.x + 16).toFixed(1)}px, ${at.y.toFixed(1)}px) translate(${left ? '-100%' : '0'}, -50%)`;
+  bubble.style.maxWidth = Math.max(80, (left ? at.x - 24 : w - at.x - 24)) + 'px';      // never runs off the drawing
+}
+
+// ---------- the one list: layers, the open layer showing its parts ----------
+let listFocus = -2;
+function renderList(forceScroll) {
+  const ul = $('layerList'); if (!ul) return;
+  ul.innerHTML = '';
+  const focus = S.step >= 2 ? S.step - 2 : -1;
+  const pickedName = S.picked >= 0 ? S.parts[S.picked].name : null;
+  S.layers.map((L, i) => ({ L, i })).reverse().forEach(({ L, i }) => {
+    const li = document.createElement('li'); li.dataset.i = i;
+    li.classList.toggle('on', i === focus);
+    li.innerHTML = `<button type="button" class="lrow"><span class="n">${i + 1}</span><span class="t"></span><span class="c">${L.partIds.length}개</span></button>`;
+    li.querySelector('.t').textContent = L.title;
+    li.querySelector('.lrow').onclick = () => go(i + 2);
+    if (i === focus) {
+      const sub = document.createElement('div'); sub.className = 'parts';
+      nameSummary(S.parts, L.partIds).forEach(n => {
+        const m = n.match(/^(.*?)( ×\d+)?$/), name = m[1];
+        const b = document.createElement('button'); b.type = 'button';
+        b.textContent = dispName(name) + (m[2] || '');
+        b.classList.toggle('on', name === pickedName);
+        b.onclick = () => focusByName(name, L.partIds);
+        sub.appendChild(b);
+      });
+      li.appendChild(sub);
+    }
+    ul.appendChild(li);
+  });
+  if (forceScroll || focus !== listFocus) {
+    listFocus = focus;
+    const on = ul.querySelector('li.on');
+    if (on) ul.scrollTop = Math.max(0, on.offsetTop - 6);
+    else if (focus < 0) ul.scrollTop = 0;
+  }
+}
+
+// ---------- story ----------
+function stepCount() { return S.parts.length < 2 ? 1 : S.layers.length + 2; }
+function renderStory() {
+  const N = S.layers.length, st = S.step;
+  $('badge').textContent = st + 1;
+  if (st === 0) {
+    $('eyebrow').textContent = S.baseId >= 0 ? '조립된 모습 · 기준 ' + S.parts[S.baseId].name : '조립된 모습';
+    $('storyTitle').textContent = S.meta.title || S.modelName || '조립된 모습';
+    $('storyText').textContent = S.parts.length < 2
+      ? `하나의 부품(솔리드 1개)으로 된 파일이에요. 크기 ${S.parts[0].size.map(v => +v.toPrecision(3)).join(' × ')} ${S.unit}. 분해할 부품이 없어서 이 모습만 보여 줘요.`
+      : S.meta.summary || `부품 ${S.parts.length}개가 맞물려 하나의 제품이 돼요. 다음을 눌러 분해해 보세요.`;
+  } else if (st === 1) {
+    $('eyebrow').textContent = '분해';
+    $('storyTitle').textContent = (N <= 16 ? KNUM[N] + ' 개' : N + '개') + '의 층으로 분해';
+    $('storyText').textContent = N < 2 ? `층이 1개라 모든 부품이 한 덩어리로 있어요. 층 개수를 늘리면 그만큼 나뉘어 분해돼요.`
+      : S.meta.explode || `부품 ${S.parts.length}개가 ${N}개의 층으로 나뉘어 있어요. 다음을 눌러 맨 아래층부터 하나씩 살펴보세요.`;
+  } else {
+    const li = st - 2, L = S.layers[li];
+    $('eyebrow').textContent = `층 ${pad2(li + 1)} / ${pad2(N)}${L.code ? ' · ' + L.code : ''}`;
+    $('storyTitle').textContent = L.title;
+    $('storyText').textContent = L.description || '';
+
+  }
+  const d = $('dashes'); d.innerHTML = '';
+  if (stepCount() <= 24) for (let i = 0; i < stepCount(); i++) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = i === st ? 'on' : '';
+    b.setAttribute('aria-label', (i + 1) + '단계'); b.onclick = () => go(i); d.appendChild(b);
+  }
+  $('prev').disabled = st === 0; $('next').disabled = st >= stepCount() - 1;
+  renderList();
+  const tgA = alignTarget(); $('alignView').textContent = tgA ? '시점 정렬 · ' + tgA.name : '시점 정렬';
+  $('picked').hidden = true;
+}
+function renderSide() {
+  $('specs').innerHTML = '';
+  (S.meta.specs || []).slice(0, 3).forEach(s => { const d = document.createElement('div'); d.textContent = s; $('specs').appendChild(d); });
+  $('modelName').textContent = S.modelName;
+  const tris = S.parts.reduce((s, p) => s + p.tris, 0);
+  const box = overallBox(S.parts);
+  $('meta').textContent = `부품 ${S.parts.length}개 · 삼각형 ${tris.toLocaleString('ko-KR')} · ${box.size.map(v => +v.toPrecision(3)).join(' × ')} ${S.unit}`;
+  const sel = $('baseSel'); sel.innerHTML = '';
+  S.parts.slice().sort((x, y) => y.vol - x.vol).slice(0, 80).forEach(p => {
+    const o = document.createElement('option'); o.value = p.id;
+    o.textContent = dispName(p.name) + (p.id === S.autoBase ? ' (자동)' : ''); sel.appendChild(o);
+  });
+  if (S.baseId >= 0 && ![...sel.options].some(o => Number(o.value) === S.baseId)) { const o = document.createElement('option'); o.value = S.baseId; o.textContent = S.parts[S.baseId].name; sel.prepend(o); }
+  sel.value = S.baseId;
+  $('baseNote').textContent = S.baseId >= 0 ? (S.baseHow === 'face' ? '기준 부품의 가장 넓은 평면을 바닥으로 Z(위)를, 그다음 넓은 옆면 방향으로 X를 잡았어요.' : '기준 부품이 곡면이라 형상의 주축으로 X·Y·Z를 잡았어요.') + (S.plan ? ` 조립 구조(${S.plan.groups.length}개 묶음)를 따라 기준 부품에서 이어진 순서대로, 서로 맞닿은 축 방향으로 분리돼요. 층을 묶음 수보다 늘리면 묶음 안의 커버·링·볼트가 하나씩 따로 빠져요.` : '') : '';
+  $('nOut').textContent = S.N;
+
+  $('nPlus').disabled = S.N >= S.maxN; $('nMinus').disabled = S.N <= 1;
+
+  renderList(true);
+}
+
+function go(st) {
+  stopPlay();
+  setStep(st);
+}
+function setStep(st) {
+  S.step = clamp(st, 0, stepCount() - 1);
+  S.tTarget = S.step === 0 ? 0 : 1;
+  if (S.step < 2) S.picked = -1;
+  else if (S.picked >= 0 && S.parts[S.picked].layer !== S.step - 2) S.picked = -1;
+  applyMaterials(); renderStory();
+}
+
+// ---------- play ----------
+let playTimer = null;
+function stopPlay() { clearTimeout(playTimer); playTimer = null; $('play').textContent = '처음부터 재생'; }
+function play() {
+  if (playTimer) { stopPlay(); return; }
+  $('play').textContent = '멈추기';
+  setStep(0); S.t = 0; placeLayers();
+  const seq = () => {
+    if (S.step >= stepCount() - 1) { stopPlay(); return; }
+    setStep(S.step + 1);
+    playTimer = setTimeout(seq, S.step === 1 ? 3200 : 2800);
+  };
+  playTimer = setTimeout(seq, 1600);
+}
+
+// ---------- model setup ----------
+function setModel(parts, opts) {
+  disposeScene();
+  S.parts = computeStats(parts);
+  S.motions = null; S.motionsKey = ''; S.plan = null;          // never reuse the previous model's motion plan
+  if ($('aiGo')) $('aiGo').disabled = S.parts.length < 2;
+  S.modelName = opts.name; S.unit = opts.unit || 'mm'; S.source = opts.source;
+  S.meta = opts.meta || { title: opts.title || opts.name, summary: '', specs: [] };
+  S.presetLayers = opts.layers || null; S.motionPreset = opts.layers || null; S.keepOrder = !!opts.keepOrder; S.picked = -1;
+  S.axisMode = '2';
+  // base part → XYZ frame; every part is rotated into it, so Z is "up from the base"
+  // assembly structure: the file's sub-assemblies, or the example's own layers
+  if (opts.layers) opts.layers.forEach((L, li) => L.partIds.forEach(id => { S.parts[id].groupKey = 'L' + li; S.parts[id].groupName = L.title; }));
+  S.autoBase = pickBase(S.parts);
+  const named = opts.base ? S.parts.findIndex(p => p.name === opts.base) : -1;
+  setBase(named >= 0 ? named : S.autoBase);
+  S.motionMode = 'assembly';
+  ensureMotions();
+  if (S.presetLayers) S.N = S.presetLayers.length;
+  else S.N = S.motionMode === 'assembly' ? S.plan.groups.length : clamp(Math.round(Math.sqrt(S.parts.length) * 1.6), 1, 10);
+  S.ai = aiStore.get(productKey()) || null;
+  if (S.ai && S.ai.meta && !opts.meta) S.meta = S.ai.meta;
+  regroup(true, true);
+  indexSpec(S.specText);
+  S.t = 1; S.tTarget = 1; placeLayers(); setStep(1);
+}
+function setBase(id) {
+  const fr = baseFrame(S.parts, id);
+  applyFrame(S.parts, id, fr);
+  S.baseId = id; S.baseHow = fr.how;
+  S.plan = planAssembly(S.parts, id);
+  if (!S.plan && S.parts.length > 1) {                 // no sub-assemblies in the file: every part is its own unit
+    S.parts.forEach((p, i) => { p.groupKey = 'p' + i; p.groupName = p.name; });
+    S.plan = planAssembly(S.parts, id);
+  }
+}
+function reframe(id) {
+  if (id === S.baseId) return;
+  stopPlay();
+  disposeScene();
+  S.parts.forEach(p => { p.obj = null; });
+  setBase(id); S.motions = null;
+  S.keepOrder = false;
+  regroup(true);
+}
+function resolveAxis() { S.axis = Number(S.axisMode); }
+function ensureMotions() {
+  if (S.motionMode === 'assembly' && !S.plan) S.motionMode = 'smart';
+  const key = S.baseId + '|' + S.axis + '|' + S.motionMode;
+  if (S.motions && S.motionsKey === key) return;
+  S.motions = computeMotions(S.parts, S.axis, S.baseId, { enclosure: S.source === 'file' }); S.motionsKey = key;
+  if (S.motionMode === 'assembly') { S.motions = localMotions(S.parts, S.motions, S.plan); S.maxN = S.plan.groups.length; }
+  else S.maxN = maxLayers(S.parts, S.baseId, S.motions);
+}
+// Two kinds of layers:
+//  · motion layers (S.mlayers) — the finest stacking the parts allow; they decide how things move
+//  · story layers (S.layers)   — the explanation steps, 1…max, made by joining neighbouring motion
+//    layers (or sub-assemblies). Changing the layer count never changes or switches off the explode.
+function storyFrom(list, n) {
+  const L = list.length; n = clamp(n, 1, L);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const chunk = list.slice(Math.round(i * L / n), Math.round((i + 1) * L / n));
+    if (!chunk.length) continue;
+    const ids = [].concat(...chunk.map(c => c.partIds));
+    const titled = chunk.filter(c => c.title && !c.auto);
+    const names = nameSummary(S.parts, ids);
+    let title = null;
+    if (chunk.length === 1 && chunk[0].title) title = chunk[0].title;
+    else if (titled.length) title = titled.length <= 2 ? titled.map(c => c.title).join(' · ') : titled[0].title + ' 외 ' + (titled.length - 1);
+    const ds = chunk.map(c => c.description).filter(Boolean);
+    const desc = chunk.length === 1 && ds.length ? ds[0]
+      : ds.length && aiFor() ? ds.slice(0, 2).join(' ') + (ds.length > 2 ? ` 외 ${ds.length - 2}개 묶음이 함께 있어요.` : '')
+      : '부품 ' + ids.length + '개: ' + names.slice(0, 6).join(', ') + (names.length > 6 ? ' 외' : '') + '.';
+    out.push({ partIds: ids, title, code: chunk.length === 1 ? chunk[0].code || '' : '', description: desc, glass: chunk.every(c => c.glass), auto: !title });
+  }
+  return out;
+}
+// ---------- assembly mode: steps inside each sub-assembly ----------
+// sub-units, in the order they come apart when there are layers to spare:
+// housing (with the small bits on it) · each cover / ring set · the fasteners
+function assemblyUnits() {
+  const P = S.plan, M = S.motions, parts = S.parts;
+  const tol = Math.max(...overallBox(parts).size) * 0.01;
+  const label = ids => { const u = [...new Set(ids.map(id => parts[id].name))].map(n => dispName(n)); return u.length <= 2 ? u.join(' · ') : u[0] + ' 외 ' + (u.length - 1); };
+  return P.order.map(gi => {
+    const g = P.groups[gi], unitOf = {};
+    const main = { partIds: [g.main] }; unitOf[g.main] = main;
+    const locals = [], fast = { partIds: [] };
+    g.ids.forEach(id => {
+      if (id === g.main) return;
+      const m = M[id];
+      if (m.kind === 'fastener' || m.kind === 'ring') { fast.partIds.push(id); unitOf[id] = fast; return; }
+      if (m.kind !== 'local') return;
+      let u = locals.find(u => u.dir.join() === m.dir.join() && u.partIds.some(q => boxGap(parts[q], parts[id]) <= tol));
+      if (!u) { u = { partIds: [], dir: m.dir }; locals.push(u); }
+      u.partIds.push(id); unitOf[id] = u;
+    });
+    g.ids.forEach(id => { if (unitOf[id]) return; const h = M[id].host; (h >= 0 && unitOf[h] ? unitOf[h] : main).partIds.push(id); unitOf[id] = main; });
+    locals.forEach(u => { u.vol = u.partIds.reduce((s, id) => s + parts[id].vol, 0); });
+    locals.sort((a, b) => b.vol - a.vol);
+    const subs = [main, ...locals].concat(fast.partIds.length ? [fast] : []);
+    subs.forEach(u => { u.title = label(u.partIds); u.desc = descOf(parts[u.partIds[0]].name); });
+    return { name: g.name, title: dispName(g.name, 'groups'), desc: descOf(g.name, 'groups') || descOf(parts[g.main].name), ids: g.ids.slice(), subs };
+  });
+}
+function assemblyStory(G, n) {
+  const desc = ids => { const names = nameSummary(S.parts, ids); return '부품 ' + ids.length + '개: ' + names.slice(0, 6).join(', ') + (names.length > 6 ? ' 외' : '') + '.'; };
+  if (n <= G.length) return storyFrom(G.map(g => ({ partIds: g.ids.slice(), title: g.title, code: '', description: g.desc })), n);
+  // more layers than sub-assemblies: open them up one by one from the base outward
+  let extra = n - G.length;
+  const out = [];
+  G.forEach(g => {
+    const k = Math.min(g.subs.length - 1, extra); extra -= k;
+    if (!k) { out.push({ partIds: g.ids.slice(), title: g.title, description: g.desc }); return; }
+    const sep = g.subs.slice(1, 1 + k), rest = [g.subs[0]].concat(g.subs.slice(1 + k));
+    out.push({ partIds: [].concat(...rest.map(u => u.partIds)), title: rest.length === 1 ? g.subs[0].title : g.title, description: rest.length === 1 ? g.subs[0].desc : g.desc });
+    sep.forEach(u => out.push({ partIds: u.partIds.slice(), title: u.title, description: u.desc }));
+  });
+  return out.map(L => Object.assign(L, { code: '', description: L.description || desc(L.partIds) }));
+}
+function regroup(fit, defaultMax) {
+  resolveAxis();
+  ensureMotions();
+  const copy = Ls => Ls.map(L => Object.assign({}, L, { partIds: L.partIds.slice() }));
+  // motion layers
+  if (S.motionPreset) S.mlayers = finalizeLayers(copy(S.motionPreset), S.parts, S.axis, S.keepOrder && S.axis === 2);
+  else S.mlayers = groupLayers(S.parts, S.axis, 99, S.baseId, S.motions);
+  // what the story steps are built from
+  const asmUnits = S.motionMode === 'assembly' ? assemblyUnits() : null;
+  S.maxN = Math.max(1, asmUnits ? asmUnits.reduce((s, g) => s + g.subs.length, 0) : S.mlayers.length);
+  if (defaultMax) S.N = S.maxN;
+  if (S.presetLayers && S.presetLayers.length === S.N) {
+    S.layers = finalizeLayers(copy(S.presetLayers), S.parts, S.axis, true);
+  } else {
+    S.presetLayers = null;
+    S.N = clamp(S.N, 1, S.maxN);
+    S.layers = finalizeLayers(asmUnits ? assemblyStory(asmUnits, S.N) : storyFrom(S.mlayers, S.N), S.parts, S.axis, true);
+  }
+  buildScene(fit); renderTags(); renderSide();
+  setStep(Math.min(S.step, stepCount() - 1));
+}
+
+function showLoading(msg, sub) { $('loading').hidden = !msg; $('loadMsg').textContent = msg || ''; $('loadSub').textContent = sub || ''; }
+
+// ---------- file loading ----------
+let occtWorker = null;
+function readOcct(format, buf) {
+  return new Promise((resolve, reject) => {
+    try { if (!occtWorker) occtWorker = new Worker('occt-import-js-worker.js'); } catch (e) { reject(new Error('worker')); return; }
+    occtWorker.onmessage = ev => resolve(ev.data);
+    occtWorker.onerror = ev => { reject(new Error(ev.message || 'parse')); occtWorker.terminate(); occtWorker = null; };
+    occtWorker.postMessage({ format, buffer: new Uint8Array(buf), params: null });
+  });
+}
+function bakeObject(root) {
+  root.updateMatrixWorld(true);
+  const parts = [], v = new THREE.Vector3();
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+    const a = o.geometry.attributes.position, pos = new Float32Array(a.count * 3);
+    for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(o.matrixWorld); pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z; }
+    const idx = o.geometry.index ? Uint32Array.from(o.geometry.index.array) : null;
+    const names = []; let p = o; while (p && p !== root) { if (p.name) names.unshift(p.name); p = p.parent; }
+    const mat = Array.isArray(o.material) ? o.material[0] : o.material;
+    parts.push({ name: o.name || (o.parent && o.parent.name) || 'part', path: names.slice(0, -1).join(' / '), meshes: [{ pos, idx, color: mat && mat.color ? [mat.color.r, mat.color.g, mat.color.b] : null }] });
+  });
+  return parts;
+}
+async function loadModelFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const name = file.name.replace(/\.[^.]+$/, '');
+  showLoading('모델 읽는 중', file.name);
+  try {
+    const buf = await file.arrayBuffer();
+    let parts, unit = 'mm';
+    if (['step', 'stp', 'iges', 'igs', 'brep'].includes(ext)) {
+      showLoading('CAD 형상 해석 중', '처음엔 해석기(약 7MB)를 불러와서 조금 걸려요');
+      const fmt = ext === 'stp' || ext === 'step' ? 'step' : ext === 'brep' ? 'brep' : 'iges';
+      const res = await readOcct(fmt, buf.slice(0));
+      if (!res || !res.success) throw new Error('이 CAD 파일을 해석하지 못했어요. STEP AP203/AP214로 다시 내보내 보세요.');
+      let tree = null;
+      if (fmt === 'step') { try { tree = parseStepProducts(new TextDecoder('latin1').decode(buf)); } catch (e) { tree = null; } }
+      parts = mergeFragments(computeStats(partsFromOcct(res, tree)));
+    } else if (ext === 'stl') {
+      const g = new THREE.STLLoader().parse(buf).toNonIndexed();
+      const bodies = splitConnected(g.attributes.position.array);
+      parts = bodies.map((pos, i) => ({ name: bodies.length > 1 ? `몸체 #${i + 1}` : name, path: '', meshes: [{ pos, idx: null }] }));
+      unit = '단위';
+    } else if (ext === 'obj') {
+      parts = bakeObject(new THREE.OBJLoader().parse(new TextDecoder().decode(buf)));
+      unit = '단위';
+    } else if (ext === 'glb' || ext === 'gltf') {
+      const gltf = await new Promise((res, rej) => new THREE.GLTFLoader().parse(buf, '', res, rej));
+      parts = bakeObject(gltf.scene);
+      unit = 'm';
+    } else throw new Error('지원하지 않는 형식이에요. STEP, IGES, STL, OBJ, GLB 중 하나로 올려 주세요.');
+    parts = parts.filter(p => p.meshes.some(m => m.pos.length >= 9));
+    if (!parts.length) throw new Error('파일 안에서 형상을 찾지 못했어요.');
+    $('modelFile').textContent = file.name;
+    setModel(parts, { name, unit, source: 'file' });
+    S.t = 0; S.tTarget = 0; placeLayers(); setStep(0);          // open assembled; 다음 plays the explode
+    if (S.parts.length < 2) {
+      setAiStatus('이 파일은 부품이 하나뿐인 단일 파트 파일이라 분해할 부품이 없어요. 여러 부품이 들어 있는 조립품(어셈블리) STEP을 올리면 분해돼요.', true);
+      if ($('aiGo')) $('aiGo').disabled = true;
+      return;
+    }
+    if ($('aiGo')) $('aiGo').disabled = false;
+    const nF = S.motions.filter(m => m.kind === 'fastener' || m.kind === 'ring').length, nC = S.motions.filter(m => m.kind === 'cover').length;
+    setAiStatus(S.motionMode === 'assembly'
+      ? `기준 부품 '${S.parts[S.baseId].name}'로 축을 잡고, 조립 구조 ${S.plan.groups.length}개 묶음을 이어진 순서대로 분리하게 했어요. 다음을 누르면 분해돼요.`
+      : `기준 부품 '${S.parts[S.baseId].name}'로 축을 잡았어요. 체결 부품 ${nF}개는 박힌 방향으로, 커버 ${nC}개는 바깥쪽으로 빠지게 했어요. 다음을 누르면 분해돼요.`);
+  } catch (e) {
+    setAiStatus(e.message && /[\uAC00-\uD7A3]/.test(e.message) ? e.message : '파일을 여는 중 문제가 생겼어요. 다른 형식으로 내보내서 다시 올려 주세요. (' + (e.message || e) + ')', true);
+  } finally { showLoading(null); }
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('load ' + src)); document.head.appendChild(s); });
+}
+async function loadSpecFile(file) {
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  try {
+    let text = '';
+    if (ext === 'pdf') {
+      setAiStatus('사양서 PDF 읽는 중…');
+      if (!window.pdfjsLib) {
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');
+      }
+      const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
+      const n = Math.min(doc.numPages, 600);
+      for (let i = 1; i <= n && text.length < 1500000; i++) {
+        const c = await (await doc.getPage(i)).getTextContent();
+        text += c.items.map(it => it.str + (it.hasEOL ? '\n' : ' ')).join('') + '\n';
+        if (i % 10 === 0) setAiStatus(`사양서 PDF 읽는 중… ${i} / ${n}쪽`);
+      }
+    } else text = await file.text();
+    text = text.replace(/[.·…]{4,}/g, ' … ').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    if (!text) throw new Error('empty');
+    S.specText = text; S.specName = file.name;
+    specRevision++;
+    indexSpec(text);
+    $('specFile').textContent = `${file.name} · ${text.length.toLocaleString('ko-KR')}자`;
+    setAiStatus(`사양서를 읽었어요(구절 ${specIndex.N.toLocaleString('ko-KR')}개). 사양서 구절은 부품 설명 생성에 활용할 수 있어요.`);
+  } catch (e) {
+    setAiStatus('사양서에서 글자를 찾지 못했어요. 스캔 이미지 PDF라면 텍스트가 있는 PDF나 TXT로 올려 주세요.', true);
+  }
+}
+
+// ---------- AI grouping (sample capability) ----------
+let sampleFn = null, aiCtl = null;
+function setAiStatus(msg, err) { const s = $('operationStatus'); if (s) { s.textContent = msg || ''; s.classList.toggle('err', !!err); } }
+const sig = v => +Number(v).toPrecision(3);
+// One AI pass names and describes everything at the finest level (every part name and every
+// sub-assembly). Any layer count is then composed from this cache, so changing layers never needs
+// the AI again. The cache lives until another product is loaded (kept per product for this session).
+const aiStore = new Map();
+function productKey() { return [S.modelName, S.parts.length, S.parts.map(p => p.name).slice(0, 40).join('|')].join('#'); }
+function aiFor() { return S.ai && S.ai.key === productKey() ? S.ai : null; }
+function koOf(name, kind = 'parts') { const A = aiFor(); const e = A && A[kind][name]; return e && e.ko ? e.ko : ''; }
+function dispName(name, kind = 'parts') { const ko = koOf(name, kind) || (kind === 'parts' ? koOf(name, 'groups') : koOf(name, 'parts')); return ko ? `${name} [${ko}]` : name; }
+function descOf(name, kind = 'parts') { const A = aiFor(); const e = A && A[kind][name]; return e && e.desc ? e.desc : ''; }
+// manual passages worth sending: the ones that mention the parts, plus the "parts of the product" pages
+function pickPassages(budget) {
+  if (!specIndex) return [];
+  const score = new Map();
+  const add = (q, w, k = 6) => searchSpec(specIndex, q, k, nameNoise).forEach(r => score.set(r.chunk.i, (score.get(r.chunk.i) || 0) + r.score * w));
+  [...new Set(S.parts.map(p => p.name))].forEach(n => add(n, 1));
+  if (S.plan) S.plan.groups.forEach(g => add(g.name, 1.5));
+  // pages that name the product's parts, and the usual mechanical topics of any manual
+  add('살펴보기 명칭 이름 번호 구성 구성품 부품 parts overview components', 2, 14);
+  ['볼트 나사 체결 토크 bolt screw torque', '커버 덮개 cover', '커넥터 케이블 포트 connector cable port', '브라켓 고정 bracket mount', '필터 팬 filter fan', '손잡이 handle', '플랜지 flange', '관절 축 joint axis', '베이스 설치 base install']
+    .forEach(q => add(q, 0.8, 6));
+  const picked = [...score.entries()].sort((x, y) => y[1] - x[1]);
+  const out = []; let used = 0;
+  for (const [i] of picked) { const t = specIndex.chunks[i].text; if (used + t.length > budget) continue; out.push(i); used += t.length; if (used > budget * 0.97) break; }
+  return out.sort((x, y) => x - y);
+}
+const numbered = ids => ids.map((ci, n) => `[${n + 1}] ${specIndex.chunks[ci].text}`).join('\n');
+function buildPrompt(pass) {
+  const kindName = { base: 'base (fixed)', main: 'main part of its sub-assembly', local: 'cover / inner part', fastener: 'bolt / screw / pin', ring: 'nut / washer', follow: 'small attached part' };
+  const counts = {};
+  S.parts.forEach(p => { counts[p.name] = (counts[p.name] || 0) + 1; });
+  const uniq = [...new Set(S.parts.map(p => p.name))].map(n => S.parts.find(p => p.name === n)).sort((x, y) => y.vol - x.vol).slice(0, 300);
+  const partLines = uniq.map(p => `${p.name} | ${kindName[S.motions && S.motions[p.id] ? S.motions[p.id].kind : 'body'] || 'part'} | ${S.plan ? S.plan.groups[S.plan.gOf[p.id]].name : '-'} | ×${counts[p.name]} | ${p.size.map(sig).join('×')} ${S.unit}`).join('\n');
+  const groupLines = S.plan ? S.plan.order.map(gi => { const g = S.plan.groups[gi]; return `${g.name} | ${g.ids.length} parts | main: ${S.parts[g.main].name}${g.parent >= 0 ? ' | attached to: ' + S.plan.groups[g.parent].name : ' | base'}`; }).join('\n') : '';
+  return `You are a product documentation engineer. For an animated exploded-view explainer, give every CAD part name and every sub-assembly below a short Korean name and a short Korean description.
+
+Rules:
+- Use the exact CAD names as keys. Cover every name listed.
+- ko: a short Korean name, 2-14 characters. Prefer the manual's own terms when a part clearly matches one (e.g. a joint, flange, cover, bracket, filter, handle named in the manual). Keep useful codes such as J1, M3, GPIO. Never repeat the whole CAD code.
+- desc: 1-2 sentences in Korean (polite 해요체) on what it is and what it does in this product. Mention figures (torque, size, count) only if the manual excerpts state them. Never invent figures.
+- refs: the numbers of the manual excerpts that support that name and desc (e.g. [3, 12]); [] when nothing in the excerpts is about this item. Do not cite an excerpt just because it shares a word.
+- If you cannot tell what a part is, give a cautious generic name from its shape and role (e.g. "고정 볼트", "커버").
+${uniq.length > 120 ? '- The part list is long: write desc only for the first 120 parts listed (they are the largest); give the rest ko only with desc "".' : ''}
+- title: the product's name. summary: 1-2 sentences about the whole product. specs: up to 3 short uppercase key figures from the manual, or [].
+
+Reply with only JSON:
+{"title":"","summary":"","specs":[],"groups":[{"name":"","ko":"","desc":"","refs":[]}],"parts":[{"name":"","ko":"","desc":"","refs":[]}]}
+
+Model: ${S.modelName} · ${S.parts.length} parts.
+Sub-assemblies (name | size | main part | attached to):
+${groupLines || '(none)'}
+
+Parts (name | role | sub-assembly | count | size):
+${partLines}
+
+Manual excerpts${S.specName ? ` (${S.specName})` : ''}:
+${pass.length ? numbered(pass) : '(no manual provided; name from the CAD names, roles and sizes; refs are [])'}`;
+}
+async function runAi() {
+  if (!sampleFn) return;
+  aiCtl = new AbortController();
+  if ($('aiGo')) $('aiGo').disabled = true;
+  if ($('aiStop')) $('aiStop').hidden = false;
+  const nNames = new Set(S.parts.map(p => p.name)).size;
+  setAiStatus(`Claude가 부품 이름 ${nNames}종${S.specText ? '과 사양서 관련 구절' : ''}을 읽고 한글 이름과 설명을 붙이는 중… (보통 30초~1분)`);
+  try {
+    const pass = pickPassages(40000);
+    const ai = await sampleFn.json(buildPrompt(pass), {
+      signal: aiCtl.signal, modelTier: 'default',
+      onText: ({ text }) => setAiStatus(`이름과 설명 쓰는 중… ${text.length.toLocaleString('ko-KR')}자`),
+    });
+    const clean = (s, n) => String(s || '').replace(/[\[\]]/g, '').trim().slice(0, n);
+    const A = { key: productKey(), parts: {}, groups: {}, spec: S.specName || '' };
+    const refs = r => (Array.isArray(r) ? r : []).map(Number).filter(n => n >= 1 && n <= pass.length).map(n => pass[n - 1]).slice(0, 4);
+    (Array.isArray(ai.parts) ? ai.parts : []).forEach(e => { if (e && e.name) A.parts[String(e.name)] = { ko: clean(e.ko, 24), desc: clean(e.desc, 400), refs: refs(e.refs) }; });
+    (Array.isArray(ai.groups) ? ai.groups : []).forEach(e => { if (e && e.name) A.groups[String(e.name)] = { ko: clean(e.ko, 24), desc: clean(e.desc, 400), refs: refs(e.refs) }; });
+    A.meta = { title: clean(ai.title || S.modelName, 40), summary: clean(ai.summary, 400), explode: '', specs: Array.isArray(ai.specs) ? ai.specs.map(s => clean(s, 40)).slice(0, 3) : [] };
+    S.ai = A; aiStore.set(A.key, A);
+    S.meta = A.meta;
+    const named = [...new Set(S.parts.map(p => p.name))].filter(n => A.parts[n] && A.parts[n].ko).length;
+    S.presetLayers = null;
+    regroup(); renderInfo();
+    setAiStatus(`부품 이름 ${named}/${nNames}종과 조립품 ${Object.keys(A.groups).length}개에 한글 이름·설명을 붙였어요. 층 개수를 바꿔도 다시 돌릴 필요 없어요.`);
+  } catch (e) {
+    const m = {
+      cancelled: '멈췄어요.', not_granted: 'AI 사용이 허용되지 않았어요.', sampling_disabled: '이 계정에서는 AI 정리를 쓸 수 없어요.',
+      rate_limited: '요청이 많아 잠시 뒤에 다시 눌러 주세요.', invalid_json: 'AI 답을 읽지 못했어요. 한 번 더 눌러 주세요.', prompt_too_large: '보낼 내용이 너무 길어요. 다시 눌러 주세요.',
+      refused: 'AI가 이 내용을 처리하지 않았어요.',
+    };
+    setAiStatus(m[e.code] || 'AI 정리 중 연결이 끊겼어요. 다시 눌러 주세요.', e.code !== 'cancelled');
+    if (e.code === 'not_granted' || e.code === 'sampling_disabled') hideAi();
+  } finally {
+    if ($('aiGo')) $('aiGo').disabled = false;
+    if ($('aiStop')) $('aiStop').hidden = true;
+    aiCtl = null;
+  }
+}
+function hideAi() { if ($('aiGo')) $('aiGo').hidden = true; }
+(window.claude && window.claude.use ? window.claude.use('sample') : Promise.resolve(null)).then(fn => { sampleFn = fn; if (!fn) hideAi(); }).catch(hideAi);
+
+// ---------- part info (after the explode) ----------
+const KIND_LABEL = { base: '기준 부품 · 고정', main: '묶음의 중심 부품', local: '커버 · 부속 부품', fastener: '볼트 · 나사 · 핀', ring: '너트 · 와셔', follow: '부착 부품', core: '케이스 · 고정', cover: '커버', body: '부품' };
+const axisLabel = d => { const k = [0, 1, 2].reduce((a, b) => Math.abs(d[b]) > Math.abs(d[a]) ? b : a, 0); return (d[k] >= 0 ? '+' : '−') + 'XYZ'[k]; };
+const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+let specIndex = null, nameNoise = new Set();
+const aiCache = {};
+let specRevision = 0;
+const manualInfoCache = new Map();
+function partQuery(p) {
+  const m = S.motions && S.motions[p.id];
+  const extra = { fastener: '볼트 나사 bolt screw torque 토크', ring: '너트 와셔 nut washer', local: 'cover 커버', base: 'base 베이스 mount 설치' }[m && m.kind] || '';
+  return [S.modelName, p.name, koOf(p.name), p.groupName || '', koOf(p.groupName || '', 'groups'), extra].join(' ');
+}
+function snippet(text, hits) {
+  // show the 260-character window that holds the most different matched words
+  const lower = text.toLowerCase(), pos = [];
+  hits.forEach(h => { let i = -1; while ((i = lower.indexOf(h, i + 1)) >= 0) pos.push([i, h]); });
+  let at = 0, best = -1;
+  pos.forEach(([i]) => { const s = new Set(pos.filter(([j]) => j >= i && j < i + 220).map(([, h]) => h)).size; if (s > best) { best = s; at = i; } });
+  const start = Math.max(0, at - 40), end = Math.min(text.length, start + 260);
+  let s = (start > 0 ? '…' : '') + text.slice(start, end) + (end < text.length ? '…' : '');
+  s = escapeHtml(s);
+  hits.filter(h => h.length > 1).sort((x, y) => y.length - x.length).forEach(h => { s = s.replace(new RegExp('(' + h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[a-z]*)', 'gi'), '<mark>$1</mark>'); });
+  return s;
+}
+function evidenceHits(text, p) {
+  const lower = text.toLowerCase();
+  return [...new Set(tokenize(partQuery(p)).filter(t => t.length > 1 && !nameNoise.has(t) && lower.includes(t)))];
+}
+function sentenceMatches(results, accepts) {
+  const sentences = new Map();
+  results.forEach((result, resultIndex) => {
+    (result.chunk.text.match(/[^.!?。\n]+[.!?。]?/g) || []).map(s => s.replace(/^[\s\-•*]+/, '').trim()).forEach(text => {
+      if (text.length < 20) return;
+      const match = accepts(text);
+      if (!match) return;
+      const score = match.hits / Math.sqrt(tokenize(text).length || 1) + result.score / (resultIndex + 1) * 0.1;
+      const key = text.toLowerCase();
+      if (!sentences.has(key) || sentences.get(key).score < score) sentences.set(key, { text, score, result, ...match });
+    });
+  });
+  return [...sentences.values()].sort((a, b) => b.score - a.score);
+}
+function partNameTerms(name) {
+  return new Set(tokenize(name || '').filter(t => t.length > 1 && !nameNoise.has(t)));
+}
+const ASSEMBLY_TERMS = /조립|분해|설치|장착|고정|체결|제거|탈거|삽입|순서|나사|볼트|토크|연결|끼우|풀어|맞물|결합|분리|assemble|disassembl|install|mount|fasten|tighten|torque|remove|attach|insert|join|connect|fit/i;
+function relatedAssemblyParts(p) {
+  const found = new Map();
+  const add = (name, ids) => {
+    if (!name || name === p.name || !ids.some(id => S.parts[id].name === name)) return;
+    if (!found.has(name)) found.set(name, S.parts.find(part => part.name === name));
+  };
+  S.parts.forEach(q => {
+    if (q.id !== p.id && q.groupKey === p.groupKey) add(q.name, [q.id]);
+  });
+  if (S.plan) {
+    const gi = S.plan.gOf[p.id], group = S.plan.groups[gi];
+    if (group) {
+      group.ids.forEach(id => add(S.parts[id].name, [id]));
+      if (group.parent >= 0) add(S.parts[S.plan.groups[group.parent].main].name, [S.plan.groups[group.parent].main]);
+      S.plan.groups.forEach((child, ci) => {
+        if (child.parent === gi && ci !== gi) add(S.parts[child.main].name, [child.main]);
+      });
+    }
+  }
+  return [...found.values()].filter(q => partNameTerms(q.name).size).slice(0, 12);
+}
+function getManualInfo(p) {
+  if (!specIndex) return null;
+  const key = [productKey(), specRevision, p.name, p.groupName || ''].join('|');
+  if (manualInfoCache.has(key)) return manualInfoCache.get(key);
+  const query = partQuery(p);
+  const modelTerms = partNameTerms(S.modelName);
+  const definitionTerms = new Set([...partNameTerms(p.name), ...partNameTerms(p.groupName)]);
+  const definitionResults = searchSpec(specIndex, query, 12, nameNoise);
+  const definition = sentenceMatches(definitionResults, text => {
+    const words = partNameTerms(text);
+    const partHits = [...definitionTerms].filter(t => words.has(t)).length;
+    const modelHits = [...modelTerms].filter(t => words.has(t)).length;
+    return partHits ? { hits: partHits + modelHits * 0.5 } : null;
+  }).slice(0, 2).map(s => s.text);
+  const related = relatedAssemblyParts(p);
+  const assemblyMatches = [];
+  related.forEach(other => {
+    const otherTerms = partNameTerms(other.name);
+    if (!otherTerms.size) return;
+    const results = searchSpec(specIndex,
+      `${query} ${other.name} 조립 분해 설치 장착 고정 체결 제거 순서 토크 결합 assemble install mount fasten torque join connect`,
+      6, nameNoise);
+    sentenceMatches(results, text => {
+      if (!ASSEMBLY_TERMS.test(text)) return null;
+      const words = partNameTerms(text);
+      const partHits = [...definitionTerms].filter(t => words.has(t)).length;
+      const otherHits = [...otherTerms].filter(t => words.has(t)).length;
+      if (!partHits || !otherHits) return null;
+      return { hits: partHits + otherHits, relatedName: other.name };
+    }).forEach(match => assemblyMatches.push(match));
+  });
+  const assembly = [...new Map(assemblyMatches.sort((a, b) => b.score - a.score)
+    .map(match => [`${match.relatedName}|${match.text.toLowerCase()}`, match])).values()].slice(0, 3);
+  const passages = [...new Map(definitionResults.concat(assemblyMatches.map(match => match.result).filter(Boolean))
+    .map(result => [result.chunk.i, result])).values()].slice(0, 6);
+  const info = {
+    definition,
+    assembly,
+    passages: passages.length ? passages : definitionResults.slice(0, 6),
+  };
+  manualInfoCache.set(key, info);
+  return info;
+}
+// one AI call for a part the batch did not cover (or when the batch never ran); kept for the session
+let partCtl = null, aiDenied = false;
+const partPending = {};
+async function explainPart(p) {
+  if (!sampleFn || aiDenied || partPending[p.name]) return;
+  const g = S.plan ? S.plan.groups[S.plan.gOf[p.id]] : null, m = S.motions ? S.motions[p.id] : null;
+  const found = specIndex ? searchSpec(specIndex, partQuery(p), 4, nameNoise) : [];
+  const pass = found.map(r => r.chunk.i);
+  partCtl && partCtl.abort(); partCtl = new AbortController();
+  partPending[p.name] = true;
+  const prompt = `CAD 부품 하나를 설명해 주세요. 한국어 해요체로 답하고 JSON만 쓰세요: {"ko":"","desc":"","refs":[]}
+- ko: 짧은 한글 이름(2~14자). 매뉴얼 구절에 이 부품을 가리키는 용어가 있으면 그 용어를 쓰세요.
+- desc: 이 부품이 무엇이고 제품에서 어떤 역할을 하는지 2~3문장. 구절에 적힌 수치·주의사항만 쓰고, 없는 수치는 지어내지 마세요.
+- refs: desc의 근거가 된 구절 번호들. 이 부품에 관한 구절이 없으면 [].
+
+부품 이름: ${p.name}
+소속 조립품: ${g ? g.name : '-'}
+종류: ${KIND_LABEL[m ? m.kind : 'body']}
+크기: ${p.size.map(v => +v.toPrecision(3)).join(' x ')} ${S.unit}
+같은 부품 수: ${S.parts.filter(q => q.name === p.name).length}
+
+매뉴얼 구절${S.specName ? ` (${S.specName})` : ''}:
+${pass.length ? numbered(pass) : '(없음)'}`;
+  try {
+    const r = await sampleFn.json(prompt, { modelTier: 'quick', signal: partCtl.signal });
+    const clean = (s, n) => String(s || '').replace(/[\[\]]/g, '').trim().slice(0, n);
+    if (!S.ai || S.ai.key !== productKey()) { S.ai = { key: productKey(), parts: {}, groups: {}, spec: S.specName || '', meta: null }; aiStore.set(S.ai.key, S.ai); }
+    const hadKo = !!koOf(p.name);
+    S.ai.parts[p.name] = { ko: (S.ai.parts[p.name] && S.ai.parts[p.name].ko) || clean(r && r.ko, 24), desc: clean(r && r.desc, 500),
+      refs: (Array.isArray(r && r.refs) ? r.refs : []).map(Number).filter(n => n >= 1 && n <= pass.length).map(n => pass[n - 1]) };
+    if (!hadKo && koOf(p.name)) { const keep = S.picked; regroup(); if (keep >= 0) selectPart(keep, false); }
+  } catch (e) {
+    if (e.code === 'not_granted' || e.code === 'sampling_disabled') aiDenied = true;
+    if (e.code !== 'cancelled' && S.picked >= 0 && S.parts[S.picked] === p) { const d = $('infoDesc'); if (d) d.innerHTML = '<span class="src">AI 설명을 만들지 못했어요. 부품을 다시 누르면 다시 시도해요.</span>'; }
+  } finally { delete partPending[p.name]; if (S.picked >= 0 && S.parts[S.picked] === p) renderInfo(); }
+}
+function renderInfo() {
+  const box = $('info');
+  if (S.picked < 0) { box.hidden = true; return; }
+  const p = S.parts[S.picked], m = S.motions ? S.motions[p.id] : null;
+  const g = S.plan ? S.plan.groups[S.plan.gOf[p.id]] : null;
+  $('infoKind').textContent = KIND_LABEL[m ? m.kind : 'body'] || '부품';
+  $('infoName').textContent = dispName(p.name);
+  const same = S.parts.filter(q => q.name === p.name).length;
+  let dir = '제자리에 고정';
+  if (m && (m.kind === 'fastener' || m.kind === 'ring' || m.kind === 'local')) dir = axisLabel(m.dir) + ' 방향으로 빠짐';
+  else if (m && m.kind === 'follow') dir = '붙어 있는 부품과 함께 움직임';
+  else if (g && g.parent >= 0) dir = axisLabel(g.dir) + ' 방향으로 분리 (' + dispName(S.plan.groups[g.parent].name, 'groups') + '에서)';
+  const L = S.layers[p.layer];
+  const rows = [
+    ['소속', g ? dispName(g.name, 'groups') : '—'],
+    ['층', L ? `${p.layer + 1} / ${S.layers.length} · ${L.title}` : '—'],
+    ['크기', p.size.map(v => +v.toPrecision(3)).join(' × ') + ' ' + S.unit],
+    ['같은 부품', same > 1 ? same + '개' : '1개'],
+    ['분해', dir],
+    ['CAD 경로', p.path || '—'],
+  ];
+  $('infoGrid').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join('');
+
+  // Reuse this session's model-and-manual matches for every part selection.
+  const A = aiFor(), e = A && A.parts[p.name];
+  const refsOk = e && A.spec === (S.specName || '') && specIndex;
+  const refs = refsOk ? (e.refs || []).filter(ci => specIndex.chunks[ci]) : [];
+  const manual = getManualInfo(p);
+  const desc = $('infoDesc');
+  let descHtml = '';
+  if (manual && manual.definition.length) {
+    descHtml += `<p><b>정의</b><br>${manual.definition.map(escapeHtml).join(' ')}</p><span class="src">제품명·부품명·조립품명이 함께 언급된 사양서 문장을 추렸어요.</span>`;
+  } else if (specIndex) {
+    descHtml += '<p><b>정의</b><br>제품명과 부품명에 맞는 정의를 사양서에서 찾지 못했어요.</p>';
+  } else if (e && e.desc) {
+    descHtml += `<p><b>정의</b><br>${escapeHtml(e.desc)}</p><span class="src">${refs.length ? `AI 설명 · 사양서 근거 ${refs.length}개` : '이름과 형상 기반 AI 설명'}</span>`;
+  } else {
+    descHtml += '<p>사양서를 올리면 제품명과 부품명을 기준으로 정의와 결합 절차를 찾아 표시해요.</p>';
+  }
+  if (manual && manual.assembly.length) {
+    descHtml += '<p><b>결합 대상 기준 조립·분해 절차</b></p>' +
+      manual.assembly.map(item => `<p><b>${escapeHtml(item.relatedName)}와 결합</b><br>${escapeHtml(item.text)}</p>`).join('');
+  } else if (specIndex) {
+    descHtml += '<p><b>결합 대상 기준 조립·분해 절차</b><br>이 부품과 결합 대상이 함께 언급된 절차를 사양서에서 찾지 못했어요.</p>';
+  }
+  desc.innerHTML = descHtml;
+  if (!specIndex && sampleFn && !aiDenied && !(e && e.desc)) explainPart(p);
+
+  const man = $('infoMan');
+  if (!specIndex) { man.innerHTML = '<div class="lbl">사양서를 올리면 부품과 관련된 구절을 찾아 여기에 표시해요.</div>'; return; }
+  const more = (manual ? manual.passages : []).filter(r => !refs.includes(r.chunk.i)).slice(0, refs.length ? 1 : 4);
+  let html = '';
+  if (refs.length) html += `<div class="lbl">근거 · ${escapeHtml(S.specName)}</div>` + refs.map((ci, n) => `<blockquote><b>[${n + 1}]</b> ${snippet(specIndex.chunks[ci].text, evidenceHits(specIndex.chunks[ci].text, p))}</blockquote>`).join('');
+  if (more.length) html += `<div class="lbl">${refs.length ? '함께 찾은 구절' : '설명·조립 방법 근거 · ' + escapeHtml(S.specName)}</div>` + more.map(r => `<blockquote>${snippet(r.chunk.text, r.hits)}</blockquote>`).join('');
+  if (!html) html = `<div class="lbl">사양서(${escapeHtml(S.specName)})에서 이 부품과 맞는 구절을 찾지 못했어요.</div>`;
+  man.innerHTML = html;
+}
+function indexSpec(text) {
+  specIndex = text ? buildSpecIndex(text) : null;
+  // words that appear in most part names (product codes like "HCR3A") say nothing about one part
+  const cnt = {};
+  S.parts.forEach(p => new Set(tokenize(p.name)).forEach(t => { cnt[t] = (cnt[t] || 0) + 1; }));
+  nameNoise = new Set(Object.keys(cnt).filter(t => cnt[t] > S.parts.length * 0.6));
+  if (S.picked >= 0) renderInfo();
+}
+
+// ---------- selecting a part (from the drawing, a name chip, or code) ----------
+// Selecting jumps to the part's layer, highlights it and opens its info. From a name the camera also
+// glides to the part, since it may be off screen; from the drawing it is already in view.
+function selectPart(id, focus) {
+  stopPlay();
+  if (id < 0 || !S.parts[id]) { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); return; }
+  const p = S.parts[id];
+  S.picked = id; S.step = p.layer + 2; S.tTarget = 1;
+  applyMaterials(); renderStory(); renderInfo();
+  if (focus) { computeBounds(); alignView(); }
+}
+const nameCycle = {};
+function focusByName(name, within) {
+  const ids = (within || S.parts.map(p => p.id)).filter(id => S.parts[id].name === name);
+  if (!ids.length) return;
+  // pressing the same name again steps through its copies
+  const cur = S.picked >= 0 && S.parts[S.picked].name === name ? ids.indexOf(S.picked) : -1;
+  const next = ids[(cur + 1) % ids.length];
+  nameCycle[name] = next;
+  selectPart(next, true);
+}
+
+// ---------- picking ----------
+const ray = new THREE.Raycaster(); let downAt = null;
+canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+canvas.addEventListener('pointerup', e => {
+  const touch = e.pointerType === 'touch';
+  if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > (touch ? 12 : 6) || performance.now() - downAt.t > (touch ? 800 : 600)) return;
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -(e.clientY - r.top) / r.height * 2 + 1 }, camera);
+  // every part counts, also those on dimmed layers; only see-through glass lets the tap pass
+  const hit = ray.intersectObjects(faceMeshes, false).find(h => {
+    const p = S.parts[h.object.userData.partId], g = p && layerGroups[p.layer];
+    return p && !(g && g.userData.mats.glass);
+  });
+  if (!hit) { if (S.picked >= 0) selectPart(-1); return; }
+  selectPart(hit.object.userData.partId, false);
+});
+
+// ---------- loop ----------
+let last = performance.now();
+// motion runs on the wall clock: a slow device shows fewer frames, never a slower explode
+let anim = null, frameErr = false, tagKey = '', fps = 0, fpsN = 0, fpsT = 0, diagT = 0;
+window.addEventListener('error', e => { setAiStatus('오류: ' + (e.message || e.error), true); });
+window.addEventListener('unhandledrejection', e => { setAiStatus('오류: ' + (e.reason && e.reason.message || e.reason), true); });
+function frame(now) {
+  requestAnimationFrame(frame);
+  try {
+    const dt = Math.min(.25, Math.max(0, (now - last) / 1000)); last = now;
+    if (S.t !== S.tTarget || (anim && anim.to !== S.tTarget)) {
+      if (!anim || anim.to !== S.tTarget) anim = { from: S.t, to: S.tTarget, start: now, dur: Math.max(.05, S.animDur * Math.abs(S.tTarget - S.t)) * 1000 };
+      const k = Math.min(1, (now - anim.start) / anim.dur);
+      S.t = anim.from + (anim.to - anim.from) * k;
+      if (k >= 1) { S.t = anim.to; anim = null; }
+      placeLayers();
+    }
+    const mk = 1 - Math.exp(-dt * 9);
+    layerGroups.forEach(g => tickMaterial(g.userData.mats, mk));
+    // fixed room for the label column, so exploding/assembling never moves the view
+    const w = stage.clientWidth, h = stage.clientHeight;
+    viewShift = 0;                                  // no label column any more: the model sits centred
+    if (viewShift > .5) camera.setViewOffset(w, h, viewShift, 0, w, h); else camera.clearViewOffset();
+    controls.autoRotate = S.spin;
+    if (camTween) {
+      camTween.t = Math.min(1, camTween.t + dt / .7); const k = ease(camTween.t);
+      camera.position.lerpVectors(camTween.p0, camTween.p1, k); controls.target.lerpVectors(camTween.q0, camTween.q1, k);
+      if (camTween.t >= 1) camTween = null;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    // labels only when something on screen changed (DOM work is the slow part on phones)
+    const e = camera.matrixWorld.elements;
+    const key = [S.t.toFixed(4), S.step, S.labels, w, h, e[12].toFixed(3), e[13].toFixed(3), e[14].toFixed(3), e[0].toFixed(4), e[5].toFixed(4), e[8].toFixed(4), S.layers.length].join('|');
+    if (key !== tagKey) { tagKey = key; updateTags(); updateGizmoLabels(); }
+    const showInfo = S.picked >= 0 && S.t >= 0.999 && S.step >= 1;
+    if ($('info').hidden === showInfo) $('info').hidden = !showInfo;
+    fpsN++; if (now - fpsT > 1000) { fps = Math.round(fpsN * 1000 / (now - fpsT)); fpsN = 0; fpsT = now; }
+    if (now - diagT > 250) { diagT = now; const el = $('diag'); if (el) el.textContent = `단계 ${S.step + 1}/${stepCount()} · 분해 ${Math.round(S.t * 100)}% · 층 ${S.layers.length} · ${({ smart: '부품별 방향', assembly: '조립 구조', z: 'Z로만' })[S.motionMode] || ''} · ${fps}fps`; }
+  } catch (err) {
+    if (!frameErr) { frameErr = true; setAiStatus('화면을 그리는 중 오류가 났어요: ' + (err && err.message || err), true); console.error(err); }
+  }
+}
+
+// ---------- ui wiring ----------
+$('prev').onclick = () => go(S.step - 1);
+$('next').onclick = () => go(S.step + 1);
+$('play').onclick = play;
+$('tLabels').onclick = e => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); };
+$('tSpin').onclick = e => { S.spin = !S.spin; e.currentTarget.setAttribute('aria-pressed', S.spin); };
+$('tSkin').onclick = () => { applySkin(S.skin === 'holo' ? 'classic' : 'holo'); applyMaterials(true); if (S.layers.length) computeBounds(); };
+$('tStyle').onclick = e => { S.style = S.style === 'line' ? 'solid' : 'line'; e.currentTarget.setAttribute('aria-pressed', S.style === 'solid'); applyMaterials(); };
+$('nMinus').onclick = () => { if (S.N > 1) { S.N--; S.presetLayers = null; regroup(); } };
+$('nPlus').onclick = () => { if (S.N < S.maxN) { S.N++; S.presetLayers = null; regroup(); } };
+
+$('alignView').onclick = () => { computeBounds(); alignView(); };
+const alignBtnTitle = '선택한 부품이 있으면 그 부품, 층을 보고 있으면 그 층, 아니면 전체를 화면에 맞춰요';
+$('alignView').title = alignBtnTitle;
+$('baseSel').onchange = e => reframe(Number(e.target.value));
+if ($('aiGo')) $('aiGo').onclick = runAi;
+$('infoClose').onclick = () => { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); };
+if ($('aiStop')) $('aiStop').onclick = () => aiCtl && aiCtl.abort();
+$('inModel').onchange = e => { const f = e.target.files[0]; if (f) loadModelFile(f); e.target.value = ''; };
+$('inSpec').onchange = e => { const f = e.target.files[0]; if (f) loadSpecFile(f); e.target.value = ''; };
+['dropModel', 'dropSpec'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('dragenter', () => el.classList.add('over'));
+  ['dragleave', 'drop'].forEach(t => el.addEventListener(t, () => el.classList.remove('over')));
+});
+$('sWatch').onclick = () => { stopPlay(); loadWatch(); };
+$('sBox').onclick = () => { stopPlay(); loadBox(); };
+$('sStep').onclick = async () => {
+  stopPlay(); showLoading('예시 STEP 불러오는 중', 'CAx-IF 공개 시험 파일 as1');
+  try { const r = await fetch('sample-as1.stp'); const b = await r.blob(); await loadModelFile(new File([b], 'as1-bracket-assembly.stp')); }
+  catch (e) { showLoading(null); setAiStatus('예시 파일을 불러오지 못했어요.', true); }
+};
+setInterval(() => { const d = new Date(); $('clock').textContent = [d.getHours(), d.getMinutes(), d.getSeconds()].map(pad2).join(':'); }, 1000);

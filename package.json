@@ -1,0 +1,15 @@
+{
+  "name": "explode-studio",
+  "version": "0.1.0",
+  "description": "CAD (STEP/IGES/STL/OBJ/GLB) exploded-view studio: assembly-structure explode motion, part info, manual passages, AI naming. Embeddable ES module.",
+  "type": "module",
+  "main": "src/index.js",
+  "module": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": { ".": { "types": "./src/index.d.ts", "import": "./src/index.js" } },
+  "files": ["src", "assets", "examples", "server", "tools", "source", "README.md"],
+  "peerDependencies": { "three": ">=0.147.0" },
+  "devDependencies": { "three": "0.147.0" },
+  "license": "UNLICENSED",
+  "sideEffects": false
+}

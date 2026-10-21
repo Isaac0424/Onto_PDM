@@ -1,0 +1,83 @@
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><h1>분해도 스튜디오</h1><span class="model" id="modelName">기계식 손목시계 · 예시 모델</span></div>
+    <div class="topright"><button class="skinbtn" id="tSkin" type="button" aria-pressed="true">홀로그램</button><span class="clock" id="clock">00:00:00</span></div>
+  </header>
+  <main style="min-width:0">
+    <section class="frame" aria-label="3D 분해도">
+      <div class="stage" id="stage">
+        <canvas id="gl" aria-label="부품 3D 보기. 드래그해서 돌리고, 두 손가락이나 휠로 확대해요. 부품을 누르면 그 층으로 이동해요."></canvas>
+        <div class="hud">
+          <div id="markers" class="markers"></div>
+          <nav class="dashes" id="dashes" aria-label="단계"></nav>
+          <div class="specs" id="specs"></div>
+          <span class="axl" id="gx" style="color:#d4705a" hidden>X</span><span class="axl" id="gy" style="color:#8fb36a" hidden>Y</span><span class="axl" id="gz" style="color:#6f9ad8" hidden>Z</span>
+          <div class="picked" id="picked" hidden></div>
+          <button class="viewbtn" id="alignView" type="button">시점 정렬</button>
+          <div class="loading" id="loading" hidden><div class="box"><div class="bar"></div><div class="msg" id="loadMsg">불러오는 중</div><div class="sub" id="loadSub"></div></div></div>
+        </div>
+      </div>
+      <section class="info" id="info" hidden aria-live="polite">
+            <div class="info-head">
+              <div class="info-titles"><div class="info-kind" id="infoKind"></div><h4 id="infoName"></h4></div>
+              <button class="info-x" id="infoClose" type="button" aria-label="부품 정보 닫기">×</button>
+            </div>
+            <div class="info-desc" id="infoDesc"></div>
+            <dl class="info-grid" id="infoGrid"></dl>
+            <div class="info-man" id="infoMan"></div>
+          </section>
+      <div class="story" aria-live="polite">
+        <div class="step"><div class="badge" id="badge">2</div><div class="eyebrow" id="eyebrow">분해</div></div>
+        <h2 id="storyTitle">열 개의 층으로 분해</h2>
+        <p id="storyText"></p>
+        <div class="diag" id="diag" aria-hidden="true"></div>
+      </div>
+    </section>
+    <div class="controls">
+      <button class="btn" id="prev" type="button">이전</button>
+      <button class="btn accent" id="play" type="button">처음부터 재생</button>
+      <button class="btn" id="next" type="button">다음</button>
+      <button class="btn toggle" id="tLabels" type="button" aria-pressed="true">번호 표시</button>
+      <button class="btn toggle" id="tSpin" type="button" aria-pressed="false">자동 회전</button>
+      <button class="btn toggle" id="tStyle" type="button" aria-pressed="true">재질 보기</button>
+    </div>
+  </main>
+  <aside class="side">
+    <section class="card">
+      <h3>파일 올리기</h3>
+      <div class="drops">
+        <div class="drop" id="dropModel">
+          <b>3D 모델</b><small>STEP · IGES · STL · OBJ · GLB</small>
+          <span class="file" id="modelFile"></span>
+          <input type="file" id="inModel" accept=".step,.stp,.iges,.igs,.brep,.stl,.obj,.glb,.gltf" aria-label="3D 모델 파일 선택">
+        </div>
+        <div class="drop" id="dropSpec">
+          <b>사양서</b><small>PDF · TXT · MD (선택)</small>
+          <span class="file" id="specFile"></span>
+          <input type="file" id="inSpec" accept=".pdf,.txt,.md,.csv" aria-label="사양서 파일 선택">
+        </div>
+      </div>
+      <div class="samples">예시 열기
+        <button class="link" id="sWatch" type="button">기계식 시계</button>
+        <button class="link" id="sBox" type="button">제어 박스 (나사·커버)</button>
+        <button class="link" id="sStep" type="button">브래킷 조립품 STEP</button>
+      </div>
+      <div class="meta" id="meta"></div>
+      <div class="status" id="operationStatus" role="status"></div>
+    </section>
+    <section class="card">
+      <h3>층 나누기 · 조립 구조</h3>
+      <div class="row"><label for="nOut">층 개수</label>
+        <div class="stepper"><button type="button" id="nMinus" aria-label="층 줄이기">−</button><output id="nOut">10</output><button type="button" id="nPlus" aria-label="층 늘리기">+</button></div>
+      </div>
+      <div class="row"><label for="baseSel">기준 부품</label>
+        <select id="baseSel" class="select"></select>
+      </div>
+      <p class="note-s" id="baseNote"></p>
+    </section>
+    <section class="card listcard">
+      <h3>층 · 부품 목록 <small>위에서 아래로 · 이름을 누르면 도면에서 찾아가요</small></h3>
+      <ul class="layers" id="layerList"></ul>
+    </section>
+  </aside>
+</div>

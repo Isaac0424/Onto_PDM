@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>explode-studio · 순수 HTML 예제</title>
+  <style>html, body { margin: 0; background: #0c0d0f; } #studio { max-width: 1240px; margin: 0 auto; }</style>
+  <!-- three.js를 번들러 없이 쓰는 경우: import map으로 주소를 알려 줘요 -->
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.module.js",
+      "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.147.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <div id="studio"></div>
+  <script type="module">
+    import { mountExplodeStudio } from '../../src/index.js';
+
+    const studio = mountExplodeStudio(document.getElementById('studio'), {
+      assetsBase: '../../assets/occt/',           // STEP 해석기(wasm) 위치
+      // aiEndpoint: 'http://localhost:8787/api/explode-ai',   // server/claude-endpoint.mjs 를 띄웠다면
+      initial: 'watch',
+    });
+
+    studio.on('select', d => console.log('선택한 부품:', d.name));
+    window.studio = studio;   // 콘솔에서 studio.loadUrl('/models/robot.stp') 같은 식으로 써 볼 수 있어요
+  </script>
+</body>
+</html>

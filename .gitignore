@@ -14,6 +14,15 @@ standards/*
 # Build and test output
 dist/
 coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# pnpm
+.pnpm-store/
+
+# Downloaded test data (QUDT for ontology checks)
+ontology/.cache/
 
 # Python
 __pycache__/

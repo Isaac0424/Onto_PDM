@@ -390,6 +390,15 @@ flowchart TD
 | 역할별 공개 범위 · 권한 | PostgreSQL 18.4, 역할별 접속 | 25개 통과 |
 | SHACL 데이터 · 분류 제안 검사, OWL 2 RL 추론 질의, QUDT 단위 · IEC 단위 IRDI 대조, QUDT 스키마와 충돌 없음 | rdflib 7.6 · pySHACL 0.40 · owlrl 7.6, QUDT 최신 공개본 | 27개 통과 |
 
+위 테스트는 모두 저장소에 있어서 다시 돌릴 수 있다. 명령은 [README의 테스트 장](../README.md#테스트)에 있다.
+
+| 테스트 | 위치 |
+|---|---|
+| 스키마 · 권한 | `db/test/` (`pnpm test`, PGlite) |
+| 동시성 | `db/test/` (`PGTEST_URL`을 줄 때) |
+| 온톨로지 | `ontology/tests/check_ontology.py` (QUDT 대조는 `--qudt`) |
+| 웹 | `web/`의 `pnpm test`, `pnpm e2e` |
+
 **아직 확인하지 않은 것**
 
 - GraphDB 자체에서 OWL2-RL 규칙셋과 SHACL 엔진이 같은 결과를 내는지. 특히 `sh:or`, `sh:class`가 하위 클래스까지 따라가는지

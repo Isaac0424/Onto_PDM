@@ -13,7 +13,7 @@
 
 **하지 않은 것 (다음 과제)**
 - PostgreSQL `pdm` 스키마 적용 러너(`onto-pdm migrate`) · Alembic · `PgPdmStore` · `uid`(ULID) 열 (결정 4 · 9). 
-- 실제 OPMS 호출(등록 요청 전송 · 품번 예약) — 5장 요청 사항이 풀려야 한다.
+- 실제 OPMS 호출(검토 경로 클라이언트 A-01~A-03 · A-09/A-10, 매칭 `POST /parts/match`) — 계획은 아래 "연동 결정" 절. OPMS 쪽 수정은 필요 없다(`record_origin='pdm'` 입구는 요청하지 않기로 했다).
 - 인증(`X-PDM-User` 를 믿는다), MES 패키지 라우트(계약만 있음), 발행 outbox · `--loop`.
 - 웹 HTTP 클라이언트(`web/src/api/http.ts`) — 웹은 아직 목 API.
 - 결정 1 의 "OPMS `create_app()` 감싸기"는 하지 않았다 (이 패키지는 OPMS 를 import 하지 않는 독립 앱). 의존 버전만 OPMS 와 같게 고정해 같은 환경에 합칠 수 있다.
@@ -25,9 +25,18 @@
 
 > **방향 정리 (2026-11-11, 사용자 확인)**: PDM은 **CAD 파일과 사양서를 관리하는 프로그램**이다. CAD · 부품을 분석해 **OPMS로 등록 요청을 보내고**, 3D 시각화(explode-studio)는 핵심 기능으로 유지한다. 메인 화면은 CAD 3D + 온톨로지다. 따라서 첫 수직 조각의 우선순위는 품목 목록 읽기보다 **① CAD 분석 결과 저장(`cad_product` · `cad_usage`) ② 보유 품번 매칭 API(설계 6장) ③ OPMS 등록 요청 전송**이다. 화면은 이미 목 API(`matchCadParts`, `savePartRequest` · `submitPartRequest`)로 이 흐름을 돌린다 (`web/src/pages/studio/`).
 
+## 연동 결정 (2026-11-11, 사용자가 "추천대로"로 확정, main-07 전달)
+
+상세 계획은 [fit-check-plan.md](fit-check-plan.md) 8장. 구현은 아직 하지 않았다.
+
+1. **품번 발급기는 모드로 끈다.** `PDM_MODE=standalone | linked`(이름 · 기본값은 구현 때 확정). `linked`에서는 PG `issue_item_no()`와 웹 목의 승인 시 번호 생성을 쓰지 않고, PG `item.item_no`는 OPMS 값을 담는 **읽기 전용 캐시**다. `standalone`(단독 시연 · 시험)에만 발급기가 남는다.
+2. **미보유 `:Part`는 사람이 확인한 뒤 가져온다**(`:PdmItem` + `OF_PART`). 자동 아님.
+3. **신규 품번은 OPMS 검토 경로로 받는다.** PDM이 OPMS 웹 API의 클라이언트가 된다: A-01 업로드 → A-02 처리 → A-03 상태 → (OPMS에서) 사람 승인 → A-09 · A-10 부품 · 표준 JSON. OPMS에 `record_origin='pdm'` 입구나 외부 등록 메서드를 요청하지 않는다. 요청 ↔ 품번(`doc_id` ↔ `part_no`) 전달 약속은 OPMS가 초안 작성 중이다.
+4. **매칭은 OPMS `POST /parts/match`(+ `match-batch`)** 결과를 쓴다. PDM은 점수를 다시 계산하지 않는다. `/cad/match`의 이름 비교(`matching.py`의 `similarity`)는 `standalone`에만 남는다. OPMS 계약 버전은 fit_check와 함께 5 → 6 예정(미구현).
+
 ## 1. 먼저 알아둘 점
 
-1. **OPMS에는 "검토 건 없이 `:Part`를 새로 만드는" 공개 경로가 없다.** `:Part` 생성(`UPSERT_PART`)은 `register_part`(`stores/product_repo.py`) 안에만 있고, 그 함수는 review_id · doc_id · 클래스 · 온톨로지 버전 고정 · `:DedupeLock` · `:SourceDoc` 연결을 모두 요구한다. 출처 목록도 `origin.py`의 `review|seed|import` 셋뿐이다. 그래서 "PDM 승인 → 품번 예약 → `:Part` 생성 → `:PdmItem` 연결" 중 `:Part` 생성은 OPMS 수정 없이 정식으로 풀리지 않는다. **첫 구현은 이미 있는 `:Part`에 `:PdmItem`을 붙이는 데까지만 한다.**
+1. **OPMS에는 "검토 건 없이 `:Part`를 새로 만드는" 공개 경로가 없다.** `:Part` 생성(`UPSERT_PART`)은 `register_part`(`stores/product_repo.py`) 안에만 있고, 그 함수는 review_id · doc_id · 클래스 · 온톨로지 버전 고정 · `:DedupeLock` · `:SourceDoc` 연결을 모두 요구한다. 출처 목록도 `origin.py`의 `review|seed|import` 셋뿐이다. 그래서 PDM은 `:Part`를 만들지 않는다. 신규 품번은 OPMS의 **기존 검토 경로**(A-01 → A-02 → A-03 → 사람 승인 → A-09 · A-10)로 받고(위 "연동 결정" 3), PDM은 승인된 `:Part`에 `:PdmItem`을 붙인다. **첫 구현은 이미 있는 `:Part`에 `:PdmItem`을 붙이는 데까지만 한다.**
 2. **OPMS에는 인증이 없다.** 127.0.0.1 전제에서 Host · Origin 검사(`api/guards.py`)만 한다. 검토자는 본문의 `reviewer` 문자열이다. PDM의 `app_user.role` · `SET LOCAL app.user_id` 권한 모델과 다르다. 당분간 요청 머리 `X-PDM-User: <login_id>`로 사용자를 정하고, 인증은 별도 과제로 둔다.
 3. 그래프 모델 B(`(:PdmItem)-[:OF_PART]->(:Part)`)는 OPMS와 맞는다. `RESERVED_KEYS`와 sync의 `DELETE_STALE`(라벨별)에 닿지 않는다.
 
@@ -53,7 +62,7 @@
 
 ## 3. 단계별 계획
 
-**첫 수직 조각(S1~S5)**: 품목 목록 · 상세 읽기(PG `pdm`)와 승인 리비전 1건의 그래프 발행(기존 `:Part`에 `:PdmItem` 연결). 신규 품번 생성 · 파일 · 쓰기 화면은 뒤로 미룬다.
+**첫 수직 조각(S1~S5)**: 품목 목록 · 상세 읽기(PG `pdm`)와 승인 리비전 1건의 그래프 발행(기존 `:Part`에 `:PdmItem` 연결). 신규 품번 요청(OPMS 검토 경로) · 파일 · 쓰기 화면은 뒤로 미룬다.
 
 | 단계 | 내용 | 의존 | 검증 |
 |---|---|---|---|
@@ -63,14 +72,16 @@
 | S3 | `PdmStore` Protocol + 메모리 · PG 구현, `GET /api/v1/pdm/items`, `/items/{item_no}`, PG `RAISE`/SQLSTATE → `ApiException` 코드 사상, 합성 앱 | S1, S2 | `TestClient`로 메모리 저장소 분기별, testcontainers로 PG. 분류 · 재료는 `ctx.products.get_part_detail`로 읽어 덧붙임 |
 | S4 | 그래프 발행기: `neo4j/schema.cypher` 적용(키는 `uid`), outbox 한 건 처리(한 Neo4j 트랜잭션에서 `MATCH (p:Part {part_no})` → `MERGE` → `checks.cypher` 위반이면 롤백 → `published_at`). `:Part`가 없으면 만들지 않고 `last_error='part_missing'` | S1, S3 | `@pytest.mark.neo4j`: OPMS 시드(P-00000000001~3)를 올린 뒤 발행, 재발행 멱등, OPMS `reconcile`이 새 위반을 내지 않는지 |
 | S5 | 웹 `src/api/http.ts`(OPMS `client.ts`의 `request()`/`ApiError` 규약), `createApi()`의 `VITE_API_MODE=http`, `vite.config.ts` 프록시, `X-PDM-User` 머리 | S3 | vitest에서 `fetch` 대역으로 어댑터 단위 시험, `REGISTRY_BACKEND=gold` 서버와 연결해 목록 · 상세 |
-| S6~ | 쓰기(품목 · 리비전 · BOM · 승인), 부품 요청 승인 시 품번 예약, 파일 업로드 · 스트리밍, 인증, 분류 에이전트 | S1~S5 | |
+| S6~ | 쓰기(품목 · 리비전 · BOM · 승인), OPMS 클라이언트(매칭 `POST /parts/match-batch`, 검토 경로 A-01~A-03 · A-09/A-10), `PDM_MODE` 모드 분리, 파일 업로드 · 스트리밍, 인증, 분류 에이전트 | S1~S5 | OPMS API가 구현되기 전에는 고정 응답표 mock 어댑터 |
 
-### 품번 예약 흐름 (S6)
-1. 부품 요청이 생길 때 앱이 `request_key`(ULID)를 만든다.
-2. 승인 순간 `ctx.products.reserve_part_no(request_key)`를 부른다. 같은 키면 같은 번호가 나오므로 재시도에 안전하다.
-3. PG 트랜잭션에서 `item_no`를 그 번호로 INSERT하고 요청을 approved로 바꾼다. `issue_item_no()`는 PG 단독 시험용으로만 남는다.
-4. 실패하면 `void_active_reservation(request_key, "rejected")`로 되돌린다.
-5. 승인 뒤 발행기가 `:Part` 생성(5장 1번)과 `:PdmItem` 연결을 한다.
+### 신규 품번 받기 (S6, OPMS 검토 경로)
+PDM은 품번을 예약하거나 만들지 않는다(`linked`). 자세한 표는 [fit-check-plan.md](fit-check-plan.md) 8.6.
+1. 매칭이 없는 부품(`/parts/match-batch` 결과 후보 없음)에 대해 사람이 "등록 요청"을 만든다. 요청 기록에 OPMS `doc_id`를 저장한다.
+2. OPMS A-01로 올리고 A-02로 처리를 시작한다(또는 OPMS 자동 시작). A-03을 폴링해 상태를 `내 등록 요청`에 보인다.
+3. 승인은 **OPMS에서** 사람이 한다. PDM 관리자 화면은 `linked`에서 읽기 전용 진행 상태가 된다.
+4. 승인 뒤 A-09 · A-10으로 `part_no`를 읽는다. `doc_id` ↔ `part_no` 전달 약속은 OPMS가 초안 작성 중이라 정해지기 전에는 품번을 추측해 잇지 않는다.
+5. 사람이 확인한 뒤 `:PdmItem` + `OF_PART`를 만든다(발행기 경로). PG `item.item_no`는 이때 OPMS 값으로 채우는 캐시다.
+`standalone`에서만 기존 `issue_item_no()` · 목 API의 번호 생성이 동작한다.
 
 ## 4. 위험
 
@@ -78,7 +89,8 @@
 - **의존성 결합.** `parts-registry`는 `fastapi==0.162.0` `sqlalchemy==2.1.6` `pydantic==2.14.2` `neo4j==6.4.1` 등을 정확히 고정한다. PDM 패키지도 같은 고정을 따라야 한다. 의존 경로(`path`/`git`)와 PC 간 공유 방식은 미정. OPMS 내부(`registry.contracts` `registry.api.errors` `registry.dburl` `registry.stores.neo4j_client`)에 의존하므로 OPMS 개정 때 깨질 수 있다. 공개 이름(`ctx.products` `ctx.neo4j`, `Neo4jClient.read/write/schema`)만 쓴다.
 - **그래프 키.** 결정 9를 미루면 `pdm_item_id`(bigint)가 원칙 13 위반으로 남는다.
 - **권한.** `registry`가 superuser면 RLS와 `roles.sql`의 행 제한이 무력하다.
-- **상태가 둘로 갈린 동시성.** 승인(PG)과 예약(Neo4j)이 분리돼 예약만 남는 누수가 가능하다. 번호가 단조 증가라 구멍이 생길 뿐 중복은 없다. OPMS `reconcile`은 `review_task`가 없는 예약을 보고하지 않으므로(검사 1 · 2 · 4 · 5가 건너뜀) PDM 쪽 정리 점검을 따로 만들어야 한다.
+- **상태가 둘로 갈린 동시성.** OPMS 검토(승인)와 PDM의 가져오기(`:PdmItem` 생성)가 분리돼, OPMS는 승인했는데 PDM이 아직 가져가지 않은 `:Part`가 생긴다. 이것은 오류가 아니라 정상 상태이고("OPMS에는 있고 PDM에는 아직 없음") 사람 확인으로 가져온다. PDM이 `doc_id`만 기록하고 승인 결과를 못 읽는 경우(전달 약속 미정)는 요청이 "대기"로 오래 남을 수 있다.
+- **서버 대 서버 호출.** OPMS는 인증이 없고 Host · Origin 검사만 한다. PDM 서버가 OPMS API를 부를 때 통과하는지, 업로드 상한(기본 1 MiB)에 걸리는지는 확인하지 못했다.
 - **포트.** 두 웹이 다 5173이면 동시 실행 시 한쪽이 5174가 된다. 프록시를 쓰면 Host · Origin이 같아 통과하지만 직접 호출은 403.
 
 ### 미확인
@@ -88,10 +100,9 @@
 
 **첫 수직 조각(S1~S5)에는 필요한 OPMS 변경이 없다.** 합성 앱으로 `app.py`를 건드리지 않고 붙인다. 아래는 이후 단계 또는 선택 사항이다.
 
-1. **신규 `:Part` 생성 경로** (S6의 신규 품번 승인에 필요)
-   - `src/registry/origin.py`에 `ORIGIN_PDM = "pdm"` 추가 (예약 출처와 `:Part.record_origin` 모두). `contracts.py`의 `PartOrigin`도 `origin.ORIGINS`와 같게 유지해야 한다 (`test_part_origin_matches_origin_module`).
-   - `ProductRepo` Protocol(`product_repo.py`)에 외부 등록 메서드 추가. 예: 예약을 `used`로 바꾸고 `:Part`를 만드는 `register_external_part(part_no, class_code, values, origin)`. Neo4j · 메모리 구현 둘 다. CLAUDE.md상 Protocol 시그니처 변경은 OPMS 담당자 확인 항목이다.
-   - 임시 대안(**권장하지 않음**): PDM이 `review_id=request_key`, origin=review로 예약하고 `ctx.neo4j`로 `UPSERT_PART` · `MARK_RESERVATION_USED`를 직접 쓴다. 중복 판정 · 온톨로지 투영 · 고정 버전을 우회하고 `created_by_review`가 존재하지 않는 검토 건을 가리킨다.
+1. **신규 `:Part` 생성 경로: 요청하지 않는다(결정됨).** 신규 품번은 OPMS의 기존 검토 경로(A-01 → A-02 → A-03 → 사람 승인 → A-09 · A-10)로 받는다. OPMS에 `record_origin='pdm'`이나 `register_external_part` 같은 외부 등록 입구를 만들어 달라고 요청하지 않는다. OPMS에 부탁할 것은 별도 입구가 아니라 아래 두 가지 **읽기 · 전달 약속**이다.
+   - 요청 ↔ 품번 전달: 문서 `doc_id` ↔ `part_no` 대응과 완료 통지(OPMS가 초안 작성 중).
+   - 매칭 API: `POST /parts/match`(+ `match-batch`), 계약 버전 5 → 6(fit_check와 함께, 미구현).
 2. (선택) 합성 앱 대신 정식 확장 지점: `src/registry/api/app.py`에 PDM 라우터 포함 한 줄 또는 훅. 합성 앱이 불편해지면 요청한다.
 3. (S6 파일 업로드 시) `settings.yaml`의 `api.body_limit.routes`에 PDM 업로드 경로 행 추가. 기본 상한이 1 MiB라 CAD 파일이 막힌다.
 4. (선택) PDM `item_identifier.scheme='supplier'`를 OPMS `:SupplierPart`와 합치기: `REFERS_TO.source` 어휘에 PDM 값 필요. 지금은 불필요.

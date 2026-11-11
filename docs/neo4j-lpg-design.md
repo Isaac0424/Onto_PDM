@@ -111,13 +111,12 @@ Neo4j **Community**에는 고유 제약만 있고 존재 · 타입 · 관계 개
 ### 결정 (OPMS 코드 변경 없이 진행)
 1. **품번은 OPMS 형식**(`P-` + 숫자 11자리)이고 발급은 OPMS `Sequence` · `PartReservation`이 한다. PDM이 자체 순번으로 발급하지 않는다. (PDM의 PostgreSQL · SHACL 쪽 형식 정렬은 이 문서의 범위 밖이다.)
 2. **모델 B**: `:Part`에 라벨도 속성도 달지 않고 `(:PdmItem)-[:OF_PART]->(:Part)`로 잇는다 (1장).
-3. **`:Part`는 OPMS 등록 경로가 만든다.** PDM이 새 품번을 승인하면 백엔드가 OPMS 등록 경로로 `:Part`를 만들고, 그 뒤에 `:PdmItem`을 잇는다. `sample.cypher`는 `:Part`를 만들지 않고 이미 있는 것을 읽는다.
-4. **시험용 `:Part`는 OPMS 시드 규칙**을 따른다: `record_origin = 'seed'`, 예약 `origin = 'seed'` · `used` · `review_id` 없음 (OPMS PRD 10.3). 실제 PDM 등록 품목의 출처 값은 아래 요청 1번에 달려 있다.
+3. **`:Part`는 OPMS 등록 경로가 만든다.** PDM은 `:Part`를 만들지 않는다. 신규 품번은 OPMS의 기존 검토 경로(A-01 업로드 → A-02 처리 → A-03 상태 → 사람 승인 → A-09 · A-10)로 받고(2026-11-11 확정), 승인된 `:Part`에 PDM이 `:PdmItem`을 잇는다. `sample.cypher`는 `:Part`를 만들지 않고 이미 있는 것을 읽는다.
+4. **시험용 `:Part`는 OPMS 시드 규칙**을 따른다: `record_origin = 'seed'`, 예약 `origin = 'seed'` · `used` · `review_id` 없음 (OPMS PRD 10.3). 실제로 검토 경로로 등록된 `:Part`의 출처 값은 OPMS가 정한다(`review`).
 
 ### OPMS에 부탁할 선택 사항 (없어도 막히지 않는다)
-1. **`record_origin`에 `pdm` 추가** (`origin.py`의 `ORIGINS`). 없으면 PDM이 만든 `:Part`를 `import`(자리만 있는 "들여온 품번", `review_id` 없음, 예약은 `used`뿐)로 표시해 쓸 수 있다. `pdm`이 있으면 출처로 구분된다.
-2. **조립품 분류.** OPMS `classes.yaml`은 체결 부품 중심이라 조립품 · 브래킷 같은 클래스가 없다. 지금 조립품 `:Part`는 `INSTANCE_OF` 없이 둔다. OPMS 온톨로지 제안(`/ontology-proposals`)으로 올리면 분류된다.
-3. **공급사 별칭을 `SupplierPart`와 합치기.** PDM `item_identifier.scheme='supplier'`는 `:PartIdentifier`로 옮겼다. OPMS의 중복 검사(`find_by_supplier_part`)에 PDM이 등록한 공급사 품번이 보이려면 `:SupplierPart`로 합쳐야 하고, `REFERS_TO.source` 어휘(`input` `document` `seed`)에 PDM 값이 필요하다.
+1. **조립품 분류.** OPMS `classes.yaml`은 체결 부품 중심이라 조립품 · 브래킷 같은 클래스가 없다. 지금 조립품 `:Part`는 `INSTANCE_OF` 없이 둔다. OPMS 온톨로지 제안(`/ontology-proposals`)으로 올리면 분류된다.
+2. **공급사 별칭을 `SupplierPart`와 합치기.** PDM `item_identifier.scheme='supplier'`는 `:PartIdentifier`로 옮겼다. OPMS의 중복 검사(`find_by_supplier_part`)에 PDM이 등록한 공급사 품번이 보이려면 `:SupplierPart`로 합쳐야 하고, `REFERS_TO.source` 어휘(`input` `document` `seed`)에 PDM 값이 필요하다.
 
 ### 아직 정하지 않은 것
 - PDM이 가져가지 않은(OPMS가 문서 검토로 등록한) `:Part`를 PDM이 처음 가져갈 때의 규칙: `:PdmItem`과 R00을 만든다는 것만 정했다.

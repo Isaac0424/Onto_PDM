@@ -83,58 +83,110 @@ PDM 화면 ─ 결과를 그대로 보인다 (CAD HUD · 규칙 화면)
 | F3 | `backend/` `/fit/*` 프록시 + 계약 · 패러티 시험 | `pytest` |
 | F4 | OPMS API 구현되면 mock → 실제 전환, 규칙 화면 구분 표시 | OPMS와 합동 시험 |
 
-## 8. 품번은 OPMS `:Part`에서 읽는다 (사용자 요구, main-07 전달)
+## 8. 품번은 OPMS `:Part`에서 읽는다 (사용자 확정, main-07 전달)
 
-원칙: 두 저장소는 품번 형식만 맞추는 것이 아니라 **같은 DB의 OPMS `:Part`를 직접 참조해서** 품번이 맞아야 한다. PDM은 품번을 자기 쪽에 복사 · 입력해 두지 않고 `(:PdmItem)-[:OF_PART]->(:Part)`로 건너가 `:Part.part_no`를 읽는다. 이 장은 현재 상태를 읽기만 해서 정리한 것이고 구현은 하지 않았다.
+원칙: 두 저장소는 품번 형식만 맞추는 것이 아니라 **OPMS `:Part`를 직접 참조해서** 품번이 맞아야 한다. PDM은 품번을 자기 쪽에 복사 · 입력해 두지 않고 `(:PdmItem)-[:OF_PART]->(:Part)`로 건너가 `:Part.part_no`를 읽는다. 아래는 읽어서 정리한 계획이고 구현은 하지 않았다.
 
-### 8.1 현재 상태 (읽어서 확인함, 실행은 안 함)
+### 8.1 확정된 결정 (2026-11-11, 사용자가 "추천대로"로 확정)
+
+| # | 결정 | 이 문서의 반영 |
+|---|---|---|
+| 1 | PDM 품번 발급기(PG `issue_item_no()`, 웹 mock의 승인 시 번호 생성)는 **실제 연동 모드에서 끄고 단독 시연 모드에만 남긴다.** PG `item.item_no`는 OPMS 값을 담는 **읽기 전용 캐시**로 격하 | 8.4 |
+| 2 | OPMS에는 있고 PDM에는 없는 `:Part`는 **사람이 확인한 뒤** 가져온다(자동 아님) | 8.5 |
+| 3 | 신규 품번은 OPMS에 `record_origin='pdm'` 입구를 **만들지 않는다.** PDM이 OPMS 기존 웹 API의 클라이언트가 되어 검토 경로로 받는다: A-01 업로드 → A-02 처리 → A-03 상태 → **(OPMS에서) 사람 승인** → A-09 · A-10 부품 · 표준 JSON. 요청 ↔ 품번 전달(`doc_id` ↔ `part_no`) 약속은 OPMS가 초안을 작성 중 | 8.6 |
+| 4 | OPMS가 `POST /parts/match`(+ `match-batch`)를 제공한다(verdict 확정 · 의심, score, 충돌 속성). **PDM은 DB에서 점수를 다시 계산하지 않고 이 API 결과를 쓴다.** 계약 버전은 fit_check와 함께 5 → 6 예정(미구현) | 8.5 |
+
+결정 3에 따라 이 저장소 문서에 있던 "OPMS에 `record_origin='pdm'`(또는 외부 등록 메서드)을 요청한다"는 문구를 삭제했다(`backend-plan.md` 5장 · `neo4j-lpg-design.md` 6장 · `PRD.md` 12장 5번).
+
+### 8.2 현재 상태 (읽어서 확인함, 실행은 안 함)
 
 | 항목 | 상태 |
 |---|---|
-| 그래프의 `:PdmItem` | **품번을 속성으로 갖지 않는다.** 발행기(`backend/src/onto_pdm/graph/publisher.py` `UPSERT_ITEMS`)가 `MATCH (p:Part {part_no: row.item_no})`로 OPMS `:Part`를 찾아 `OF_PART`로 잇는다. 없으면 쓰기 전에 `part_missing`으로 멈춘다 |
-| **PDM 쪽 문자열 복사본** | 있다. PG `item.item_no`(`db/schema.sql:89`, 고유 인덱스), 웹 목 API의 `itemNo`, 백엔드 시드(`seed.json`), 테스트 기준값(`parity.json`). 그래프에는 없지만 PDM 자체 저장소는 품번을 문자열로 들고 있다 |
-| PDM이 **스스로 품번을 만드는 곳** | 있다. ① `db/schema.sql:124-128` `item_no_seq` + `issue_item_no()` = `'P-'+11자리`(PG 단독 · 시험용이라고 주석에 적힘), 승인 함수 `approve_part_request`가 이를 부른다(`:515`). ② 웹 목 API `mockApi.ts:418` `P-${nextItemNo 11자리}`. 둘 다 OPMS `:Sequence`를 쓰지 않는다 |
-| 복사본 값의 출처 | **OPMS `:Part`에서 온 값이 아니다.** 목 시드(`seed.ts`) · `seed.json`의 `P-0000000xxxx`는 PDM이 손으로 정한 값이다. 시험용 `neo4j/test/opms-standin.cypher`가 같은 번호로 `:Part`를 대신 만들어 준다. 실제 OPMS DB의 `:Part`와 번호가 맞는지는 **확인하지 못했다**(그 DB에 질의하지 않았다) |
-| 형식 | `P-`+11자리가 문서 · 코드 · 시드 약 1,065곳(1,090곳 중). 형식이 다른 값은 `seed.ts:233` 문장 안의 `P0000001`(옛 7자리) 한 곳, `neo4j/test/break.cypher`(일부러 망가뜨리는 시험 입력)뿐이다 |
-| 검사 | `neo4j/checks.cypher`에 `item_one_part`(`:PdmItem`은 `:Part` 정확히 하나에 `OF_PART`), `part_one_item`(한 `:Part`에 PdmItem 하나), `part_no_format`(`^P-[0-9]{11}$`)이 **이미 있다** |
+| 그래프의 `:PdmItem` | 품번 속성이 없다. 발행기(`backend/src/onto_pdm/graph/publisher.py` `UPSERT_ITEMS`)가 `MATCH (p:Part {part_no: row.item_no})`로 OPMS `:Part`를 찾아 `OF_PART`로 잇고, 없으면 쓰기 전에 `part_missing`으로 멈춘다 |
+| PDM 쪽 문자열 복사본 | 있다: PG `item.item_no`(`db/schema.sql:89`, NOT NULL, 고유), 웹 목 `itemNo`, 백엔드 `seed.json`, 시험 기준값 `parity.json`. **OPMS `:Part`에서 가져온 값이 아니라 PDM이 정한 값**이고, 시험용 `neo4j/test/opms-standin.cypher`가 같은 번호로 `:Part`를 대신 만들어 준다 |
+| PDM이 스스로 품번을 만드는 곳 | ① `db/schema.sql:124-128` `item_no_seq` + `issue_item_no()`(= `'P-'+11자리`), 승인 함수 `approve_part_request`가 부른다(`:515`). ② 웹 목 API `mockApi.ts:418`. 둘 다 OPMS를 거치지 않는다 |
+| 형식 | 문서 · 코드 · 시드의 `P-…` 약 1,090곳 중 11자리 약 1,065곳. 다른 형식은 `seed.ts:233` 문장 속 옛 `P0000001`과 일부러 망가뜨리는 시험 입력(`neo4j/test/break.cypher`) |
+| backend/가 OPMS에 하는 호출 | **없다.** HTTP 클라이언트 사용이 없고 OPMS 코드를 import하지 않는다. 접점은 발행기가 같은 Neo4j에서 `:Part`를 읽고 PDM 라벨에만 쓰는 것뿐 |
+| OPMS 개발 DB의 실제 상태 | OPMS 쪽 확인 문서(`ernest_hemingway_OPMS/docs/changes/CR-NEXT-onto-pdm-merge-prep-changes.md` 1장, 읽음): 같은 Neo4j(`bolt://localhost:7687`)이고 `PdmItem` 등 PDM 라벨이 **0개**다(`Part` 45개, 온톨로지 0.13.0). **즉 설정은 공유이지만 PDM은 아직 이 DB에 쓴 적이 없다.** (이 세션이 직접 질의한 것은 아니고 OPMS 쪽 문서를 읽었다) |
 
-### 8.2 참조 무결성: 있는 것 · 없는 것 · 추가안
+### 8.3 참조 무결성: 있는 것 · 없는 것 · 추가안
 
-**있는 것**: `item_one_part` · `part_one_item`이 발행 트랜잭션 안에서 돌아 위반이면 롤백한다(`backend/README.md`, `docs/backend-plan.md`). Neo4j Community에는 관계 존재 제약이 없어서 이 검사가 그 일을 한다.
+**있는 것**: `neo4j/checks.cypher`의 `item_one_part`(`:PdmItem`은 `:Part` 정확히 하나에 `OF_PART`), `part_one_item`, `part_no_format`(`^P-[0-9]{11}$`)가 발행 트랜잭션 안에서 돌아 위반이면 롤백한다. Community에는 관계 존재 제약이 없어 이 검사가 그 일을 한다.
 
 **빈 곳 (추가안, 승인 후 구현)**
+1. 발행기 밖에서 만들어진 `:PdmItem`은 못 막는다 → `checks.cypher`를 **정기 점검**(예: `onto-pdm graph check`)으로도 돌린다.
+2. `:PdmItem`에 `part_no` · `item_no` 복사 속성이 생기면 잡는 `no_part_no_copy`를 더한다(지금은 누가 넣어도 막히지 않는다).
+3. OPMS가 `:Part`를 지우거나 번호를 바꾸면 PG `item.item_no`(캐시)가 옛 값으로 남는다 → PG 캐시와 `:Part.part_no` 일치를 정기 대조한다(발행기의 `MISSING_PARTS`를 정기 실행).
 
-1. **검사의 시점**: 발행기 밖에서 만들어진 `:PdmItem`(수동 Cypher, 다른 도구)은 막지 못한다. `checks.cypher`를 **정기 점검**(예: `onto-pdm graph check`, OPMS reconcile과 같은 자리)으로도 돌린다.
-2. **PDM이 옛 값을 따로 갖지 않는 검사**: `:PdmItem`에 `part_no` 같은 속성이 생기면 위반으로 잡는 검사 `no_part_no_copy`를 더한다. (현재는 없지만 누가 넣어도 막히지 않는다.)
-   `MATCH (i:PdmItem) WHERE i.part_no IS NOT NULL OR i.item_no IS NOT NULL RETURN 'no_part_no_copy', ...`
-3. **고아 방향 검사**: OPMS가 `:Part`를 지우거나 `part_no`를 바꾸면 `OF_PART`는 같이 지워진다(관계). 그러면 `item_one_part`가 잡는다. 그러나 **PG `item.item_no`가 옛 번호로 남는다.** PG와 그래프의 번호 일치를 보는 검사(발행기의 `MISSING_PARTS`를 정기 실행)를 더한다.
-4. **PG 쪽 복사본 해소(가장 큰 변경, 별도 결정)**: PG `item.item_no`를 그래프에서 조회한 값의 **캐시**로 격하하고, 번호 발급은 `issue_item_no()`가 아니라 OPMS 예약을 쓴다(`db/schema.sql:121` 주석이 이미 이 방향을 적고 있다). 이 경우 PG에서 `item_no`가 NOT NULL · UNIQUE인 지금 구조(`:89`, `:108`)는 "OPMS에서 받은 값만 들어온다"로 바꿔야 한다. OPMS 예약 입구가 없어 지금은 못 한다(8.3).
+### 8.4 발급기를 모드로 끄는 방식 (결정 1, 제안)
 
-### 8.3 CAD 부품 → 기존 `:Part` 매칭과 신규 품번 요청
+모드 이름은 `PDM_MODE=standalone | linked`로 제안한다(이름과 기본값은 구현 때 정한다). **기본은 `standalone`**이어야 `pnpm dev`와 DB 시험이 OPMS 없이 그대로 돈다. 실제 연동 때 `linked`로 바꾼다.
 
-현재: `/cad/match`와 웹 목 `matchCadParts`는 **PDM이 가진 품목 · 별칭을 이름으로** 비교한다(일치 · 정규화 일치 · 유사도, `mockApi.ts:247-330`, `backend/.../matching.py`). 같은 DB를 조회하지 않는다.
+| 대상 | `standalone`(단독 시연 · 시험) | `linked`(실제 연동) |
+|---|---|---|
+| 웹 목 API(`mockApi.ts:418`) | 지금처럼 승인 시 번호 생성. 화면에 "데모: 번호는 임시" 표시를 둔다 | 목 API 자체를 쓰지 않는다. 웹은 이미 `VITE_API_MODE=http` 어댑터가 있어(S5) 그 경로로 간다. **http 모드에서 목의 번호 생성이 호출되지 않는다**는 시험을 둔다 |
+| PG `issue_item_no()` · `approve_part_request`(`db/schema.sql:124-128, :515`) | 지금처럼 동작(PG 단독 시험 · 목 서버) | `issue_item_no()`는 호출되면 예외. 승인 함수는 번호를 만들지 않고 **OPMS에서 받은 `part_no`를 인자로 받아** 쓴다(함수 시그니처는 읽지 못한 부분이 있어 구현 때 확인) |
+| PG `item.item_no` | 일반 컬럼 | **읽기 전용 캐시.** 일반 앱 역할의 `UPDATE (item_no)`와 `renumber_item()` 실행을 막고(`db/roles.sql`), 쓰는 곳은 "OPMS에서 가져오기" 경로 하나로 한정한다. `NOT NULL` · 고유는 유지(OPMS가 고유를 보장하므로 캐시도 고유) |
+| 모드 전달 | 앱 설정 + 세션마다 `set_config('pdm.mode', …, true)`(DB 함수가 읽음) | 같음 |
+| 모드가 어긋날 때 | — | 시작할 때 `linked`인데 OPMS 설정(`NEO4J_*`, OPMS API 주소)이 없으면 기동을 거부한다 |
 
-계획:
+관리자 화면의 "승인하면 품번이 발급된다"(웹 e2e)는 **단독 시연 모드 시험으로 한정**한다. `linked`에서 PDM 관리자 화면은 승인하지 않고 OPMS 쪽 진행 상태(8.6)를 보여 준다.
 
-1. **같은 DB 조회로 바꾼다.** 후보는 `:Part`에서 직접 찾는다: 품번 · 별칭(`:PartIdentifier`, `:SupplierPart`) · 이름 · 분류(`INSTANCE_OF`)와 속성 값. 결과 항목에 쓰는 품번은 `:Part.part_no` 조회값이다. PDM이 아직 가져가지 않은 `:Part`(`:PdmItem` 없음)도 후보가 될 수 있어야 한다. 그 경우 "OPMS에는 있고 PDM에는 아직 없음"으로 표시하고 `:PdmItem` 생성(가져가기)을 제안한다. 이것은 모델 B의 기존 흐름(`:Part`는 OPMS 것, `:PdmItem`은 PDM 것)과 맞는다.
-2. 규격 속성(`threadSize`, `length` 등)으로 같은 규격을 찾는 방식(createonto의 "규격이 연결 고리" 개념)은 이 조회의 후속 개선이다. 속성이 `:Part`에 이미 있는 것만 쓴다. 이름만 있는 CAD 부품(`Bolt_1`)은 못 찾는다.
-3. **매칭이 없을 때**: `Part`를 만들지 않고 OPMS에 등록 요청을 보낸다. **현재 OPMS에는 이 입구가 없다**: `:Part` 생성은 검토 건(review_id) 안의 `register_part`뿐이고, 출처 목록(`origin.py`)은 `review|seed|import` 셋이다(`docs/backend-plan.md` 5장 1, `docs/neo4j-lpg-design.md` 6장 1). 그래서 흐름은 다음과 같다.
-   - 지금(입구 없음): PDM이 요청 임시저장(`/requests`) → 제출까지만 하고 "OPMS 처리 대기" 상태로 둔다. 승인된 품번이 들어오면 PDM이 `:Part`를 조회해 `:PdmItem`을 붙인다. 번호는 PDM이 만들지 않는다. 지금 목 API가 승인 시 번호를 만드는 동작(`mockApi.ts:418`)은 데모용이며 실제 연동 때 제거 대상이다.
-   - OPMS가 `record_origin='pdm'` 입구(외부 등록 메서드)를 열면: 요청 제출 → OPMS가 예약 · 생성 → PDM이 조회해 연결. 이 입구가 정해지기 전에는 PDM이 `:Part`를 직접 쓰지 않는다(임시 대안은 OPMS의 중복 판정 · 온톨로지 투영 우회라 권장하지 않는다고 `backend-plan.md`에 적었다).
-4. 적합성 판정(1~2장)도 같은 규칙을 따른다: OPMS에 부품을 알릴 때 품번은 조회값을 쓰고, 미보유 부품만 `class_code` + 값 형태로 보낸다.
+### 8.5 CAD 부품 → 기존 `:Part` 매칭: 이름 mock에서 `/parts/match`로 (결정 2 · 4)
 
-### 8.4 같은 DB를 쓰지 못하는 환경(별도 DB)에서의 대안
+**지금**: `/cad/match`(웹 `matchCadParts`, 백엔드 `matching.py`)는 PDM이 가진 품목 · 별칭을 이름으로 비교하고 PDM이 직접 유사도 점수를 계산한다(`normKey` · `similarity`). 같은 DB도, OPMS API도 쓰지 않는다.
 
-대안은 OPMS API 조회다. 이때도 **복사본이 아니라 조회값**이라는 원칙을 지키려면:
+**바꾸는 방향**: 웹이 부르는 PDM 계약(`/api/v1/pdm/cad/match`)은 유지하고, **백엔드 안쪽 구현만** OPMS `POST /parts/match-batch` 호출로 바꾼다. 같은 DB를 직접 조회해 후보를 찾고 점수를 계산하는 방식(이 문서 이전 판의 계획)은 **채택하지 않는다**: 규칙이 두 곳이 되기 때문이다(OPMS 결정 4). 같은 DB를 직접 읽는 것은 `OF_PART`로 품번을 읽는 데(발행기 · 화면 조회)에만 쓴다.
 
-1. **저장하는 것은 참조 키뿐이다.** 필요한 키는 OPMS가 보장하는 안정된 식별자다. `part_no`가 바뀔 수 있는지(`renumber`)는 OPMS에서 확인해야 한다(**미확인**). 바뀔 수 있다면 `part_no`가 아니라 OPMS 내부 안정 ID가 필요하고, OPMS가 그것을 계약에 노출해야 한다.
-2. **PDM이 읽는 품번 · 이름 · 분류는 읽기용 투영(캐시)으로 둔다**: 캐시에는 `fetched_at`, OPMS의 `ontology_version`(또는 항목 버전)을 붙이고, 화면 · 문서 출력 직전에 신선도를 확인한다. 쓰기는 하지 않는다. 오래되면 다시 조회한다.
-3. **PDM 안에서 품번을 새로 만들거나 직접 입력하게 하는 경로를 막는다**: PG `issue_item_no()` · 목 API의 번호 생성을 설정으로 끈다(별도 DB 모드에서는 호출하면 오류). 품번 입력란은 OPMS 검색 결과 선택만 받는다.
-4. **정기 대조**: PDM이 보유한 참조 키 목록을 OPMS 조회(`judge-batch`처럼 배치)와 대조해, 없어졌거나 번호가 바뀐 것을 찾는 점검을 둔다. 같은 DB의 `item_one_part`를 API 버전으로 옮긴 것이다. 결과는 PDM 화면에서 "OPMS에서 사라진 품번" 경고로 보인다.
-5. **OPMS 계약이 필요하다**: 품번 조회 · 검색, 배치 조회, 등록 요청 입구가 모두 읽기 전용 API 또는 정해진 쓰기 API로 있어야 한다. 이 중 어느 것이 이미 있는지는 **확인하지 못했다**(OPMS 쪽 API 목록을 읽지 않았다).
+| 단계 | 내용 |
+|---|---|
+| 입력 만들기 | CAD 부품 → `PartMatchIn`(OPMS 초안: `class_code`, `values`(속성 키 → 값 · 단위), 선택 `supplier` · `supplier_part_no`). CAD에서 지금 얻는 것은 이름 · 크기 · 이름 속 규격(`M3`, `×12`, PRD 11장 🟡)과 **추정 분류**다. 속성 값은 사람이 확정한 것과 `inferred`를 구분해 보낸다 |
+| 호출 | 단계(또는 BOM 시트)의 부품을 모아 `match-batch` 한 번. 상한은 OPMS `settings.api`(미정) |
+| 결과 표시 | `part_no`(= **조회값**), `verdict`(`confirmed` → 화면 "같음", `suspected` → "후보"), `score`, `capped` · `class_capped`, 속성별 `matched` · `conflicts`, `ontology_version`을 **그대로** 보인다. PDM이 점수를 바꾸거나 새로 만들지 않는다 |
+| 기존 상태와 대응(제안) | `confirmed` → `matched`, `suspected` → `suggested`, 후보 없음 → `none` (기존 `CadPartMatch.status`) |
+| PDM이 계속 직접 하는 것 | **사람이 확정해 저장한 연결**(CAD 이름 → 품목 별칭, 거절한 제안 기록)만. 이것은 판정이 아니라 PDM이 소유한 사람의 결정이다. PDM 자체 유사도(`similarity`)는 `linked`에서 쓰지 않고 `standalone`에만 남긴다 |
+| 가져오기(결정 2) | OPMS에는 있고 PDM에는 없는 `:Part`가 후보로 나오면 "OPMS에는 있고 PDM에는 아직 없음"으로 표시하고, **사람이 확인한 뒤** `:PdmItem` + `OF_PART`를 만든다(발행기 `UPSERT_ITEMS`와 같은 경로). 품번은 `:Part.part_no` 조회값이고, `item_type` 같은 PDM 소유 속성은 가져올 때 사람이 정한다. 자동 가져오기는 하지 않는다(기존 원칙 "자동 매칭은 제안까지만, 확정은 사람") |
 
-### 8.5 정할 것 (사용자)
+**OPMS API가 구현되기 전**: 초안 응답 형식(OPMS `CR-NEXT-onto-pdm-merge-prep-changes.md` 5장)을 따르는 **고정 응답표 mock 어댑터**로 시작한다(판정 계산은 하지 않는다). 계약 버전이 5 → 6으로 바뀌므로 어댑터는 OPMS가 알려 주는 계약 버전이 기대와 다르면 호출을 막는다(OPMS가 버전을 노출하는 방법은 **미확인**).
 
-1. PG `item.item_no`를 캐시로 격하하고 발급기를 끌지(8.2의 4번). 지금 PG 단독 모드(시험 · 목 서버)와의 호환을 어떻게 할지.
-2. `:Part`가 PDM에 없을 때 "가져가기"를 자동으로 할지 사람이 확정할지(기존 원칙: 자동 매칭은 제안까지만).
-3. OPMS `record_origin='pdm'` 입구 요청의 담당 · 시점(`backend-plan.md` 5장 1).
+**위험(미확인)**
+- 초안의 `class_code`가 **필수인지** 확인하지 못했다. 필수라면 분류를 모르는 CAD 부품(`Bolt_1`)은 매칭 요청 자체를 못 만들 수 있다. 그때는 "추정 분류 → 사람 확인 → 호출" 단계가 필요하다.
+- 이름만 있는 CAD 부품에서 값을 뽑는 파서(`parseFastenerSpec`)는 미구현이다(PRD 11장). 값이 비면 OPMS가 `capped`(후보까지만)로 낮출 것으로 읽었다. 확정이 아니다.
+
+### 8.6 매칭이 없을 때: OPMS 검토 경로로 신규 품번 받기 (결정 3)
+
+PDM이 `:Part`를 만들지 않고, OPMS에 `record_origin='pdm'` 입구도 요청하지 않는다. PDM은 OPMS 웹 API의 **클라이언트**다.
+
+| 순서 | 호출 · 담당 | PDM의 일 |
+|---|---|---|
+| ① | `POST /documents`(A-01) | 등록 요청(CAD 이름 별칭 · 추정 분류 · 출처, F-MAT-2)을 OPMS가 받는 **파일**로 올린다. 허용 형식은 pdf · xlsx · xls · csv다(OPMS 결정 기록 확인). PDM의 요청을 어떤 파일 모양으로 올릴지는 **미정**(사양서 PDF를 그대로 올리거나 부품 목록 CSV를 만든다) |
+| ② | `POST /documents/{id}/process`(A-02), 또는 OPMS 자동 시작 | 처리를 시작한다(OPMS는 대기 문서 자동 시작도 있다, D25) |
+| ③ | `GET …/status`(A-03) | 폴링으로 "처리 중 · 검토 대기 · 승인 · 반려"를 `내 등록 요청` 화면에 보인다 |
+| ④ | **OPMS에서 사람이 검토 · 승인** | PDM은 승인하지 않는다. 지금 PDM의 관리자 승인 화면은 `linked`에서 읽기 전용 진행 상태로 바뀐다(8.4) |
+| ⑤ | `GET /parts/{part_no}`(A-09) · `/export`(A-10) | 승인된 부품 · 표준 JSON을 읽어 `part_no`를 받는다 |
+| ⑥ | PDM 화면 | 받은 `part_no`를 사람이 확인하고 가져온다(8.5의 가져오기). 이름 · 규격을 보고 확인한다 |
+
+- **요청 ↔ 품번 전달**: 문서 `doc_id` ↔ `part_no` 대응을 PDM이 읽는 약속은 **OPMS가 초안을 작성 중**이다. 정해지기 전에는 PDM이 `doc_id`를 요청 기록에 저장하고 상태만 폴링하며, **문서 내용을 보고 품번을 추측해 연결하지 않는다.**
+- **미확인**: OPMS에는 인증이 없고 Host · Origin 검사만 한다(`backend-plan.md` 1장). PDM 서버가 OPMS API를 서버 대 서버로 부를 때 이 검사를 통과하는지는 확인하지 못했다. 업로드 크기 상한(`api.body_limit`, 기본 1 MiB)과 PDM이 올릴 파일 크기의 관계도 같다.
+- 지금 웹 목의 "승인하면 번호가 생긴다" 흐름은 `standalone` 시연용으로만 남는다.
+
+### 8.7 같은 DB를 쓰지 못하는 환경(별도 DB)에서의 대안
+
+위 8.5 · 8.6이 모두 **OPMS API**를 쓰므로, 별도 DB 환경에서도 매칭 · 신규 품번 요청 경로는 바뀌지 않는다. 달라지는 것은 `:PdmItem` ↔ `:Part` 연결(`OF_PART`)을 그래프 관계로 못 걸고, 품번을 PDM 쪽에 어떻게 두느냐다. 조회값 원칙을 지키려면:
+
+1. **저장하는 것은 참조 키뿐이다.** OPMS `part_no`가 바뀔 수 있는지(`renumber`)와 안정 ID가 있는지는 **확인하지 못했다.** 바뀔 수 있다면 `part_no`가 아니라 OPMS의 안정 ID를 키로 삼아야 하고, OPMS가 계약에 노출해야 한다.
+2. **읽은 품번 · 이름 · 분류는 읽기용 캐시**(8.4의 `item.item_no`와 같은 지위)로 두고 `fetched_at`과 OPMS `ontology_version`을 붙인다. 화면 · 문서 출력 직전에 신선도를 확인하고, 쓰기는 가져오기 경로 하나로 한정한다.
+3. **PDM 안에서 품번을 새로 만들거나 직접 입력하는 경로를 막는다.** `linked` 모드(8.4)와 같다. 품번 입력란은 OPMS 검색 결과 선택만 받는다.
+4. **정기 대조**: 보유한 키를 A-09(부품 조회) 또는 `/parts/search`(A-22)로 OPMS와 대조해 사라졌거나 번호가 바뀐 것을 "OPMS에서 사라진 품번" 경고로 보인다. 같은 DB의 `item_one_part` · 8.3의 3번과 같은 일이다.
+
+### 8.8 남은 결정 · 미확인
+
+| 항목 | 상태 |
+|---|---|
+| `doc_id` ↔ `part_no` 전달 약속 | OPMS가 초안 작성 중. 그 문서가 나오면 8.6에 반영 |
+| `POST /parts/match`의 `class_code` 필수 여부, 값이 없을 때의 동작 | 미확인(8.5) |
+| A-01에 PDM의 요청을 어떤 파일 형식으로 올릴지 | 미정 |
+| 서버 대 서버 호출이 OPMS Host · Origin 검사를 통과하는지, 업로드 상한 | 미확인 |
+| `PDM_MODE`의 이름 · 기본값, 승인 함수 시그니처 변경 | 구현 때 정한다(8.4) |
+| OPMS가 계약 버전을 노출하는 방법(5 → 6) | 미확인 |
+| `part_no` 재부여 가능 여부, 안정 ID | 미확인(8.7) |

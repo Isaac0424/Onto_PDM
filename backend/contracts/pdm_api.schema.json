@@ -1,0 +1,2437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntoPdmApi",
+  "x-contract-version": "1",
+  "type": "object",
+  "properties": {
+    "CadMatchRequest": {
+      "$ref": "#/$defs/CadMatchRequest"
+    },
+    "AssemblyGuidesRequest": {
+      "$ref": "#/$defs/AssemblyGuidesRequest"
+    },
+    "BomSheetMatchRequest": {
+      "$ref": "#/$defs/BomSheetMatchRequest"
+    },
+    "PartRequestPayload": {
+      "$ref": "#/$defs/PartRequestPayload-Input"
+    },
+    "Health": {
+      "$ref": "#/$defs/Health"
+    },
+    "ApiError": {
+      "$ref": "#/$defs/ApiError"
+    },
+    "User": {
+      "$ref": "#/$defs/User"
+    },
+    "Product": {
+      "$ref": "#/$defs/Product"
+    },
+    "TaxonomyClass": {
+      "$ref": "#/$defs/TaxonomyClass"
+    },
+    "Material": {
+      "$ref": "#/$defs/Material"
+    },
+    "ItemSummary": {
+      "$ref": "#/$defs/ItemSummary"
+    },
+    "ItemDetail": {
+      "$ref": "#/$defs/ItemDetail"
+    },
+    "ItemPage": {
+      "$ref": "#/$defs/ItemPage"
+    },
+    "BomNode": {
+      "$ref": "#/$defs/BomNode"
+    },
+    "ProductBom": {
+      "$ref": "#/$defs/ProductBom"
+    },
+    "WhereUsedRow": {
+      "$ref": "#/$defs/WhereUsedRow"
+    },
+    "DocumentLink": {
+      "$ref": "#/$defs/DocumentLink"
+    },
+    "PartRequest": {
+      "$ref": "#/$defs/PartRequest"
+    },
+    "CadPartMatch": {
+      "$ref": "#/$defs/CadPartMatch"
+    },
+    "AssemblyGuide": {
+      "$ref": "#/$defs/AssemblyGuide"
+    },
+    "AssemblyRuleSummary": {
+      "$ref": "#/$defs/AssemblyRuleSummary"
+    },
+    "AssemblyRuleDetail": {
+      "$ref": "#/$defs/AssemblyRuleDetail"
+    },
+    "RuleIssue": {
+      "$ref": "#/$defs/RuleIssue"
+    },
+    "MesPackage": {
+      "$ref": "#/$defs/MesPackage"
+    },
+    "MesPublication": {
+      "$ref": "#/$defs/MesPublication"
+    },
+    "BomSheetMatch": {
+      "$ref": "#/$defs/BomSheetMatch"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ApiError": {
+      "additionalProperties": false,
+      "description": "오류 본문 {\"error\": {\"code\", \"message\", \"details\"}} — OPMS 와 같은 모양.",
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ApiError",
+      "type": "object"
+    },
+    "AssemblyGuide": {
+      "additionalProperties": false,
+      "properties": {
+        "part_name": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "rule_name": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "fasten",
+            "weld",
+            "press_fit",
+            "mount",
+            "insert",
+            "cover"
+          ],
+          "type": "string"
+        },
+        "operation_label": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "$ref": "#/$defs/GuideParam"
+          },
+          "type": "array"
+        },
+        "cautions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "part_name",
+        "rule_id",
+        "rule_name",
+        "operation",
+        "operation_label",
+        "title",
+        "caption",
+        "params",
+        "cautions",
+        "tools",
+        "source"
+      ],
+      "title": "AssemblyGuide",
+      "type": "object"
+    },
+    "AssemblyGuidesRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/AssemblyPartInput"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "parts"
+      ],
+      "title": "AssemblyGuidesRequest",
+      "type": "object"
+    },
+    "AssemblyPartInput": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attributes": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "AssemblyPartInput",
+      "type": "object"
+    },
+    "AssemblyRuleDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "fasten",
+            "weld",
+            "press_fit",
+            "mount",
+            "insert",
+            "cover"
+          ],
+          "type": "string"
+        },
+        "operation_label": {
+          "type": "string"
+        },
+        "applies_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_values": {
+          "items": {
+            "$ref": "#/$defs/LabeledValue"
+          },
+          "type": "array"
+        },
+        "caution_count": {
+          "type": "integer"
+        },
+        "tool_count": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "approved",
+            "draft"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "conditions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/LabeledValue"
+          },
+          "type": "array"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleTable"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cautions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "used_by": {
+          "items": {
+            "$ref": "#/$defs/RuleUsedBy"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "operation",
+        "operation_label",
+        "applies_to",
+        "key_values",
+        "caution_count",
+        "tool_count",
+        "status",
+        "source",
+        "description",
+        "conditions",
+        "parameters",
+        "table",
+        "cautions",
+        "tools",
+        "used_by"
+      ],
+      "title": "AssemblyRuleDetail",
+      "type": "object"
+    },
+    "AssemblyRuleSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "fasten",
+            "weld",
+            "press_fit",
+            "mount",
+            "insert",
+            "cover"
+          ],
+          "type": "string"
+        },
+        "operation_label": {
+          "type": "string"
+        },
+        "applies_to": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key_values": {
+          "items": {
+            "$ref": "#/$defs/LabeledValue"
+          },
+          "type": "array"
+        },
+        "caution_count": {
+          "type": "integer"
+        },
+        "tool_count": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "approved",
+            "draft"
+          ],
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "operation",
+        "operation_label",
+        "applies_to",
+        "key_values",
+        "caution_count",
+        "tool_count",
+        "status",
+        "source"
+      ],
+      "title": "AssemblyRuleSummary",
+      "type": "object"
+    },
+    "BomNode": {
+      "additionalProperties": false,
+      "properties": {
+        "line_id": {
+          "type": "integer"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "find_no": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "total_quantity": {
+          "type": "number"
+        },
+        "item": {
+          "$ref": "#/$defs/ItemSummary"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "children": {
+          "items": {
+            "$ref": "#/$defs/BomNode"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "line_id",
+        "depth",
+        "find_no",
+        "quantity",
+        "total_quantity",
+        "item",
+        "revision",
+        "children"
+      ],
+      "title": "BomNode",
+      "type": "object"
+    },
+    "BomSheetMatch": {
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "suggested",
+            "none"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "line",
+        "status",
+        "item_no",
+        "item_name",
+        "reason"
+      ],
+      "title": "BomSheetMatch",
+      "type": "object"
+    },
+    "BomSheetMatchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/BomSheetRowInput"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "rows"
+      ],
+      "title": "BomSheetMatchRequest",
+      "type": "object"
+    },
+    "BomSheetRowInput": {
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "type": "integer"
+        },
+        "item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "find_no": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "line",
+        "quantity"
+      ],
+      "title": "BomSheetRowInput",
+      "type": "object"
+    },
+    "CadMatchRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "title": "CadMatchRequest",
+      "type": "object"
+    },
+    "CadPartMatch": {
+      "additionalProperties": false,
+      "description": "CAD 부품 이름 → 보유 품번 매칭 (docs/pdm-design.md 6장).",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "suggested",
+            "none"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "exact",
+                "alias",
+                "cad_name",
+                "normalized",
+                "fuzzy"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_path": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "item_no",
+        "item_name",
+        "method",
+        "score",
+        "class_iri",
+        "class_label",
+        "class_path"
+      ],
+      "title": "CadPartMatch",
+      "type": "object"
+    },
+    "DocumentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "type": "integer"
+        },
+        "doc_no": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "doc_type": {
+          "enum": [
+            "cad_3d",
+            "drawing",
+            "spec",
+            "manual",
+            "bom_sheet",
+            "other"
+          ],
+          "type": "string"
+        },
+        "link_type": {
+          "enum": [
+            "cad_model",
+            "drawing",
+            "spec",
+            "manual",
+            "reference"
+          ],
+          "type": "string"
+        },
+        "rev": {
+          "type": "string"
+        },
+        "pinned": {
+          "type": "boolean"
+        },
+        "file_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "file_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "match_method": {
+          "enum": [
+            "manual",
+            "filename",
+            "step_product",
+            "bom_import",
+            "text_search",
+            "ai"
+          ],
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "suggested",
+            "confirmed",
+            "rejected"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "doc_no",
+        "title",
+        "doc_type",
+        "link_type",
+        "rev",
+        "pinned",
+        "file_name",
+        "file_url",
+        "match_method",
+        "confidence",
+        "status"
+      ],
+      "title": "DocumentLink",
+      "type": "object"
+    },
+    "DuplicateCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "exact",
+            "alias",
+            "cad_name",
+            "normalized",
+            "fuzzy"
+          ],
+          "type": "string"
+        },
+        "score": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "item_no",
+        "name",
+        "method",
+        "score"
+      ],
+      "title": "DuplicateCandidate",
+      "type": "object"
+    },
+    "ErrorBody": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "details"
+      ],
+      "title": "ErrorBody",
+      "type": "object"
+    },
+    "GuideParam": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "label",
+        "value",
+        "ok"
+      ],
+      "title": "GuideParam",
+      "type": "object"
+    },
+    "Health": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "ok",
+          "default": "ok",
+          "type": "string"
+        },
+        "contract_version": {
+          "const": "1",
+          "default": "1",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "contract_version"
+      ],
+      "title": "Health",
+      "type": "object"
+    },
+    "Identifier": {
+      "additionalProperties": false,
+      "properties": {
+        "scheme": {
+          "enum": [
+            "legacy",
+            "erp",
+            "mes",
+            "supplier",
+            "customer",
+            "drawing",
+            "cad_name"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "title": "Identifier",
+      "type": "object"
+    },
+    "InventoryRow": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "enum": [
+            "ERP",
+            "MES"
+          ],
+          "type": "string"
+        },
+        "site": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "qty_on_hand": {
+          "type": "number"
+        },
+        "qty_allocated": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "as_of": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "site",
+        "location",
+        "qty_on_hand",
+        "qty_allocated",
+        "unit",
+        "as_of"
+      ],
+      "title": "InventoryRow",
+      "type": "object"
+    },
+    "ItemDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "name_ko": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_type": {
+          "enum": [
+            "assembly",
+            "part",
+            "standard",
+            "purchased"
+          ],
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "class_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "material_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attributes": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        "mass_kg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mass_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "cad_mass",
+                "cad_estimate",
+                "measured"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "created_by": {
+          "type": "integer"
+        },
+        "latest_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "released_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "revisions": {
+          "items": {
+            "$ref": "#/$defs/Revision"
+          },
+          "type": "array"
+        },
+        "identifiers": {
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "type": "array"
+        },
+        "inventory": {
+          "items": {
+            "$ref": "#/$defs/InventoryRow"
+          },
+          "type": "array"
+        },
+        "products": {
+          "items": {
+            "$ref": "#/$defs/Product"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "item_no",
+        "name",
+        "name_ko",
+        "item_type",
+        "unit",
+        "class_iri",
+        "material_iri",
+        "attributes",
+        "mass_kg",
+        "mass_source",
+        "created_by",
+        "latest_revision",
+        "released_revision",
+        "revisions",
+        "identifiers",
+        "inventory",
+        "products"
+      ],
+      "title": "ItemDetail",
+      "type": "object"
+    },
+    "ItemPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ItemSummary"
+          },
+          "type": "array"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "size": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "page",
+        "size"
+      ],
+      "title": "ItemPage",
+      "type": "object"
+    },
+    "ItemSummary": {
+      "additionalProperties": false,
+      "description": "목록 · 상세에 쓰는 품목 + 리비전 요약 (item_current 뷰).",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "name_ko": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_type": {
+          "enum": [
+            "assembly",
+            "part",
+            "standard",
+            "purchased"
+          ],
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "class_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "material_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "attributes": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "type": "object"
+        },
+        "mass_kg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mass_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "cad_mass",
+                "cad_estimate",
+                "measured"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "created_by": {
+          "type": "integer"
+        },
+        "latest_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "released_revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "item_no",
+        "name",
+        "name_ko",
+        "item_type",
+        "unit",
+        "class_iri",
+        "material_iri",
+        "attributes",
+        "mass_kg",
+        "mass_source",
+        "created_by",
+        "latest_revision",
+        "released_revision"
+      ],
+      "title": "ItemSummary",
+      "type": "object"
+    },
+    "LabeledValue": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "title": "LabeledValue",
+      "type": "object"
+    },
+    "Material": {
+      "additionalProperties": false,
+      "properties": {
+        "iri": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "class_iri": {
+          "type": "string"
+        },
+        "density": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "iri",
+        "name",
+        "aliases",
+        "class_iri",
+        "density"
+      ],
+      "title": "Material",
+      "type": "object"
+    },
+    "MesBomLine": {
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "total_quantity": {
+          "type": "number"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "seq",
+        "level",
+        "item_no",
+        "name",
+        "quantity",
+        "total_quantity",
+        "step",
+        "rule_ids"
+      ],
+      "title": "MesBomLine",
+      "type": "object"
+    },
+    "MesDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "doc_no": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "doc_type": {
+          "enum": [
+            "cad_3d",
+            "drawing",
+            "spec",
+            "manual",
+            "bom_sheet",
+            "other"
+          ],
+          "type": "string"
+        },
+        "rev": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "doc_no",
+        "title",
+        "doc_type",
+        "rev"
+      ],
+      "title": "MesDocument",
+      "type": "object"
+    },
+    "MesPackage": {
+      "additionalProperties": false,
+      "properties": {
+        "product_code": {
+          "type": "string"
+        },
+        "product_name": {
+          "type": "string"
+        },
+        "root_item_no": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "rule": {
+          "enum": [
+            "released",
+            "latest"
+          ],
+          "type": "string"
+        },
+        "generated_at": {
+          "type": "string"
+        },
+        "bom": {
+          "items": {
+            "$ref": "#/$defs/MesBomLine"
+          },
+          "type": "array"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/MesWorkStep"
+          },
+          "type": "array"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/MesDocument"
+          },
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "product_code",
+        "product_name",
+        "root_item_no",
+        "revision",
+        "rule",
+        "generated_at",
+        "bom",
+        "steps",
+        "documents",
+        "warnings"
+      ],
+      "title": "MesPackage",
+      "type": "object"
+    },
+    "MesPublication": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "product_code": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "rule": {
+          "enum": [
+            "released",
+            "latest"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "sent",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "sent_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "bom_lines": {
+          "type": "integer"
+        },
+        "steps": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "product_code",
+        "revision",
+        "rule",
+        "status",
+        "created_at",
+        "sent_at",
+        "error",
+        "bom_lines",
+        "steps"
+      ],
+      "title": "MesPublication",
+      "type": "object"
+    },
+    "MesStepPart": {
+      "additionalProperties": false,
+      "properties": {
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "item_no",
+        "name",
+        "quantity"
+      ],
+      "title": "MesStepPart",
+      "type": "object"
+    },
+    "MesWorkStep": {
+      "additionalProperties": false,
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "operation_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/MesStepPart"
+          },
+          "type": "array"
+        },
+        "rule_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "params": {
+          "items": {
+            "$ref": "#/$defs/LabeledValue"
+          },
+          "type": "array"
+        },
+        "cautions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "step",
+        "title",
+        "operation_label",
+        "parts",
+        "rule_ids",
+        "params",
+        "cautions",
+        "tools"
+      ],
+      "title": "MesWorkStep",
+      "type": "object"
+    },
+    "PartRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "source_system": {
+          "enum": [
+            "PDM",
+            "PLM",
+            "AGENT"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "submitted",
+            "approved",
+            "rejected",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/PartRequestPayload-Output"
+        },
+        "class_proposal_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "duplicate_check": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DuplicateCandidate"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "issued_item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requested_by": {
+          "type": "integer"
+        },
+        "reviewed_by": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_system",
+        "status",
+        "payload",
+        "class_proposal_id",
+        "duplicate_check",
+        "issued_item_no",
+        "requested_by",
+        "reviewed_by",
+        "review_note",
+        "created_at",
+        "updated_at"
+      ],
+      "title": "PartRequest",
+      "type": "object"
+    },
+    "PartRequestPayload-Input": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name_ko": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "assembly",
+                "part",
+                "standard",
+                "purchased"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "material_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "PartRequestPayload",
+      "type": "object"
+    },
+    "PartRequestPayload-Output": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name_ko": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "item_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "assembly",
+                "part",
+                "standard",
+                "purchased"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "class_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "material_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "name",
+        "name_ko",
+        "item_type",
+        "unit",
+        "class_iri",
+        "material_iri",
+        "aliases",
+        "note"
+      ],
+      "title": "PartRequestPayload",
+      "type": "object"
+    },
+    "Product": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "root_item_no": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "name",
+        "description",
+        "root_item_no"
+      ],
+      "title": "Product",
+      "type": "object"
+    },
+    "ProductBom": {
+      "additionalProperties": false,
+      "description": "GET /products/{code}/bom — 제품의 최상위 조립품과 BOM 트리 (웹 제품 연결 화면이 한 번에 쓴다).",
+      "properties": {
+        "product": {
+          "$ref": "#/$defs/Product"
+        },
+        "root_item": {
+          "$ref": "#/$defs/ItemSummary"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rule": {
+          "enum": [
+            "released",
+            "latest"
+          ],
+          "type": "string"
+        },
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/BomNode"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "product",
+        "root_item",
+        "revision",
+        "rule",
+        "nodes"
+      ],
+      "title": "ProductBom",
+      "type": "object"
+    },
+    "Revision": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "item_id": {
+          "type": "integer"
+        },
+        "rev": {
+          "type": "string"
+        },
+        "rev_seq": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "wip",
+            "in_review",
+            "released",
+            "obsolete"
+          ],
+          "type": "string"
+        },
+        "change_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "released_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "created_by": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "item_id",
+        "rev",
+        "rev_seq",
+        "status",
+        "change_note",
+        "released_at",
+        "created_by",
+        "created_at"
+      ],
+      "title": "Revision",
+      "type": "object"
+    },
+    "RuleIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "type": "string"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "code": {
+          "enum": [
+            "overlap",
+            "missing_value",
+            "no_source",
+            "empty_table",
+            "no_scope",
+            "no_caution",
+            "unused"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "rule_id",
+        "code",
+        "message"
+      ],
+      "title": "RuleIssue",
+      "type": "object"
+    },
+    "RuleTable": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows"
+      ],
+      "title": "RuleTable",
+      "type": "object"
+    },
+    "RuleUsedBy": {
+      "additionalProperties": false,
+      "properties": {
+        "item_no": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_no",
+        "name"
+      ],
+      "title": "RuleUsedBy",
+      "type": "object"
+    },
+    "TaxonomyClass": {
+      "additionalProperties": false,
+      "properties": {
+        "iri": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "label_ko": {
+          "type": "string"
+        },
+        "label_en": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_iri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "enum": [
+            "part",
+            "material"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "iri",
+        "code",
+        "label_ko",
+        "label_en",
+        "parent_iri",
+        "kind"
+      ],
+      "title": "TaxonomyClass",
+      "type": "object"
+    },
+    "User": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "login_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "admin",
+            "approver",
+            "engineer",
+            "viewer"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "login_id",
+        "name",
+        "role"
+      ],
+      "title": "User",
+      "type": "object"
+    },
+    "WhereUsedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "type": "integer"
+        },
+        "parent": {
+          "$ref": "#/$defs/ItemSummary"
+        },
+        "parent_revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "quantity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "depth",
+        "parent",
+        "parent_revision",
+        "quantity"
+      ],
+      "title": "WhereUsedRow",
+      "type": "object"
+    }
+  }
+}

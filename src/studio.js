@@ -42,14 +42,14 @@ function parseLooseJson(text) {
  */
 export function mountExplodeStudio(container, options = {}) {
   if (!container) throw new Error('mountExplodeStudio: container is required');
-  options = Object.assign({ assetsBase: '/occt/', pdfjsBase: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/', initial: 'watch', fonts: true, title: '분해도 스튜디오', sampleStepUrl: null }, options);
+  options = Object.assign({ assetsBase: '/occt/', pdfjsBase: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/', initial: 'watch', chrome: true, skin: null, axes: true, pan: true, fonts: true, title: '분해도 스튜디오', sampleStepUrl: null }, options);
   const assetsBase = options.assetsBase.replace(/\/?$/, '/'), pdfjsBase = options.pdfjsBase.replace(/\/?$/, '/');
   injectStyles(options.fonts); mounts++;
 
   // DOM: the template's ids are made unique per mount; code looks elements up by their original id
   const uid = 'xs' + (++uidSeq);
   const root = document.createElement('div');
-  root.className = 'xs-root';
+  root.className = 'xs-root' + (options.chrome === false ? ' xs-bare' : '');
   root.innerHTML = TEMPLATE;
   container.appendChild(root);
   const refs = {};
@@ -106,7 +106,8 @@ export function mountExplodeStudio(container, options = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 1000);
   const controls = new THREE.OrbitControls(camera, canvas);
-  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotateSpeed = 0.9;
+  if (options.pan === false) { controls.enablePan = false; controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: -1 }; canvas.addEventListener('contextmenu', e => e.preventDefault()); }
+    controls.enableDamping = true; controls.dampingFactor = 0.08; controls.autoRotateSpeed = 0.9;
   scene.add(new THREE.HemisphereLight(0xf3eadb, 0x1a1c20, 0.9 * LK));
   const keyLight = new THREE.DirectionalLight(0xffffff, 0.9 * LK); keyLight.position.set(3, 5, 4); scene.add(keyLight);
   const rim = new THREE.DirectionalLight(0xe3a648, 0.35 * LK); rim.position.set(-4, -2, -3); scene.add(rim);
@@ -118,13 +119,14 @@ export function mountExplodeStudio(container, options = {}) {
   // skin: 'holo' (navy + glowing cyan) or 'classic'; remembered per viewer
   const skinHost = (canvas.closest && canvas.closest('.xs-root')) || document.documentElement;
   function applySkin(skin) {
-    S.skin = skin === 'classic' ? 'classic' : 'holo';
+    S.skin = skin === 'classic' ? 'classic' : skin === 'glass' ? 'glass' : 'holo';
     skinHost.dataset.skin = S.skin;
-    holoU.value = S.skin === 'holo' ? 1 : 0;
-    if (S.skin === 'holo') { pickFace.color.setHex(0x0b4a66); pickFace.emissive.setHex(0x8beeff); pickFace.emissiveIntensity = .9; pickFace.transparent = true; pickFace.opacity = .95; pickFace.blending = THREE.AdditiveBlending; pickEdge.color.setHex(0xffffff); }
+    holoU.value = S.skin === 'classic' ? 0 : 1;
+    if (S.skin === 'glass') { pickFace.color.setHex(0x0e7490); pickFace.emissive.setHex(0x22d3ee); pickFace.emissiveIntensity = .55; pickFace.transparent = true; pickFace.opacity = .92; pickFace.blending = THREE.NormalBlending; pickEdge.color.setHex(0x0b4a66); }
+    else if (S.skin === 'holo') { pickFace.color.setHex(0x0b4a66); pickFace.emissive.setHex(0x8beeff); pickFace.emissiveIntensity = .9; pickFace.transparent = true; pickFace.opacity = .95; pickFace.blending = THREE.AdditiveBlending; pickEdge.color.setHex(0xffffff); }
     else { pickFace.color.setHex(0x3a2a12); pickFace.emissive.setHex(0xe3a648); pickFace.emissiveIntensity = .35; pickFace.transparent = false; pickFace.opacity = 1; pickFace.blending = THREE.NormalBlending; pickEdge.color.setHex(0xffe2b0); }
     pickFace.needsUpdate = true;
-    const b = $('tSkin'); if (b) b.setAttribute('aria-pressed', String(S.skin === 'holo'));
+    const b = $('tSkin'); if (b) b.setAttribute('aria-pressed', String(S.skin !== 'classic'));
     try { localStorage.setItem('xs-skin', S.skin); } catch (e) { /* storage may be blocked */ }
   }
   const COL = { ink: 0xd9d2c4, dim: 0x5d5b57, accent: 0xe3a648, face: 0x111316, steel: 0xa7acb3 };
@@ -157,7 +159,7 @@ export function mountExplodeStudio(container, options = {}) {
   const pickFace = withHolo(new THREE.MeshStandardMaterial({ color: 0x3a2a12, emissive: 0xe3a648, emissiveIntensity: .35, metalness: .3, roughness: .6, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, side: THREE.DoubleSide }));
   const pickEdge = new THREE.LineBasicMaterial({ color: 0xffe2b0 });
   let savedSkin = null; try { savedSkin = localStorage.getItem('xs-skin'); } catch (e) { /* none */ }
-  applySkin(savedSkin || 'holo');
+  applySkin(options.skin || savedSkin || 'holo');
 
   function rawToGeometry(m) {
     const g = new THREE.BufferGeometry();
@@ -239,7 +241,7 @@ export function mountExplodeStudio(container, options = {}) {
   const gizV = new THREE.Vector3();
   function updateGizmoLabels() {
     const els = [$('gx'), $('gy'), $('gz')];
-    const show = gizmo && gizmo.userData.tips && S.step < 2;
+    const show = gizmo && gizmo.userData.tips && S.step < 2 && options.axes !== false;
     if (gizmo) gizmo.visible = !!show;
     els.forEach((el, i) => {
       if (!show) { el.hidden = true; return; }
@@ -279,6 +281,14 @@ export function mountExplodeStudio(container, options = {}) {
         T.fo = m.glass ? .05 : dim ? (solid ? .1 : .04) : (solid ? (on ? .8 : .55) : .16);
         T.ec.setHex(on ? 0xeafcff : 0x5fdcff);
         T.eo = dim ? .12 : (on ? 1 : (solid ? .45 : .85));
+      } else if (S.skin === 'glass') {
+        // light frosted glass: translucent blue faces with deeper blue edges, the picked part glows cyan
+        const solid = S.style === 'solid';
+        T.fc.setHex(on ? 0x0ea5e9 : 0x60a5fa); T.metal = 0; T.rough = 1;
+        T.em.setHex(on ? 0x0891b2 : 0x1d4ed8);
+        T.fo = m.glass ? .05 : dim ? (solid ? .07 : .03) : (solid ? (on ? .66 : .42) : .14);
+        T.ec.setHex(on ? 0x075985 : 0x1d4ed8);
+        T.eo = dim ? .16 : (on ? 1 : (solid ? .6 : .85));
       } else if (S.style === 'line') {
         T.fc.setHex(COL.face); T.metal = .25; T.rough = .75;
         T.fo = m.glass ? .06 : (dim ? .35 : .94);
@@ -293,7 +303,7 @@ export function mountExplodeStudio(container, options = {}) {
       if (snap) tickMaterial(m, 1);
       const blend = S.skin === 'holo' ? THREE.AdditiveBlending : THREE.NormalBlending;
       m.face.blending = blend; m.edge.blending = blend;
-      const dw = !m.glass && !dim && S.skin !== 'holo';
+      const dw = !m.glass && !dim && S.skin === 'classic';
       if (m.face.depthWrite !== dw) { m.face.depthWrite = dw; m.face.needsUpdate = true; }
       g.children.forEach(obj => {
         const picked = S.picked >= 0 && obj === S.parts[S.picked].obj;
@@ -402,12 +412,12 @@ export function mountExplodeStudio(container, options = {}) {
     fitted = { dist, center: sph.center.clone() };
     camera.near = dist / 200; camera.far = dist * 20; camera.updateProjectionMatrix();
     if (grid) { scene.remove(grid); grid.geometry.dispose(); }
-    grid = S.skin === 'holo' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x1b7395, 0x0d3a4f) : new THREE.PolarGridHelper(sph.radius * 1.15, 24, 6, 96, 0x24272c, 0x1a1c20);
+    grid = S.skin === 'glass' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x38bdf8, 0xbae6fd) : S.skin === 'holo' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x1b7395, 0x0d3a4f) : new THREE.PolarGridHelper(sph.radius * 1.15, 24, 6, 96, 0x24272c, 0x1a1c20);
     grid.position.set(sph.center.x, b.min.y - sph.radius * .04, sph.center.z);
     scene.add(grid);
   }
-  // the only place the view is reset: new model, new base part, or the "시점 정렬" button
-  // what "시점 정렬" frames: the tapped part, else the layer being explained, else the whole model
+  // the only place the view is reset: new model, new base part, or a double-click on the drawing
+  // what the view frames: the picked part, else the layer being explained, else the whole model
   function alignTarget() {
     if (S.picked >= 0 && S.parts[S.picked].obj) return { obj: S.parts[S.picked].obj, name: S.parts[S.picked].name };
     if (S.step >= 2 && layerGroups[S.step - 2]) return { obj: layerGroups[S.step - 2], name: S.layers[S.step - 2].title };
@@ -557,7 +567,6 @@ export function mountExplodeStudio(container, options = {}) {
     }
     $('prev').disabled = st === 0; $('next').disabled = st >= stepCount() - 1;
     renderList();
-    const tgA = alignTarget(); $('alignView').textContent = tgA ? '시점 정렬 · ' + tgA.name : '시점 정렬';
     $('picked').hidden = true;
   }
   function renderSide() {
@@ -1181,7 +1190,7 @@ export function mountExplodeStudio(container, options = {}) {
   // glides to the part, since it may be off screen; from the drawing it is already in view.
   function selectPart(id, focus) {
     stopPlay();
-    if (id < 0 || !S.parts[id]) { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); return; }
+    if (id < 0 || !S.parts[id]) { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); emit('select', { id: -1, name: '', layer: -1 }); return; }
     const p = S.parts[id];
     S.picked = id; S.step = p.layer + 2; S.tTarget = 1;
     applyMaterials(); renderStory(); renderInfo();
@@ -1201,19 +1210,34 @@ export function mountExplodeStudio(container, options = {}) {
 
   // ---------- picking ----------
   const ray = new THREE.Raycaster(); let downAt = null;
-  canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; });
-  canvas.addEventListener('pointerup', e => {
-    const touch = e.pointerType === 'touch';
-    if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > (touch ? 12 : 6) || performance.now() - downAt.t > (touch ? 800 : 600)) return;
+  // only the primary button picks a part; right/middle clicks belong to the camera (pan / dolly)
+  canvas.addEventListener('pointerdown', e => { downAt = e.button === 0 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+  // the part under the pointer, or -1. Every part counts, also those on dimmed layers; only see-through glass lets the tap pass
+  function partAt(e) {
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -(e.clientY - r.top) / r.height * 2 + 1 }, camera);
-    // every part counts, also those on dimmed layers; only see-through glass lets the tap pass
     const hit = ray.intersectObjects(faceMeshes, false).find(h => {
       const p = S.parts[h.object.userData.partId], g = p && layerGroups[p.layer];
       return p && !(g && g.userData.mats.glass);
     });
-    if (!hit) { if (S.picked >= 0) selectPart(-1); return; }
-    selectPart(hit.object.userData.partId, false);
+    return hit ? hit.object.userData.partId : -1;
+  }
+  canvas.addEventListener('pointerup', e => {
+    const touch = e.pointerType === 'touch';
+    if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > (touch ? 12 : 6) || performance.now() - downAt.t > (touch ? 800 : 600)) return;
+    const id = partAt(e);
+    if (id < 0) {                                                  // empty space: drop the focus (picked part and the layer being explained)
+      if (S.picked >= 0) selectPart(-1);
+      if (S.step >= 2) go(1);                                      // step 1 = every layer shown, nothing dimmed
+      return;
+    }
+    selectPart(id, false);
+  });
+  // double-click a part to frame it; double-click on empty space frames the whole model (the first click already dropped the focus)
+  canvas.addEventListener('dblclick', e => {
+    if (e.button !== 0 || !S.parts.length) return;
+    const id = partAt(e);
+    if (id >= 0) selectPart(id, true); else { computeBounds(); alignView(); }
   });
 
   // ---------- loop ----------
@@ -1266,13 +1290,9 @@ export function mountExplodeStudio(container, options = {}) {
   $('tLabels').onclick = e => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); };
   $('tSpin').onclick = e => { S.spin = !S.spin; e.currentTarget.setAttribute('aria-pressed', S.spin); };
   $('tSkin').onclick = () => { applySkin(S.skin === 'holo' ? 'classic' : 'holo'); applyMaterials(true); if (S.layers.length) computeBounds(); };
-  $('tStyle').onclick = e => { S.style = S.style === 'line' ? 'solid' : 'line'; e.currentTarget.setAttribute('aria-pressed', S.style === 'solid'); applyMaterials(); };
   $('nMinus').onclick = () => { if (S.N > 1) { S.N--; S.presetLayers = null; regroup(); } };
   $('nPlus').onclick = () => { if (S.N < S.maxN) { S.N++; S.presetLayers = null; regroup(); } };
 
-  $('alignView').onclick = () => { computeBounds(); alignView(); };
-  const alignBtnTitle = '선택한 부품이 있으면 그 부품, 층을 보고 있으면 그 층, 아니면 전체를 화면에 맞춰요';
-  $('alignView').title = alignBtnTitle;
   $('baseSel').onchange = e => reframe(Number(e.target.value));
   if ($('aiGo')) $('aiGo').onclick = runAi;
   $('infoClose').onclick = () => { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); };
@@ -1463,19 +1483,30 @@ export function mountExplodeStudio(container, options = {}) {
     async loadUrl(url, name) { const r = await fetch(url); if (!r.ok) throw new Error('loadUrl: HTTP ' + r.status); const b = await r.blob(); return api.loadFile(new File([b], name || url.split('/').pop().split('?')[0] || 'model.step')); },
     async loadSpec(src) { await loadSpecFile(await readFile(src)); },
     loadExample(which) { if (which === 'box') loadBox(); else loadWatch(); emit('model', { name: S.modelName, parts: S.parts.length }); },
-    setLayerCount(n) { S.N = Math.max(1, Math.min(S.maxN, Math.round(n))); S.presetLayers = null; regroup(); return S.N; },
+    setLayerCount(n) { S.N = Math.max(1, Math.min(S.maxN, Math.round(n))); S.presetLayers = null; regroup(); emit('layers', { layers: S.layers.length }); return S.N; },
     go(step) { go(step); },
     next() { go(S.step + 1); },
     prev() { go(S.step - 1); },
     explode() { go(Math.max(1, S.step)); },
     assemble() { go(0); },
     play() { play(); },
+    /** always starts from step 1 (play() toggles: a second call stops it) */
+    replay() { stopPlay(); play(); },
+    setSpin(on) { S.spin = !!on; $('tSpin').setAttribute('aria-pressed', String(S.spin)); },
     selectPart(nameOrId, focus = true) {
       if (typeof nameOrId === 'number') return selectPart(nameOrId, focus);
       focusByName(String(nameOrId));
     },
     alignView() { computeBounds(); alignView(); },
     runAi() { return runAi(); },
+    /** parts of the loaded model: id, CAD name, group path (CAD assembly), assembly layer index */
+    getParts() {
+      return S.parts.map((p, id) => ({ id, name: p.name, path: p.path || '', layer: typeof p.layer === 'number' ? p.layer : -1, ko: koOf(p.name) || '', size: Array.isArray(p.size) ? p.size.map(v => +v.toPrecision(4)) : null, unit: S.unit }));
+    },
+    /** assembly steps: layer index, the step number go() takes, title and the part ids in that layer */
+    getLayers() {
+      return S.layers.map((L, index) => ({ index, step: index + 2, title: L.title, partIds: L.partIds.slice() }));
+    },
     getState() {
       return {
         model: S.modelName, parts: S.parts.length, layers: S.layers.length, maxLayers: S.maxN, step: S.step,

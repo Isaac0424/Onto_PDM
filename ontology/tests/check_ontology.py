@@ -65,11 +65,11 @@ def data_shapes(core: Graph, sample: Graph, shapes: Graph) -> None:
         print("    ", r)
 
     bad = core + sample
-    bad.remove((PART.P0000002, OPDM.hasMaterial, None))                     # 가공품인데 재료 없음
-    bad.add((PART.P0000001, OPDM.partNumber, Literal("P0000099")))          # 대표 품번 두 개
-    bad.add((PART.P0000001, OPDM.currentRevision, REV["P0000002-R00"]))    # 현재 리비전 두 개
-    bad.remove((BOM["P0000010-R01-1"], OPDM.quantity, None))
-    bad.add((BOM["P0000010-R01-1"], OPDM.quantity, Literal(0)))             # 수량 0
+    bad.remove((PART["P-00000000002"], OPDM.hasMaterial, None))                     # 가공품인데 재료 없음
+    bad.add((PART["P-00000000001"], OPDM.partNumber, Literal("P-00000000099")))          # 대표 품번 두 개
+    bad.add((PART["P-00000000001"], OPDM.currentRevision, REV["P-00000000002-R00"]))    # 현재 리비전 두 개
+    bad.remove((BOM["P-00000000010-R01-1"], OPDM.quantity, None))
+    bad.add((BOM["P-00000000010-R01-1"], OPDM.quantity, Literal(0)))             # 수량 0
     bad.add((MAT.M000003, OPDM.density, Literal(-2.7)))                     # 밀도 두 개, 음수
     conforms, report, _ = validate(bad, shacl_graph=shapes)
     text = " | ".join(m for _, _, m in results(report))
@@ -98,10 +98,10 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>"""
     check(products_containing("cls:M0111") == ["HCR3A"], "스테인리스강이 들어간 제품 = HCR3A (BOM 두 단계 아래)")
     check(products_containing("cls:M0100") == ["HCR3A", "HCR5A"], "금속(상위 분류)이 들어간 제품 = HCR3A, HCR5A")
     alias = [str(r.n) for r in inf.query(prefixes + 'SELECT ?n WHERE { ?p opdm:altPartNumber "BLT-0038" ; opdm:partNumber ?n }')]
-    check(alias == ["P0000001"], "레거시 품번을 altPartNumber 상위 속성으로 찾는다")
-    check((PART.P0000020, OPDM.hasComponent, PART.P0000010) in inf, "속성 사슬: 현재 승인 BOM의 직접 하위 품목")
-    check((PART.P0000020, OPDM.hasComponent, PART.P0000001) not in inf
-          and (PART.P0000020, OPDM.hasComponentTransitive, PART.P0000001) in inf, "이행 관계는 hasComponentTransitive 에만")
+    check(alias == ["P-00000000001"], "레거시 품번을 altPartNumber 상위 속성으로 찾는다")
+    check((PART["P-00000000020"], OPDM.hasComponent, PART["P-00000000010"]) in inf, "속성 사슬: 현재 승인 BOM의 직접 하위 품목")
+    check((PART["P-00000000020"], OPDM.hasComponent, PART["P-00000000001"]) not in inf
+          and (PART["P-00000000020"], OPDM.hasComponentTransitive, PART["P-00000000001"]) in inf, "이행 관계는 hasComponentTransitive 에만")
     same = [(s, o) for s, o in inf.subject_objects(OWL.sameAs) if s != o]
     check(not same, f"추론이 개체를 합치지 않는다 (owl:sameAs {len(same)}건)")
 

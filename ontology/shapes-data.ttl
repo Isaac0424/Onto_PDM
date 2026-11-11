@@ -17,8 +17,8 @@ opdmsh:ItemShape a sh:NodeShape ;
         sh:path opdm:partNumber ;
         sh:datatype xsd:string ;
         sh:minCount 1 ; sh:maxCount 1 ;
-        sh:pattern "^P[0-9]{7}$" ;      # 잠정 형식. 바꿀 때는 db/schema.sql 의 issue_item_no() 와 함께 바꾼다
-        sh:message "대표 품번은 정확히 하나, 형식은 P + 숫자 7자리"@ko
+        sh:pattern "^P-[0-9]{11}$" ;   # OPMS 품번 형식(settings.part_no). 바꿀 때는 db/schema.sql 의 issue_item_no() 와 함께 바꾼다
+        sh:message "대표 품번은 정확히 하나, 형식은 P- + 숫자 11자리"@ko
     ] ;
     sh:property [
         sh:path skos:prefLabel ;

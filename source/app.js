@@ -32,13 +32,14 @@ let layerGroups = [], faceMeshes = [], fitted = { dist: 10, center: new THREE.Ve
 // skin: 'holo' (navy + glowing cyan) or 'classic'; remembered per viewer
 const skinHost = (canvas.closest && canvas.closest('.xs-root')) || document.documentElement;
 function applySkin(skin) {
-  S.skin = skin === 'classic' ? 'classic' : 'holo';
+  S.skin = skin === 'classic' ? 'classic' : skin === 'glass' ? 'glass' : 'holo';
   skinHost.dataset.skin = S.skin;
-  holoU.value = S.skin === 'holo' ? 1 : 0;
-  if (S.skin === 'holo') { pickFace.color.setHex(0x0b4a66); pickFace.emissive.setHex(0x8beeff); pickFace.emissiveIntensity = .9; pickFace.transparent = true; pickFace.opacity = .95; pickFace.blending = THREE.AdditiveBlending; pickEdge.color.setHex(0xffffff); }
+  holoU.value = S.skin === 'classic' ? 0 : 1;
+  if (S.skin === 'glass') { pickFace.color.setHex(0x0e7490); pickFace.emissive.setHex(0x22d3ee); pickFace.emissiveIntensity = .55; pickFace.transparent = true; pickFace.opacity = .92; pickFace.blending = THREE.NormalBlending; pickEdge.color.setHex(0x0b4a66); }
+  else if (S.skin === 'holo') { pickFace.color.setHex(0x0b4a66); pickFace.emissive.setHex(0x8beeff); pickFace.emissiveIntensity = .9; pickFace.transparent = true; pickFace.opacity = .95; pickFace.blending = THREE.AdditiveBlending; pickEdge.color.setHex(0xffffff); }
   else { pickFace.color.setHex(0x3a2a12); pickFace.emissive.setHex(0xe3a648); pickFace.emissiveIntensity = .35; pickFace.transparent = false; pickFace.opacity = 1; pickFace.blending = THREE.NormalBlending; pickEdge.color.setHex(0xffe2b0); }
   pickFace.needsUpdate = true;
-  const b = $('tSkin'); if (b) b.setAttribute('aria-pressed', String(S.skin === 'holo'));
+  const b = $('tSkin'); if (b) b.setAttribute('aria-pressed', String(S.skin !== 'classic'));
   try { localStorage.setItem('xs-skin', S.skin); } catch (e) { /* storage may be blocked */ }
 }
 const COL = { ink: 0xd9d2c4, dim: 0x5d5b57, accent: 0xe3a648, face: 0x111316, steel: 0xa7acb3 };
@@ -193,6 +194,14 @@ function applyMaterials(snap) {
       T.fo = m.glass ? .05 : dim ? (solid ? .1 : .04) : (solid ? (on ? .8 : .55) : .16);
       T.ec.setHex(on ? 0xeafcff : 0x5fdcff);
       T.eo = dim ? .12 : (on ? 1 : (solid ? .45 : .85));
+    } else if (S.skin === 'glass') {
+      // light frosted glass: translucent blue faces with deeper blue edges, the picked part glows cyan
+      const solid = S.style === 'solid';
+      T.fc.setHex(on ? 0x0ea5e9 : 0x60a5fa); T.metal = 0; T.rough = 1;
+      T.em.setHex(on ? 0x0891b2 : 0x1d4ed8);
+      T.fo = m.glass ? .05 : dim ? (solid ? .07 : .03) : (solid ? (on ? .66 : .42) : .14);
+      T.ec.setHex(on ? 0x075985 : 0x1d4ed8);
+      T.eo = dim ? .16 : (on ? 1 : (solid ? .6 : .85));
     } else if (S.style === 'line') {
       T.fc.setHex(COL.face); T.metal = .25; T.rough = .75;
       T.fo = m.glass ? .06 : (dim ? .35 : .94);
@@ -207,7 +216,7 @@ function applyMaterials(snap) {
     if (snap) tickMaterial(m, 1);
     const blend = S.skin === 'holo' ? THREE.AdditiveBlending : THREE.NormalBlending;
     m.face.blending = blend; m.edge.blending = blend;
-    const dw = !m.glass && !dim && S.skin !== 'holo';
+    const dw = !m.glass && !dim && S.skin === 'classic';
     if (m.face.depthWrite !== dw) { m.face.depthWrite = dw; m.face.needsUpdate = true; }
     g.children.forEach(obj => {
       const picked = S.picked >= 0 && obj === S.parts[S.picked].obj;
@@ -316,12 +325,12 @@ function computeBounds() {
   fitted = { dist, center: sph.center.clone() };
   camera.near = dist / 200; camera.far = dist * 20; camera.updateProjectionMatrix();
   if (grid) { scene.remove(grid); grid.geometry.dispose(); }
-  grid = S.skin === 'holo' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x1b7395, 0x0d3a4f) : new THREE.PolarGridHelper(sph.radius * 1.15, 24, 6, 96, 0x24272c, 0x1a1c20);
+  grid = S.skin === 'glass' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x38bdf8, 0xbae6fd) : S.skin === 'holo' ? new THREE.PolarGridHelper(sph.radius * 1.15, 24, 8, 128, 0x1b7395, 0x0d3a4f) : new THREE.PolarGridHelper(sph.radius * 1.15, 24, 6, 96, 0x24272c, 0x1a1c20);
   grid.position.set(sph.center.x, b.min.y - sph.radius * .04, sph.center.z);
   scene.add(grid);
 }
-// the only place the view is reset: new model, new base part, or the "시점 정렬" button
-// what "시점 정렬" frames: the tapped part, else the layer being explained, else the whole model
+// the only place the view is reset: new model, new base part, or a double-click on the drawing
+// what the view frames: the picked part, else the layer being explained, else the whole model
 function alignTarget() {
   if (S.picked >= 0 && S.parts[S.picked].obj) return { obj: S.parts[S.picked].obj, name: S.parts[S.picked].name };
   if (S.step >= 2 && layerGroups[S.step - 2]) return { obj: layerGroups[S.step - 2], name: S.layers[S.step - 2].title };
@@ -471,7 +480,6 @@ function renderStory() {
   }
   $('prev').disabled = st === 0; $('next').disabled = st >= stepCount() - 1;
   renderList();
-  const tgA = alignTarget(); $('alignView').textContent = tgA ? '시점 정렬 · ' + tgA.name : '시점 정렬';
   $('picked').hidden = true;
 }
 function renderSide() {
@@ -1113,19 +1121,34 @@ function focusByName(name, within) {
 
 // ---------- picking ----------
 const ray = new THREE.Raycaster(); let downAt = null;
-canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; });
-canvas.addEventListener('pointerup', e => {
-  const touch = e.pointerType === 'touch';
-  if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > (touch ? 12 : 6) || performance.now() - downAt.t > (touch ? 800 : 600)) return;
+// only the primary button picks a part; right/middle clicks belong to the camera (pan / dolly)
+canvas.addEventListener('pointerdown', e => { downAt = e.button === 0 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+// the part under the pointer, or -1. Every part counts, also those on dimmed layers; only see-through glass lets the tap pass
+function partAt(e) {
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -(e.clientY - r.top) / r.height * 2 + 1 }, camera);
-  // every part counts, also those on dimmed layers; only see-through glass lets the tap pass
   const hit = ray.intersectObjects(faceMeshes, false).find(h => {
     const p = S.parts[h.object.userData.partId], g = p && layerGroups[p.layer];
     return p && !(g && g.userData.mats.glass);
   });
-  if (!hit) { if (S.picked >= 0) selectPart(-1); return; }
-  selectPart(hit.object.userData.partId, false);
+  return hit ? hit.object.userData.partId : -1;
+}
+canvas.addEventListener('pointerup', e => {
+  const touch = e.pointerType === 'touch';
+  if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > (touch ? 12 : 6) || performance.now() - downAt.t > (touch ? 800 : 600)) return;
+  const id = partAt(e);
+  if (id < 0) {                                                  // empty space: drop the focus (picked part and the layer being explained)
+    if (S.picked >= 0) selectPart(-1);
+    if (S.step >= 2) go(1);                                      // step 1 = every layer shown, nothing dimmed
+    return;
+  }
+  selectPart(id, false);
+});
+// double-click a part to frame it; double-click on empty space frames the whole model (the first click already dropped the focus)
+canvas.addEventListener('dblclick', e => {
+  if (e.button !== 0 || !S.parts.length) return;
+  const id = partAt(e);
+  if (id >= 0) selectPart(id, true); else { computeBounds(); alignView(); }
 });
 
 // ---------- loop ----------
@@ -1179,13 +1202,9 @@ $('play').onclick = play;
 $('tLabels').onclick = e => { S.labels = !S.labels; e.currentTarget.setAttribute('aria-pressed', S.labels); };
 $('tSpin').onclick = e => { S.spin = !S.spin; e.currentTarget.setAttribute('aria-pressed', S.spin); };
 $('tSkin').onclick = () => { applySkin(S.skin === 'holo' ? 'classic' : 'holo'); applyMaterials(true); if (S.layers.length) computeBounds(); };
-$('tStyle').onclick = e => { S.style = S.style === 'line' ? 'solid' : 'line'; e.currentTarget.setAttribute('aria-pressed', S.style === 'solid'); applyMaterials(); };
 $('nMinus').onclick = () => { if (S.N > 1) { S.N--; S.presetLayers = null; regroup(); } };
 $('nPlus').onclick = () => { if (S.N < S.maxN) { S.N++; S.presetLayers = null; regroup(); } };
 
-$('alignView').onclick = () => { computeBounds(); alignView(); };
-const alignBtnTitle = '선택한 부품이 있으면 그 부품, 층을 보고 있으면 그 층, 아니면 전체를 화면에 맞춰요';
-$('alignView').title = alignBtnTitle;
 $('baseSel').onchange = e => reframe(Number(e.target.value));
 if ($('aiGo')) $('aiGo').onclick = runAi;
 $('infoClose').onclick = () => { S.picked = -1; applyMaterials(); renderStory(); renderInfo(); };

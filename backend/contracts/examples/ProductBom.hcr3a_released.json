@@ -1,0 +1,274 @@
+{
+  "product": {
+    "id": 1,
+    "code": "HCR3A",
+    "name": "협동로봇 3 kg",
+    "description": "가반하중 3 kg, 작업 반경 630 mm",
+    "root_item_no": "P-00000000100"
+  },
+  "root_item": {
+    "id": 3,
+    "item_no": "P-00000000100",
+    "name": "HCR3A Body",
+    "name_ko": "HCR3A 본체",
+    "item_type": "assembly",
+    "unit": "EA",
+    "class_iri": "cls:C0300",
+    "attributes": {},
+    "created_by": 1,
+    "latest_revision": {
+      "id": 20,
+      "item_id": 3,
+      "rev": "R02",
+      "rev_seq": 2,
+      "status": "wip",
+      "change_note": "J1 브레이크 추가 (설계 중)",
+      "created_by": 2,
+      "created_at": "2026-10-20T10:00:00+09:00"
+    },
+    "released_revision": {
+      "id": 19,
+      "item_id": 3,
+      "rev": "R01",
+      "rev_seq": 1,
+      "status": "released",
+      "change_note": "J2 관절 모듈 추가",
+      "released_at": "2026-09-28T11:00:00+09:00",
+      "created_by": 1,
+      "created_at": "2026-09-01T09:00:00+09:00"
+    }
+  },
+  "revision": {
+    "id": 19,
+    "item_id": 3,
+    "rev": "R01",
+    "rev_seq": 1,
+    "status": "released",
+    "change_note": "J2 관절 모듈 추가",
+    "released_at": "2026-09-28T11:00:00+09:00",
+    "created_by": 1,
+    "created_at": "2026-09-01T09:00:00+09:00"
+  },
+  "rule": "released",
+  "nodes": [
+    {
+      "line_id": 4,
+      "depth": 1,
+      "find_no": 1,
+      "quantity": 1.0,
+      "total_quantity": 1.0,
+      "item": {
+        "id": 4,
+        "item_no": "P-00000000110",
+        "name": "Base assembly",
+        "name_ko": "베이스 조립품",
+        "item_type": "assembly",
+        "unit": "EA",
+        "class_iri": "cls:C0302",
+        "attributes": {},
+        "created_by": 1,
+        "latest_revision": {
+          "id": 3,
+          "item_id": 4,
+          "rev": "R00",
+          "rev_seq": 0,
+          "status": "released",
+          "change_note": "최초 승인",
+          "released_at": "2026-09-10T15:00:00+09:00",
+          "created_by": 1,
+          "created_at": "2026-09-01T09:00:00+09:00"
+        },
+        "released_revision": {
+          "id": 3,
+          "item_id": 4,
+          "rev": "R00",
+          "rev_seq": 0,
+          "status": "released",
+          "change_note": "최초 승인",
+          "released_at": "2026-09-10T15:00:00+09:00",
+          "created_by": 1,
+          "created_at": "2026-09-01T09:00:00+09:00"
+        }
+      },
+      "revision": {
+        "id": 3,
+        "item_id": 4,
+        "rev": "R00",
+        "rev_seq": 0,
+        "status": "released",
+        "change_note": "최초 승인",
+        "released_at": "2026-09-10T15:00:00+09:00",
+        "created_by": 1,
+        "created_at": "2026-09-01T09:00:00+09:00"
+      },
+      "children": [
+        {
+          "line_id": 13,
+          "depth": 2,
+          "find_no": 1,
+          "quantity": 1.0,
+          "total_quantity": 1.0,
+          "item": {
+            "id": 5,
+            "item_no": "P-00000000111",
+            "name": "Base housing",
+            "name_ko": "베이스 하우징",
+            "item_type": "part",
+            "unit": "EA",
+            "class_iri": "cls:C0401",
+            "material_iri": "mat:M000003",
+            "attributes": {},
+            "mass_kg": 1.84,
+            "mass_source": "cad_estimate",
+            "created_by": 1,
+            "latest_revision": {
+              "id": 4,
+              "item_id": 5,
+              "rev": "R00",
+              "rev_seq": 0,
+              "status": "released",
+              "change_note": "최초 승인",
+              "released_at": "2026-09-10T15:00:00+09:00",
+              "created_by": 1,
+              "created_at": "2026-09-01T09:00:00+09:00"
+            },
+            "released_revision": {
+              "id": 4,
+              "item_id": 5,
+              "rev": "R00",
+              "rev_seq": 0,
+              "status": "released",
+              "change_note": "최초 승인",
+              "released_at": "2026-09-10T15:00:00+09:00",
+              "created_by": 1,
+              "created_at": "2026-09-01T09:00:00+09:00"
+            }
+          },
+          "revision": {
+            "id": 4,
+            "item_id": 5,
+            "rev": "R00",
+            "rev_seq": 0,
+            "status": "released",
+            "change_note": "최초 승인",
+            "released_at": "2026-09-10T15:00:00+09:00",
+            "created_by": 1,
+            "created_at": "2026-09-01T09:00:00+09:00"
+          },
+          "children": []
+        },
+        {
+          "line_id": 14,
+          "depth": 2,
+          "find_no": 2,
+          "quantity": 1.0,
+          "total_quantity": 1.0,
+          "item": {
+            "id": 6,
+            "item_no": "P-00000000112",
+            "name": "Base cover",
+            "name_ko": "베이스 커버",
+            "item_type": "part",
+            "unit": "EA",
+            "class_iri": "cls:C0402",
+            "material_iri": "mat:M000003",
+            "attributes": {},
+            "mass_kg": 0.21,
+            "mass_source": "cad_estimate",
+            "created_by": 1,
+            "latest_revision": {
+              "id": 22,
+              "item_id": 6,
+              "rev": "R01",
+              "rev_seq": 1,
+              "status": "in_review",
+              "change_note": "보강 리브 추가",
+              "created_by": 2,
+              "created_at": "2026-10-18T14:00:00+09:00"
+            },
+            "released_revision": {
+              "id": 21,
+              "item_id": 6,
+              "rev": "R00",
+              "rev_seq": 0,
+              "status": "released",
+              "change_note": "최초 승인",
+              "released_at": "2026-09-10T15:00:00+09:00",
+              "created_by": 1,
+              "created_at": "2026-09-01T09:00:00+09:00"
+            }
+          },
+          "revision": {
+            "id": 21,
+            "item_id": 6,
+            "rev": "R00",
+            "rev_seq": 0,
+            "status": "released",
+            "change_note": "최초 승인",
+            "released_at": "2026-09-10T15:00:00+09:00",
+            "created_by": 1,
+            "created_at": "2026-09-01T09:00:00+09:00"
+          },
+          "children": []
+        },
+        {
+          "line_id": 15,
+          "depth": 2,
+          "find_no": 3,
+          "quantity": 8.0,
+          "total_quantity": 8.0,
+          "item": {
+            "id": 2,
+            "item_no": "P-00000000002",
+            "name": "Bolt M4x10",
+            "name_ko": "볼트 M4x10",
+            "item_type": "standard",
+            "unit": "EA",
+            "class_iri": "cls:C0101",
+            "material_iri": "mat:M000001",
+            "attributes": {
+              "호칭 지름": "M4",
+              "길이(mm)": 10,
+              "규격": "ISO 4762"
+            },
+            "created_by": 1,
+            "latest_revision": {
+              "id": 2,
+              "item_id": 2,
+              "rev": "R00",
+              "rev_seq": 0,
+              "status": "released",
+              "change_note": "최초 승인",
+              "released_at": "2026-09-10T15:00:00+09:00",
+              "created_by": 1,
+              "created_at": "2026-09-01T09:00:00+09:00"
+            },
+            "released_revision": {
+              "id": 2,
+              "item_id": 2,
+              "rev": "R00",
+              "rev_seq": 0,
+              "status": "released",
+              "change_note": "최초 승인",
+              "released_at": "2026-09-10T15:00:00+09:00",
+              "created_by": 1,
+              "created_at": "2026-09-01T09:00:00+09:00"
+            }
+          },
+          "revision": {
+            "id": 2,
+            "item_id": 2,
+            "rev": "R00",
+            "rev_seq": 0,
+            "status": "released",
+            "change_note": "최초 승인",
+            "released_at": "2026-09-10T15:00:00+09:00",
+            "created_by": 1,
+            "created_at": "2026-09-01T09:00:00+09:00"
+          },
+          "children": []
+        }
+      ]
+    }
+  ]
+}

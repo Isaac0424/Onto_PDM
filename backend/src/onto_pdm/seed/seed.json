@@ -1,0 +1,1643 @@
+{
+ "version": 1,
+ "users": [
+  {
+   "id": 1,
+   "loginId": "kim",
+   "name": "김관리",
+   "role": "admin"
+  },
+  {
+   "id": 2,
+   "loginId": "lee",
+   "name": "이설계",
+   "role": "engineer"
+  }
+ ],
+ "products": [
+  {
+   "id": 1,
+   "code": "HCR3A",
+   "name": "협동로봇 3 kg",
+   "description": "가반하중 3 kg, 작업 반경 630 mm",
+   "rootItemNo": "P-00000000100"
+  },
+  {
+   "id": 2,
+   "code": "HCR5A",
+   "name": "협동로봇 5 kg",
+   "description": "가반하중 5 kg, 작업 반경 915 mm",
+   "rootItemNo": "P-00000000200"
+  }
+ ],
+ "classes": [
+  {
+   "iri": "cls:C0100",
+   "code": "C0100",
+   "labelKo": "체결류",
+   "labelEn": "Fastener",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0101",
+   "code": "C0101",
+   "labelKo": "볼트",
+   "labelEn": "Bolt",
+   "parentIri": "cls:C0100",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0300",
+   "code": "C0300",
+   "labelKo": "조립 단위",
+   "labelEn": "Assembly unit",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0301",
+   "code": "C0301",
+   "labelKo": "관절 모듈",
+   "labelEn": "Joint module",
+   "parentIri": "cls:C0300",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0302",
+   "code": "C0302",
+   "labelKo": "베이스 조립품",
+   "labelEn": "Base assembly",
+   "parentIri": "cls:C0300",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0400",
+   "code": "C0400",
+   "labelKo": "하우징 · 커버",
+   "labelEn": "Housing and cover",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0401",
+   "code": "C0401",
+   "labelKo": "하우징",
+   "labelEn": "Housing",
+   "parentIri": "cls:C0400",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0402",
+   "code": "C0402",
+   "labelKo": "커버",
+   "labelEn": "Cover",
+   "parentIri": "cls:C0400",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0500",
+   "code": "C0500",
+   "labelKo": "동력 전달",
+   "labelEn": "Power transmission",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0501",
+   "code": "C0501",
+   "labelKo": "감속기",
+   "labelEn": "Reducer",
+   "parentIri": "cls:C0500",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0600",
+   "code": "C0600",
+   "labelKo": "전기 · 전자",
+   "labelEn": "Electrical",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0601",
+   "code": "C0601",
+   "labelKo": "서보 모터",
+   "labelEn": "Servo motor",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0602",
+   "code": "C0602",
+   "labelKo": "엔코더",
+   "labelEn": "Encoder",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0603",
+   "code": "C0603",
+   "labelKo": "케이블 하네스",
+   "labelEn": "Cable harness",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0604",
+   "code": "C0604",
+   "labelKo": "브레이크",
+   "labelEn": "Brake",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0605",
+   "code": "C0605",
+   "labelKo": "스위치 · 버튼",
+   "labelEn": "Switch and button",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:C0606",
+   "code": "C0606",
+   "labelKo": "배터리",
+   "labelEn": "Battery",
+   "parentIri": "cls:C0600",
+   "kind": "part"
+  },
+  {
+   "iri": "cls:M0100",
+   "code": "M0100",
+   "labelKo": "금속",
+   "labelEn": "Metal",
+   "kind": "material"
+  },
+  {
+   "iri": "cls:M0110",
+   "code": "M0110",
+   "labelKo": "강",
+   "labelEn": "Steel",
+   "parentIri": "cls:M0100",
+   "kind": "material"
+  },
+  {
+   "iri": "cls:M0111",
+   "code": "M0111",
+   "labelKo": "스테인리스강",
+   "labelEn": "Stainless steel",
+   "parentIri": "cls:M0110",
+   "kind": "material"
+  },
+  {
+   "iri": "cls:M0120",
+   "code": "M0120",
+   "labelKo": "알루미늄 합금",
+   "labelEn": "Aluminium alloy",
+   "parentIri": "cls:M0100",
+   "kind": "material"
+  }
+ ],
+ "materials": [
+  {
+   "iri": "mat:M000001",
+   "name": "SUS304",
+   "aliases": [
+    "STS304",
+    "AISI 304",
+    "1.4301"
+   ],
+   "classIri": "cls:M0111",
+   "density": 7.93
+  },
+  {
+   "iri": "mat:M000002",
+   "name": "SUS316",
+   "aliases": [
+    "STS316",
+    "AISI 316",
+    "1.4401"
+   ],
+   "classIri": "cls:M0111",
+   "density": 7.98
+  },
+  {
+   "iri": "mat:M000003",
+   "name": "A6061",
+   "aliases": [
+    "AA 6061"
+   ],
+   "classIri": "cls:M0120",
+   "density": 2.7
+  }
+ ],
+ "items": [
+  {
+   "id": 1,
+   "itemNo": "P-00000000001",
+   "name": "Bolt M3x8",
+   "nameKo": "볼트 M3x8",
+   "itemType": "standard",
+   "unit": "EA",
+   "classIri": "cls:C0101",
+   "attributes": {
+    "호칭 지름": "M3",
+    "길이(mm)": 8,
+    "규격": "ISO 4762"
+   },
+   "createdBy": 1,
+   "materialIri": "mat:M000001"
+  },
+  {
+   "id": 2,
+   "itemNo": "P-00000000002",
+   "name": "Bolt M4x10",
+   "nameKo": "볼트 M4x10",
+   "itemType": "standard",
+   "unit": "EA",
+   "classIri": "cls:C0101",
+   "attributes": {
+    "호칭 지름": "M4",
+    "길이(mm)": 10,
+    "규격": "ISO 4762"
+   },
+   "createdBy": 1,
+   "materialIri": "mat:M000001"
+  },
+  {
+   "id": 3,
+   "itemNo": "P-00000000100",
+   "name": "HCR3A Body",
+   "nameKo": "HCR3A 본체",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0300",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 4,
+   "itemNo": "P-00000000110",
+   "name": "Base assembly",
+   "nameKo": "베이스 조립품",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0302",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 5,
+   "itemNo": "P-00000000111",
+   "name": "Base housing",
+   "nameKo": "베이스 하우징",
+   "itemType": "part",
+   "unit": "EA",
+   "classIri": "cls:C0401",
+   "attributes": {},
+   "createdBy": 1,
+   "materialIri": "mat:M000003",
+   "massKg": 1.84,
+   "massSource": "cad_estimate"
+  },
+  {
+   "id": 6,
+   "itemNo": "P-00000000112",
+   "name": "Base cover",
+   "nameKo": "베이스 커버",
+   "itemType": "part",
+   "unit": "EA",
+   "classIri": "cls:C0402",
+   "attributes": {},
+   "createdBy": 1,
+   "materialIri": "mat:M000003",
+   "massKg": 0.21,
+   "massSource": "cad_estimate"
+  },
+  {
+   "id": 7,
+   "itemNo": "P-00000000120",
+   "name": "J1 joint module",
+   "nameKo": "J1 관절 모듈",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0301",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 8,
+   "itemNo": "P-00000000121",
+   "name": "J1 reducer",
+   "nameKo": "J1 감속기",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0501",
+   "attributes": {
+    "감속비": "100:1",
+    "허용 순간 토크(N·m)": 147
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 9,
+   "itemNo": "P-00000000122",
+   "name": "Servo motor 400W",
+   "nameKo": "서보 모터 400W",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0601",
+   "attributes": {
+    "정격 출력(W)": 400,
+    "정격 전압(V)": 48
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 10,
+   "itemNo": "P-00000000123",
+   "name": "Absolute encoder",
+   "nameKo": "절대값 엔코더",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0602",
+   "attributes": {
+    "분해능(bit)": 19
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 11,
+   "itemNo": "P-00000000124",
+   "name": "J1 housing",
+   "nameKo": "J1 하우징",
+   "itemType": "part",
+   "unit": "EA",
+   "classIri": "cls:C0401",
+   "attributes": {},
+   "createdBy": 1,
+   "materialIri": "mat:M000003",
+   "massKg": 0.96,
+   "massSource": "cad_estimate"
+  },
+  {
+   "id": 12,
+   "itemNo": "P-00000000130",
+   "name": "J2 joint module",
+   "nameKo": "J2 관절 모듈",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0301",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 13,
+   "itemNo": "P-00000000131",
+   "name": "J2 reducer",
+   "nameKo": "J2 감속기",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0501",
+   "attributes": {
+    "감속비": "100:1"
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 14,
+   "itemNo": "P-00000000140",
+   "name": "Cable harness",
+   "nameKo": "케이블 하네스",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0603",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 15,
+   "itemNo": "P-00000000150",
+   "name": "J1 brake",
+   "nameKo": "J1 브레이크",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0604",
+   "attributes": {},
+   "createdBy": 2
+  },
+  {
+   "id": 16,
+   "itemNo": "P-00000000200",
+   "name": "HCR5A Body",
+   "nameKo": "HCR5A 본체",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0300",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 17,
+   "itemNo": "P-00000000220",
+   "name": "J1 joint module 5kg",
+   "nameKo": "J1 관절 모듈(5kg)",
+   "itemType": "assembly",
+   "unit": "EA",
+   "classIri": "cls:C0301",
+   "attributes": {},
+   "createdBy": 1
+  },
+  {
+   "id": 18,
+   "itemNo": "P-00000000221",
+   "name": "J1 reducer 5kg",
+   "nameKo": "J1 감속기(5kg)",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0501",
+   "attributes": {
+    "감속비": "120:1"
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 19,
+   "itemNo": "P-00000000113",
+   "name": "Base cover (old)",
+   "nameKo": "베이스 커버(구형)",
+   "itemType": "part",
+   "unit": "EA",
+   "classIri": "cls:C0402",
+   "attributes": {},
+   "createdBy": 1,
+   "materialIri": "mat:M000003"
+  },
+  {
+   "id": 20,
+   "itemNo": "P-00000000160",
+   "name": "Power button",
+   "nameKo": "전원 버튼",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0605",
+   "attributes": {
+    "정격": "12V 50mA",
+    "접점": "NO"
+   },
+   "createdBy": 1
+  },
+  {
+   "id": 21,
+   "itemNo": "P-00000000161",
+   "name": "Battery pack",
+   "nameKo": "배터리",
+   "itemType": "purchased",
+   "unit": "EA",
+   "classIri": "cls:C0606",
+   "attributes": {
+    "전압": "3.7V",
+    "용량": "2000mAh"
+   },
+   "createdBy": 1
+  }
+ ],
+ "revisions": [
+  {
+   "id": 1,
+   "itemId": 1,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 2,
+   "itemId": 2,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 3,
+   "itemId": 4,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 4,
+   "itemId": 5,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 5,
+   "itemId": 7,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 6,
+   "itemId": 8,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 7,
+   "itemId": 9,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 8,
+   "itemId": 10,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 9,
+   "itemId": 11,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 10,
+   "itemId": 12,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 11,
+   "itemId": 13,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 12,
+   "itemId": 14,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 13,
+   "itemId": 16,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 14,
+   "itemId": 17,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 15,
+   "itemId": 18,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 16,
+   "itemId": 20,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 17,
+   "itemId": 21,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 18,
+   "itemId": 3,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "obsolete",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 19,
+   "itemId": 3,
+   "rev": "R01",
+   "revSeq": 1,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-28T11:00:00+09:00",
+   "changeNote": "J2 관절 모듈 추가"
+  },
+  {
+   "id": 20,
+   "itemId": 3,
+   "rev": "R02",
+   "revSeq": 2,
+   "status": "wip",
+   "createdBy": 2,
+   "createdAt": "2026-10-20T10:00:00+09:00",
+   "changeNote": "J1 브레이크 추가 (설계 중)"
+  },
+  {
+   "id": 21,
+   "itemId": 6,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "released",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "최초 승인"
+  },
+  {
+   "id": 22,
+   "itemId": 6,
+   "rev": "R01",
+   "revSeq": 1,
+   "status": "in_review",
+   "createdBy": 2,
+   "createdAt": "2026-10-18T14:00:00+09:00",
+   "changeNote": "보강 리브 추가"
+  },
+  {
+   "id": 23,
+   "itemId": 15,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "wip",
+   "createdBy": 2,
+   "createdAt": "2026-10-19T09:30:00+09:00",
+   "changeNote": "신규 등록"
+  },
+  {
+   "id": 24,
+   "itemId": 19,
+   "rev": "R00",
+   "revSeq": 0,
+   "status": "obsolete",
+   "createdBy": 1,
+   "createdAt": "2026-09-01T09:00:00+09:00",
+   "releasedAt": "2026-09-10T15:00:00+09:00",
+   "changeNote": "베이스 커버(P-00000000112)로 대체"
+  }
+ ],
+ "bomLines": [
+  {
+   "id": 1,
+   "parentRevisionId": 18,
+   "childItemId": 4,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 2,
+   "parentRevisionId": 18,
+   "childItemId": 7,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 3,
+   "parentRevisionId": 18,
+   "childItemId": 14,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 4,
+   "parentRevisionId": 19,
+   "childItemId": 4,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 5,
+   "parentRevisionId": 19,
+   "childItemId": 7,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 6,
+   "parentRevisionId": 19,
+   "childItemId": 12,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 7,
+   "parentRevisionId": 19,
+   "childItemId": 14,
+   "quantity": 1,
+   "findNo": 4
+  },
+  {
+   "id": 8,
+   "parentRevisionId": 20,
+   "childItemId": 4,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 9,
+   "parentRevisionId": 20,
+   "childItemId": 7,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 10,
+   "parentRevisionId": 20,
+   "childItemId": 12,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 11,
+   "parentRevisionId": 20,
+   "childItemId": 14,
+   "quantity": 1,
+   "findNo": 4
+  },
+  {
+   "id": 12,
+   "parentRevisionId": 20,
+   "childItemId": 15,
+   "quantity": 1,
+   "findNo": 5
+  },
+  {
+   "id": 13,
+   "parentRevisionId": 3,
+   "childItemId": 5,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 14,
+   "parentRevisionId": 3,
+   "childItemId": 6,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 15,
+   "parentRevisionId": 3,
+   "childItemId": 2,
+   "quantity": 8,
+   "findNo": 3
+  },
+  {
+   "id": 16,
+   "parentRevisionId": 5,
+   "childItemId": 8,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 17,
+   "parentRevisionId": 5,
+   "childItemId": 9,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 18,
+   "parentRevisionId": 5,
+   "childItemId": 10,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 19,
+   "parentRevisionId": 5,
+   "childItemId": 11,
+   "quantity": 1,
+   "findNo": 4
+  },
+  {
+   "id": 20,
+   "parentRevisionId": 5,
+   "childItemId": 1,
+   "quantity": 12,
+   "findNo": 5
+  },
+  {
+   "id": 21,
+   "parentRevisionId": 5,
+   "childItemId": 2,
+   "quantity": 6,
+   "findNo": 6
+  },
+  {
+   "id": 22,
+   "parentRevisionId": 10,
+   "childItemId": 13,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 23,
+   "parentRevisionId": 10,
+   "childItemId": 9,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 24,
+   "parentRevisionId": 10,
+   "childItemId": 10,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 25,
+   "parentRevisionId": 10,
+   "childItemId": 1,
+   "quantity": 12,
+   "findNo": 4
+  },
+  {
+   "id": 26,
+   "parentRevisionId": 13,
+   "childItemId": 4,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 27,
+   "parentRevisionId": 13,
+   "childItemId": 17,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 28,
+   "parentRevisionId": 13,
+   "childItemId": 14,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 29,
+   "parentRevisionId": 14,
+   "childItemId": 18,
+   "quantity": 1,
+   "findNo": 1
+  },
+  {
+   "id": 30,
+   "parentRevisionId": 14,
+   "childItemId": 9,
+   "quantity": 1,
+   "findNo": 2
+  },
+  {
+   "id": 31,
+   "parentRevisionId": 14,
+   "childItemId": 10,
+   "quantity": 1,
+   "findNo": 3
+  },
+  {
+   "id": 32,
+   "parentRevisionId": 14,
+   "childItemId": 11,
+   "quantity": 1,
+   "findNo": 4
+  },
+  {
+   "id": 33,
+   "parentRevisionId": 14,
+   "childItemId": 1,
+   "quantity": 16,
+   "findNo": 5
+  }
+ ],
+ "identifiers": [
+  {
+   "itemId": 1,
+   "scheme": "legacy",
+   "value": "BLT-0038"
+  },
+  {
+   "itemId": 1,
+   "scheme": "cad_name",
+   "value": "M3x8"
+  },
+  {
+   "itemId": 2,
+   "scheme": "legacy",
+   "value": "BLT-0041"
+  },
+  {
+   "itemId": 2,
+   "scheme": "cad_name",
+   "value": "M4x10"
+  },
+  {
+   "itemId": 3,
+   "scheme": "cad_name",
+   "value": "Body_HCR3A"
+  },
+  {
+   "itemId": 3,
+   "scheme": "erp",
+   "value": "ERP-30100"
+  },
+  {
+   "itemId": 5,
+   "scheme": "cad_name",
+   "value": "Base_HCR3A"
+  },
+  {
+   "itemId": 5,
+   "scheme": "drawing",
+   "value": "DWG-0111"
+  },
+  {
+   "itemId": 8,
+   "scheme": "supplier",
+   "value": "SUP-A:RG20-100"
+  },
+  {
+   "itemId": 8,
+   "scheme": "erp",
+   "value": "ERP-77121"
+  },
+  {
+   "itemId": 9,
+   "scheme": "supplier",
+   "value": "SUP-B:SM400-48"
+  },
+  {
+   "itemId": 9,
+   "scheme": "erp",
+   "value": "ERP-77122"
+  },
+  {
+   "itemId": 11,
+   "scheme": "drawing",
+   "value": "DWG-0124"
+  },
+  {
+   "itemId": 1,
+   "scheme": "cad_name",
+   "value": "기판 나사 M3"
+  }
+ ],
+ "inventory": [
+  {
+   "itemId": 1,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 12400,
+   "qtyAllocated": 3200,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 1,
+   "source": "MES",
+   "site": "본사 공장",
+   "location": "조립 1라인",
+   "qtyOnHand": 520,
+   "qtyAllocated": 0,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 2,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 8300,
+   "qtyAllocated": 1900,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 8,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 32,
+   "qtyAllocated": 18,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 9,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 45,
+   "qtyAllocated": 30,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 10,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 51,
+   "qtyAllocated": 30,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 13,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 20,
+   "qtyAllocated": 12,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 14,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "자재 창고",
+   "qtyOnHand": 26,
+   "qtyAllocated": 10,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  },
+  {
+   "itemId": 3,
+   "source": "ERP",
+   "site": "본사 공장",
+   "location": "완제품 창고",
+   "qtyOnHand": 6,
+   "qtyAllocated": 4,
+   "unit": "EA",
+   "asOf": "2026-10-23T07:00:00+09:00"
+  }
+ ],
+ "documents": [
+  {
+   "id": 1,
+   "docNo": "D-CAD-0100",
+   "title": "HCR3A 본체 3D",
+   "docType": "cad_3d",
+   "rev": "R01",
+   "fileName": "Body_HCR3A_R01_3D.stp"
+  },
+  {
+   "id": 2,
+   "docNo": "D-SPEC-HCR",
+   "title": "HCR 시리즈 사양서",
+   "docType": "spec",
+   "rev": "R02",
+   "fileName": "HCR_series_spec_R02.pdf"
+  },
+  {
+   "id": 3,
+   "docNo": "D-MAN-HCR3A",
+   "title": "HCR3A 설치 · 유지보수 설명서",
+   "docType": "manual",
+   "rev": "R00",
+   "fileName": "HCR3A_manual_R00.pdf"
+  },
+  {
+   "id": 4,
+   "docNo": "D-DRW-0124",
+   "title": "J1 하우징 도면",
+   "docType": "drawing",
+   "rev": "R00",
+   "fileName": "J1_housing_R00.pdf"
+  },
+  {
+   "id": 5,
+   "docNo": "D-CAD-0120",
+   "title": "J1 관절 모듈 3D",
+   "docType": "cad_3d",
+   "rev": "R00",
+   "fileName": "J1_module_HCR3A_R00_3D.stp"
+  }
+ ],
+ "docLinks": [
+  {
+   "revisionId": 19,
+   "documentId": 1,
+   "linkType": "cad_model",
+   "pinned": true,
+   "matchMethod": "filename",
+   "confidence": 1,
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 19,
+   "documentId": 2,
+   "linkType": "spec",
+   "pinned": false,
+   "matchMethod": "manual",
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 19,
+   "documentId": 3,
+   "linkType": "manual",
+   "pinned": false,
+   "matchMethod": "manual",
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 5,
+   "documentId": 5,
+   "linkType": "cad_model",
+   "pinned": true,
+   "matchMethod": "step_product",
+   "confidence": 1,
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 5,
+   "documentId": 2,
+   "linkType": "spec",
+   "pinned": false,
+   "matchMethod": "text_search",
+   "confidence": 0.82,
+   "status": "suggested"
+  },
+  {
+   "revisionId": 6,
+   "documentId": 2,
+   "linkType": "spec",
+   "pinned": false,
+   "matchMethod": "text_search",
+   "confidence": 0.88,
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 6,
+   "documentId": 3,
+   "linkType": "manual",
+   "pinned": false,
+   "matchMethod": "text_search",
+   "confidence": 0.74,
+   "status": "suggested"
+  },
+  {
+   "revisionId": 9,
+   "documentId": 4,
+   "linkType": "drawing",
+   "pinned": true,
+   "matchMethod": "filename",
+   "confidence": 1,
+   "status": "confirmed"
+  },
+  {
+   "revisionId": 1,
+   "documentId": 2,
+   "linkType": "spec",
+   "pinned": false,
+   "matchMethod": "text_search",
+   "confidence": 0.79,
+   "status": "confirmed"
+  }
+ ],
+ "passages": [
+  {
+   "id": 1,
+   "revisionId": 6,
+   "purpose": "definition",
+   "documentId": 2,
+   "pageNo": 12,
+   "score": 8.4,
+   "status": "confirmed",
+   "productScope": [],
+   "hitTerms": [
+    "J1",
+    "감속기"
+   ],
+   "text": "J1 감속기는 서보 모터의 회전을 100:1로 감속해 베이스에 대한 J1 관절 회전을 만든다. 허용 순간 토크는 147 N·m이다."
+  },
+  {
+   "id": 2,
+   "revisionId": 6,
+   "purpose": "assembly",
+   "mateItemNo": "P-00000000124",
+   "documentId": 3,
+   "pageNo": 34,
+   "score": 7.1,
+   "status": "suggested",
+   "productScope": [
+    "HCR3A"
+   ],
+   "hitTerms": [
+    "J1",
+    "감속기",
+    "하우징"
+   ],
+   "text": "J1 감속기 출력 플랜지를 J1 하우징의 맞춤 핀에 맞추고, M3 볼트 12개를 대각선 순서로 1.2 N·m로 체결한다."
+  },
+  {
+   "id": 3,
+   "revisionId": 6,
+   "purpose": "disassembly",
+   "mateItemNo": "P-00000000122",
+   "documentId": 3,
+   "pageNo": 41,
+   "score": 6.3,
+   "status": "suggested",
+   "productScope": [
+    "HCR3A"
+   ],
+   "hitTerms": [
+    "감속기",
+    "모터"
+   ],
+   "text": "서보 모터를 분리하기 전에 브레이크를 해제하고 J1 축을 기구적으로 고정한다. 모터 축과 감속기 입력부를 잇는 볼트를 먼저 푼다."
+  },
+  {
+   "id": 4,
+   "revisionId": 15,
+   "purpose": "definition",
+   "documentId": 2,
+   "pageNo": 13,
+   "score": 8,
+   "status": "confirmed",
+   "productScope": [
+    "HCR5A"
+   ],
+   "hitTerms": [
+    "J1",
+    "감속기"
+   ],
+   "text": "HCR5A의 J1 감속기는 감속비 120:1로, 5 kg 가반하중에서 허용 순간 토크 196 N·m를 낸다."
+  },
+  {
+   "id": 5,
+   "revisionId": 1,
+   "purpose": "definition",
+   "documentId": 2,
+   "pageNo": 58,
+   "score": 5.2,
+   "status": "confirmed",
+   "productScope": [],
+   "hitTerms": [
+    "M3",
+    "볼트"
+   ],
+   "text": "M3×8 육각 홈붙이 볼트(SUS304)는 관절 하우징과 감속기 체결에 쓴다. 재사용하지 않는다."
+  },
+  {
+   "id": 6,
+   "revisionId": 5,
+   "purpose": "definition",
+   "documentId": 2,
+   "pageNo": 11,
+   "score": 7.6,
+   "status": "suggested",
+   "productScope": [],
+   "hitTerms": [
+    "J1",
+    "관절"
+   ],
+   "text": "J1 관절 모듈은 베이스 위에서 로봇 전체를 수직축으로 회전시키며, 감속기 · 서보 모터 · 엔코더 · 하우징으로 이루어진다."
+  }
+ ],
+ "partRequests": [
+  {
+   "id": 1,
+   "sourceSystem": "PDM",
+   "status": "draft",
+   "requestedBy": 2,
+   "createdAt": "2026-10-22T16:10:00+09:00",
+   "updatedAt": "2026-10-22T16:40:00+09:00",
+   "payload": {
+    "name": "J2 brake",
+    "nameKo": "J2 브레이크",
+    "itemType": "purchased",
+    "unit": "EA",
+    "note": "공급사 사양 확인 후 분류 지정 예정"
+   }
+  },
+  {
+   "id": 2,
+   "sourceSystem": "PLM",
+   "status": "submitted",
+   "requestedBy": 2,
+   "createdAt": "2026-10-21T10:00:00+09:00",
+   "updatedAt": "2026-10-21T10:05:00+09:00",
+   "payload": {
+    "name": "Cable clamp",
+    "nameKo": "케이블 클램프",
+    "itemType": "purchased",
+    "unit": "EA",
+    "classIri": "cls:C0100",
+    "aliases": [
+     {
+      "scheme": "supplier",
+      "value": "SUP-C:CC-12"
+     }
+    ]
+   },
+   "duplicateCheck": [
+    {
+     "itemNo": "P-00000000140",
+     "name": "Cable harness",
+     "method": "fuzzy",
+     "score": 0.42
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "sourceSystem": "AGENT",
+   "status": "draft",
+   "requestedBy": 1,
+   "classProposalId": 1,
+   "createdAt": "2026-10-22T02:13:00+09:00",
+   "updatedAt": "2026-10-22T02:13:00+09:00",
+   "payload": {
+    "name": "Self tapping screw M3x6",
+    "nameKo": "셀프태핑 나사 M3x6",
+    "itemType": "standard",
+    "unit": "EA",
+    "materialIri": "mat:M000001",
+    "aliases": [
+     {
+      "scheme": "cad_name",
+      "value": "ST_M3x6"
+     }
+    ],
+    "note": "분류 에이전트가 HCR3A 설명서 34쪽에서 찾은 부품"
+   }
+  },
+  {
+   "id": 4,
+   "sourceSystem": "PDM",
+   "status": "approved",
+   "requestedBy": 2,
+   "reviewedBy": 1,
+   "issuedItemNo": "P-00000000150",
+   "createdAt": "2026-10-19T09:00:00+09:00",
+   "updatedAt": "2026-10-19T09:30:00+09:00",
+   "payload": {
+    "name": "J1 brake",
+    "nameKo": "J1 브레이크",
+    "itemType": "purchased",
+    "unit": "EA",
+    "classIri": "cls:C0604"
+   }
+  },
+  {
+   "id": 5,
+   "sourceSystem": "PDM",
+   "status": "rejected",
+   "requestedBy": 2,
+   "reviewedBy": 1,
+   "reviewNote": "P0000001과 같은 부품입니다. 기존 품번을 쓰세요.",
+   "createdAt": "2026-10-15T13:00:00+09:00",
+   "updatedAt": "2026-10-15T15:00:00+09:00",
+   "payload": {
+    "name": "Hex socket bolt M3 8mm",
+    "nameKo": "육각 홈붙이 볼트 M3 8",
+    "itemType": "standard",
+    "unit": "EA",
+    "classIri": "cls:C0101"
+   },
+   "duplicateCheck": [
+    {
+     "itemNo": "P-00000000001",
+     "name": "Bolt M3x8",
+     "method": "fuzzy",
+     "score": 0.61
+    }
+   ]
+  }
+ ],
+ "classProposals": [
+  {
+   "id": 1,
+   "status": "proposed",
+   "parentClassIri": "cls:C0100",
+   "labelKo": "셀프태핑 나사",
+   "labelEn": "Self-tapping screw",
+   "definition": "스스로 나사산을 내며 얇은 판이나 수지 부품에 체결되는 나사",
+   "properties": [
+    {
+     "label": "호칭 지름",
+     "quantityKind": "Length",
+     "unit": "mm",
+     "required": true,
+     "reused": true
+    },
+    {
+     "label": "길이",
+     "quantityKind": "Length",
+     "unit": "mm",
+     "required": true,
+     "reused": true
+    },
+    {
+     "label": "나사 끝 형상",
+     "required": false,
+     "reused": false
+    }
+   ],
+   "standardMatch": [
+    {
+     "standard": "ECLASS",
+     "note": "ECLASS 파일을 받은 뒤 대응 후보 확인"
+    }
+   ],
+   "evidence": [
+    {
+     "docNo": "D-MAN-HCR3A",
+     "quote": "베이스 커버는 셀프태핑 나사 M3×6 네 개로 베이스 하우징에 고정한다."
+    }
+   ],
+   "validation": [],
+   "agentRunId": "run-7f3c2a",
+   "model": "claude-opus-5-5",
+   "createdAt": "2026-10-22T02:13:00+09:00"
+  },
+  {
+   "id": 2,
+   "status": "proposed",
+   "parentClassIri": "cls:C0101",
+   "labelKo": "볼트 M5x12",
+   "labelEn": "Bolt M5x12",
+   "definition": "M5 길이 12 mm 볼트",
+   "properties": [
+    {
+     "label": "호칭 지름",
+     "quantityKind": "Length",
+     "unit": "mm",
+     "required": true,
+     "reused": true
+    }
+   ],
+   "evidence": [
+    {
+     "docNo": "D-SPEC-HCR",
+     "quote": "툴 플랜지는 M5×12 볼트 네 개로 고정한다."
+    }
+   ],
+   "validation": [
+    {
+     "severity": "warning",
+     "message": "분류 이름에 규격 값이 들어 있다 (볼트 M5x12). 규격은 분류가 아니라 속성으로 둔다"
+    }
+   ],
+   "agentRunId": "run-7f3c2a",
+   "model": "claude-opus-5-5",
+   "createdAt": "2026-10-22T02:14:00+09:00"
+  },
+  {
+   "id": 3,
+   "status": "merged",
+   "parentClassIri": "cls:C0100",
+   "labelKo": "육각 홈붙이 볼트",
+   "labelEn": "Hex socket bolt",
+   "definition": "육각 홈이 있는 머리를 가진 볼트",
+   "properties": [],
+   "evidence": [
+    {
+     "docNo": "D-SPEC-HCR",
+     "quote": "M3×8 육각 홈붙이 볼트(SUS304)는 관절 하우징과 감속기 체결에 쓴다."
+    }
+   ],
+   "validation": [],
+   "mergedIntoIri": "cls:C0101",
+   "reviewNote": "볼트(C0101)와 같은 분류. 머리 형상은 속성으로 둔다.",
+   "agentRunId": "run-51ad90",
+   "model": "claude-opus-5-5",
+   "createdAt": "2026-10-16T02:10:00+09:00"
+  }
+ ],
+ "outbox": [
+  {
+   "id": 1,
+   "aggregate": "item_revision",
+   "target": "P-00000000100 R01",
+   "event": "released",
+   "createdAt": "2026-09-28T11:00:00+09:00",
+   "publishedAt": "2026-09-28T11:00:02+09:00",
+   "attempts": 1
+  },
+  {
+   "id": 2,
+   "aggregate": "item",
+   "target": "P-00000000001",
+   "event": "updated",
+   "createdAt": "2026-10-02T09:12:00+09:00",
+   "publishedAt": "2026-10-02T09:12:01+09:00",
+   "attempts": 1
+  },
+  {
+   "id": 3,
+   "aggregate": "class",
+   "target": "cls:C0604 브레이크",
+   "event": "approved",
+   "createdAt": "2026-10-18T17:20:00+09:00",
+   "publishedAt": "2026-10-18T17:20:03+09:00",
+   "attempts": 1
+  },
+  {
+   "id": 4,
+   "aggregate": "item_revision",
+   "target": "P-00000000220 R00",
+   "event": "released",
+   "createdAt": "2026-10-22T18:40:00+09:00",
+   "attempts": 3,
+   "lastError": "GraphDB 503 Service Unavailable"
+  },
+  {
+   "id": 5,
+   "aggregate": "item",
+   "target": "P-00000000122",
+   "event": "updated",
+   "createdAt": "2026-10-23T08:55:00+09:00",
+   "attempts": 0
+  }
+ ],
+ "nextItemNo": 300
+}

@@ -80,6 +80,7 @@ export function createSeed(): MockDb {
     ['C0500', '동력 전달', 'Power transmission'], ['C0501', '감속기', 'Reducer', 'C0500'],
     ['C0600', '전기 · 전자', 'Electrical'], ['C0601', '서보 모터', 'Servo motor', 'C0600'], ['C0602', '엔코더', 'Encoder', 'C0600'],
     ['C0603', '케이블 하네스', 'Cable harness', 'C0600'], ['C0604', '브레이크', 'Brake', 'C0600'],
+    ['C0605', '스위치 · 버튼', 'Switch and button', 'C0600'], ['C0606', '배터리', 'Battery', 'C0600'],
   ].map(([code, ko, en, parent]) => ({
     iri: `cls:${code}`, code: code!, labelKo: ko!, labelEn: en, parentIri: parent ? `cls:${parent}` : undefined, kind: 'part' as const,
   }));
@@ -101,25 +102,28 @@ export function createSeed(): MockDb {
                extra: Partial<Item> = {}) => {
     items.push({ id, itemNo, name, nameKo, itemType, unit: 'EA', classIri: `cls:${cls}`, attributes: {}, createdBy: 1, ...extra });
   };
-  add(1, 'P0000001', 'Bolt M3x8', '볼트 M3x8', 'standard', 'C0101', { materialIri: 'mat:M000001', attributes: { '호칭 지름': 'M3', '길이(mm)': 8, 규격: 'ISO 4762' } });
-  add(2, 'P0000002', 'Bolt M4x10', '볼트 M4x10', 'standard', 'C0101', { materialIri: 'mat:M000001', attributes: { '호칭 지름': 'M4', '길이(mm)': 10, 규격: 'ISO 4762' } });
-  add(3, 'P0000100', 'HCR3A Body', 'HCR3A 본체', 'assembly', 'C0300');
-  add(4, 'P0000110', 'Base assembly', '베이스 조립품', 'assembly', 'C0302');
-  add(5, 'P0000111', 'Base housing', '베이스 하우징', 'part', 'C0401', { materialIri: 'mat:M000003', massKg: 1.84, massSource: 'cad_estimate' });
-  add(6, 'P0000112', 'Base cover', '베이스 커버', 'part', 'C0402', { materialIri: 'mat:M000003', massKg: 0.21, massSource: 'cad_estimate' });
-  add(7, 'P0000120', 'J1 joint module', 'J1 관절 모듈', 'assembly', 'C0301');
-  add(8, 'P0000121', 'J1 reducer', 'J1 감속기', 'purchased', 'C0501', { attributes: { 감속비: '100:1', '허용 순간 토크(N·m)': 147 } });
-  add(9, 'P0000122', 'Servo motor 400W', '서보 모터 400W', 'purchased', 'C0601', { attributes: { '정격 출력(W)': 400, '정격 전압(V)': 48 } });
-  add(10, 'P0000123', 'Absolute encoder', '절대값 엔코더', 'purchased', 'C0602', { attributes: { '분해능(bit)': 19 } });
-  add(11, 'P0000124', 'J1 housing', 'J1 하우징', 'part', 'C0401', { materialIri: 'mat:M000003', massKg: 0.96, massSource: 'cad_estimate' });
-  add(12, 'P0000130', 'J2 joint module', 'J2 관절 모듈', 'assembly', 'C0301');
-  add(13, 'P0000131', 'J2 reducer', 'J2 감속기', 'purchased', 'C0501', { attributes: { 감속비: '100:1' } });
-  add(14, 'P0000140', 'Cable harness', '케이블 하네스', 'purchased', 'C0603');
-  add(15, 'P0000150', 'J1 brake', 'J1 브레이크', 'purchased', 'C0604', { createdBy: 2 });
-  add(16, 'P0000200', 'HCR5A Body', 'HCR5A 본체', 'assembly', 'C0300');
-  add(17, 'P0000220', 'J1 joint module 5kg', 'J1 관절 모듈(5kg)', 'assembly', 'C0301');
-  add(18, 'P0000221', 'J1 reducer 5kg', 'J1 감속기(5kg)', 'purchased', 'C0501', { attributes: { 감속비: '120:1' } });
-  add(19, 'P0000113', 'Base cover (old)', '베이스 커버(구형)', 'part', 'C0402', { materialIri: 'mat:M000003' });
+  add(1, 'P-00000000001', 'Bolt M3x8', '볼트 M3x8', 'standard', 'C0101', { materialIri: 'mat:M000001', attributes: { '호칭 지름': 'M3', '길이(mm)': 8, 규격: 'ISO 4762' } });
+  add(2, 'P-00000000002', 'Bolt M4x10', '볼트 M4x10', 'standard', 'C0101', { materialIri: 'mat:M000001', attributes: { '호칭 지름': 'M4', '길이(mm)': 10, 규격: 'ISO 4762' } });
+  add(3, 'P-00000000100', 'HCR3A Body', 'HCR3A 본체', 'assembly', 'C0300');
+  add(4, 'P-00000000110', 'Base assembly', '베이스 조립품', 'assembly', 'C0302');
+  add(5, 'P-00000000111', 'Base housing', '베이스 하우징', 'part', 'C0401', { materialIri: 'mat:M000003', massKg: 1.84, massSource: 'cad_estimate' });
+  add(6, 'P-00000000112', 'Base cover', '베이스 커버', 'part', 'C0402', { materialIri: 'mat:M000003', massKg: 0.21, massSource: 'cad_estimate' });
+  add(7, 'P-00000000120', 'J1 joint module', 'J1 관절 모듈', 'assembly', 'C0301');
+  add(8, 'P-00000000121', 'J1 reducer', 'J1 감속기', 'purchased', 'C0501', { attributes: { 감속비: '100:1', '허용 순간 토크(N·m)': 147 } });
+  add(9, 'P-00000000122', 'Servo motor 400W', '서보 모터 400W', 'purchased', 'C0601', { attributes: { '정격 출력(W)': 400, '정격 전압(V)': 48 } });
+  add(10, 'P-00000000123', 'Absolute encoder', '절대값 엔코더', 'purchased', 'C0602', { attributes: { '분해능(bit)': 19 } });
+  add(11, 'P-00000000124', 'J1 housing', 'J1 하우징', 'part', 'C0401', { materialIri: 'mat:M000003', massKg: 0.96, massSource: 'cad_estimate' });
+  add(12, 'P-00000000130', 'J2 joint module', 'J2 관절 모듈', 'assembly', 'C0301');
+  add(13, 'P-00000000131', 'J2 reducer', 'J2 감속기', 'purchased', 'C0501', { attributes: { 감속비: '100:1' } });
+  add(14, 'P-00000000140', 'Cable harness', '케이블 하네스', 'purchased', 'C0603');
+  add(15, 'P-00000000150', 'J1 brake', 'J1 브레이크', 'purchased', 'C0604', { createdBy: 2 });
+  add(16, 'P-00000000200', 'HCR5A Body', 'HCR5A 본체', 'assembly', 'C0300');
+  add(17, 'P-00000000220', 'J1 joint module 5kg', 'J1 관절 모듈(5kg)', 'assembly', 'C0301');
+  add(18, 'P-00000000221', 'J1 reducer 5kg', 'J1 감속기(5kg)', 'purchased', 'C0501', { attributes: { 감속비: '120:1' } });
+  add(19, 'P-00000000113', 'Base cover (old)', '베이스 커버(구형)', 'part', 'C0402', { materialIri: 'mat:M000003' });
+  // CAD 스튜디오 예시(전자기기 케이스)와 맞춰 둔 보유 부품: 이름이 정확히 같으면 자동으로 확정된다
+  add(20, 'P-00000000160', 'Power button', '전원 버튼', 'purchased', 'C0605', { attributes: { 정격: '12V 50mA', 접점: 'NO' } });
+  add(21, 'P-00000000161', 'Battery pack', '배터리', 'purchased', 'C0606', { attributes: { 전압: '3.7V', 용량: '2000mAh' } });
 
   const revisions: Revision[] = [];
   let revId = 0;
@@ -133,16 +137,16 @@ export function createSeed(): MockDb {
   };
   const r: Record<string, number> = {};
   for (const it of items) {
-    if (['P0000100', 'P0000112', 'P0000150', 'P0000113'].includes(it.itemNo)) continue;
+    if (['P-00000000100', 'P-00000000112', 'P-00000000150', 'P-00000000113'].includes(it.itemNo)) continue;
     r[it.itemNo] = rev(it.id, 'R00', 0, 'released', { changeNote: '최초 승인' });
   }
-  r['P0000100/R00'] = rev(3, 'R00', 0, 'obsolete', { changeNote: '최초 승인' });
-  r['P0000100'] = rev(3, 'R01', 1, 'released', { changeNote: 'J2 관절 모듈 추가', releasedAt: '2026-09-28T11:00:00+09:00' });
-  r['P0000100/R02'] = rev(3, 'R02', 2, 'wip', { changeNote: 'J1 브레이크 추가 (설계 중)', createdBy: 2, createdAt: '2026-10-20T10:00:00+09:00' });
-  r['P0000112'] = rev(6, 'R00', 0, 'released', { changeNote: '최초 승인' });
-  r['P0000112/R01'] = rev(6, 'R01', 1, 'in_review', { changeNote: '보강 리브 추가', createdBy: 2, createdAt: '2026-10-18T14:00:00+09:00' });
-  r['P0000150'] = rev(15, 'R00', 0, 'wip', { changeNote: '신규 등록', createdBy: 2, createdAt: '2026-10-19T09:30:00+09:00' });
-  r['P0000113'] = rev(19, 'R00', 0, 'obsolete', { changeNote: '베이스 커버(P0000112)로 대체' });
+  r['P-00000000100/R00'] = rev(3, 'R00', 0, 'obsolete', { changeNote: '최초 승인' });
+  r['P-00000000100'] = rev(3, 'R01', 1, 'released', { changeNote: 'J2 관절 모듈 추가', releasedAt: '2026-09-28T11:00:00+09:00' });
+  r['P-00000000100/R02'] = rev(3, 'R02', 2, 'wip', { changeNote: 'J1 브레이크 추가 (설계 중)', createdBy: 2, createdAt: '2026-10-20T10:00:00+09:00' });
+  r['P-00000000112'] = rev(6, 'R00', 0, 'released', { changeNote: '최초 승인' });
+  r['P-00000000112/R01'] = rev(6, 'R01', 1, 'in_review', { changeNote: '보강 리브 추가', createdBy: 2, createdAt: '2026-10-18T14:00:00+09:00' });
+  r['P-00000000150'] = rev(15, 'R00', 0, 'wip', { changeNote: '신규 등록', createdBy: 2, createdAt: '2026-10-19T09:30:00+09:00' });
+  r['P-00000000113'] = rev(19, 'R00', 0, 'obsolete', { changeNote: '베이스 커버(P-00000000112)로 대체' });
 
   const byNo = (no: string) => items.find(i => i.itemNo === no)!.id;
   const bomLines: MockBomLine[] = [];
@@ -151,14 +155,14 @@ export function createSeed(): MockDb {
       bomLines.push({ id: bomLines.length + 1, parentRevisionId: r[parent]!, childItemId: byNo(child), quantity: qty, findNo: i + 1 });
     });
   };
-  bom('P0000100/R00', [['P0000110', 1], ['P0000120', 1], ['P0000140', 1]]);
-  bom('P0000100', [['P0000110', 1], ['P0000120', 1], ['P0000130', 1], ['P0000140', 1]]);
-  bom('P0000100/R02', [['P0000110', 1], ['P0000120', 1], ['P0000130', 1], ['P0000140', 1], ['P0000150', 1]]);
-  bom('P0000110', [['P0000111', 1], ['P0000112', 1], ['P0000002', 8]]);
-  bom('P0000120', [['P0000121', 1], ['P0000122', 1], ['P0000123', 1], ['P0000124', 1], ['P0000001', 12], ['P0000002', 6]]);
-  bom('P0000130', [['P0000131', 1], ['P0000122', 1], ['P0000123', 1], ['P0000001', 12]]);
-  bom('P0000200', [['P0000110', 1], ['P0000220', 1], ['P0000140', 1]]);
-  bom('P0000220', [['P0000221', 1], ['P0000122', 1], ['P0000123', 1], ['P0000124', 1], ['P0000001', 16]]);
+  bom('P-00000000100/R00', [['P-00000000110', 1], ['P-00000000120', 1], ['P-00000000140', 1]]);
+  bom('P-00000000100', [['P-00000000110', 1], ['P-00000000120', 1], ['P-00000000130', 1], ['P-00000000140', 1]]);
+  bom('P-00000000100/R02', [['P-00000000110', 1], ['P-00000000120', 1], ['P-00000000130', 1], ['P-00000000140', 1], ['P-00000000150', 1]]);
+  bom('P-00000000110', [['P-00000000111', 1], ['P-00000000112', 1], ['P-00000000002', 8]]);
+  bom('P-00000000120', [['P-00000000121', 1], ['P-00000000122', 1], ['P-00000000123', 1], ['P-00000000124', 1], ['P-00000000001', 12], ['P-00000000002', 6]]);
+  bom('P-00000000130', [['P-00000000131', 1], ['P-00000000122', 1], ['P-00000000123', 1], ['P-00000000001', 12]]);
+  bom('P-00000000200', [['P-00000000110', 1], ['P-00000000220', 1], ['P-00000000140', 1]]);
+  bom('P-00000000220', [['P-00000000221', 1], ['P-00000000122', 1], ['P-00000000123', 1], ['P-00000000124', 1], ['P-00000000001', 16]]);
 
   const identifiers: MockDb['identifiers'] = [
     { itemId: 1, scheme: 'legacy', value: 'BLT-0038' }, { itemId: 1, scheme: 'cad_name', value: 'M3x8' },
@@ -168,6 +172,7 @@ export function createSeed(): MockDb {
     { itemId: 8, scheme: 'supplier', value: 'SUP-A:RG20-100' }, { itemId: 8, scheme: 'erp', value: 'ERP-77121' },
     { itemId: 9, scheme: 'supplier', value: 'SUP-B:SM400-48' }, { itemId: 9, scheme: 'erp', value: 'ERP-77122' },
     { itemId: 11, scheme: 'drawing', value: 'DWG-0124' },
+    { itemId: 1, scheme: 'cad_name', value: '기판 나사 M3' },
   ];
 
   const inv = (itemId: number, source: 'ERP' | 'MES', site: string, location: string, onHand: number, alloc: number) =>
@@ -188,33 +193,33 @@ export function createSeed(): MockDb {
     { id: 5, docNo: 'D-CAD-0120', title: 'J1 관절 모듈 3D', docType: 'cad_3d', rev: 'R00', fileName: 'J1_module_HCR3A_R00_3D.stp' },
   ];
   const docLinks: MockDocLink[] = [
-    { revisionId: r['P0000100']!, documentId: 1, linkType: 'cad_model', pinned: true, matchMethod: 'filename', confidence: 1, status: 'confirmed' },
-    { revisionId: r['P0000100']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'manual', status: 'confirmed' },
-    { revisionId: r['P0000100']!, documentId: 3, linkType: 'manual', pinned: false, matchMethod: 'manual', status: 'confirmed' },
-    { revisionId: r['P0000120']!, documentId: 5, linkType: 'cad_model', pinned: true, matchMethod: 'step_product', confidence: 1, status: 'confirmed' },
-    { revisionId: r['P0000120']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.82, status: 'suggested' },
-    { revisionId: r['P0000121']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.88, status: 'confirmed' },
-    { revisionId: r['P0000121']!, documentId: 3, linkType: 'manual', pinned: false, matchMethod: 'text_search', confidence: 0.74, status: 'suggested' },
-    { revisionId: r['P0000124']!, documentId: 4, linkType: 'drawing', pinned: true, matchMethod: 'filename', confidence: 1, status: 'confirmed' },
-    { revisionId: r['P0000001']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.79, status: 'confirmed' },
+    { revisionId: r['P-00000000100']!, documentId: 1, linkType: 'cad_model', pinned: true, matchMethod: 'filename', confidence: 1, status: 'confirmed' },
+    { revisionId: r['P-00000000100']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'manual', status: 'confirmed' },
+    { revisionId: r['P-00000000100']!, documentId: 3, linkType: 'manual', pinned: false, matchMethod: 'manual', status: 'confirmed' },
+    { revisionId: r['P-00000000120']!, documentId: 5, linkType: 'cad_model', pinned: true, matchMethod: 'step_product', confidence: 1, status: 'confirmed' },
+    { revisionId: r['P-00000000120']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.82, status: 'suggested' },
+    { revisionId: r['P-00000000121']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.88, status: 'confirmed' },
+    { revisionId: r['P-00000000121']!, documentId: 3, linkType: 'manual', pinned: false, matchMethod: 'text_search', confidence: 0.74, status: 'suggested' },
+    { revisionId: r['P-00000000124']!, documentId: 4, linkType: 'drawing', pinned: true, matchMethod: 'filename', confidence: 1, status: 'confirmed' },
+    { revisionId: r['P-00000000001']!, documentId: 2, linkType: 'spec', pinned: false, matchMethod: 'text_search', confidence: 0.79, status: 'confirmed' },
   ];
   const passages: MockPassage[] = [
-    { id: 1, revisionId: r['P0000121']!, purpose: 'definition', documentId: 2, pageNo: 12, score: 8.4, status: 'confirmed', productScope: [],
+    { id: 1, revisionId: r['P-00000000121']!, purpose: 'definition', documentId: 2, pageNo: 12, score: 8.4, status: 'confirmed', productScope: [],
       hitTerms: ['J1', '감속기'],
       text: 'J1 감속기는 서보 모터의 회전을 100:1로 감속해 베이스에 대한 J1 관절 회전을 만든다. 허용 순간 토크는 147 N·m이다.' },
-    { id: 2, revisionId: r['P0000121']!, purpose: 'assembly', mateItemNo: 'P0000124', documentId: 3, pageNo: 34, score: 7.1, status: 'suggested', productScope: ['HCR3A'],
+    { id: 2, revisionId: r['P-00000000121']!, purpose: 'assembly', mateItemNo: 'P-00000000124', documentId: 3, pageNo: 34, score: 7.1, status: 'suggested', productScope: ['HCR3A'],
       hitTerms: ['J1', '감속기', '하우징'],
       text: 'J1 감속기 출력 플랜지를 J1 하우징의 맞춤 핀에 맞추고, M3 볼트 12개를 대각선 순서로 1.2 N·m로 체결한다.' },
-    { id: 3, revisionId: r['P0000121']!, purpose: 'disassembly', mateItemNo: 'P0000122', documentId: 3, pageNo: 41, score: 6.3, status: 'suggested', productScope: ['HCR3A'],
+    { id: 3, revisionId: r['P-00000000121']!, purpose: 'disassembly', mateItemNo: 'P-00000000122', documentId: 3, pageNo: 41, score: 6.3, status: 'suggested', productScope: ['HCR3A'],
       hitTerms: ['감속기', '모터'],
       text: '서보 모터를 분리하기 전에 브레이크를 해제하고 J1 축을 기구적으로 고정한다. 모터 축과 감속기 입력부를 잇는 볼트를 먼저 푼다.' },
-    { id: 4, revisionId: r['P0000221']!, purpose: 'definition', documentId: 2, pageNo: 13, score: 8.0, status: 'confirmed', productScope: ['HCR5A'],
+    { id: 4, revisionId: r['P-00000000221']!, purpose: 'definition', documentId: 2, pageNo: 13, score: 8.0, status: 'confirmed', productScope: ['HCR5A'],
       hitTerms: ['J1', '감속기'],
       text: 'HCR5A의 J1 감속기는 감속비 120:1로, 5 kg 가반하중에서 허용 순간 토크 196 N·m를 낸다.' },
-    { id: 5, revisionId: r['P0000001']!, purpose: 'definition', documentId: 2, pageNo: 58, score: 5.2, status: 'confirmed', productScope: [],
+    { id: 5, revisionId: r['P-00000000001']!, purpose: 'definition', documentId: 2, pageNo: 58, score: 5.2, status: 'confirmed', productScope: [],
       hitTerms: ['M3', '볼트'],
       text: 'M3×8 육각 홈붙이 볼트(SUS304)는 관절 하우징과 감속기 체결에 쓴다. 재사용하지 않는다.' },
-    { id: 6, revisionId: r['P0000120']!, purpose: 'definition', documentId: 2, pageNo: 11, score: 7.6, status: 'suggested', productScope: [],
+    { id: 6, revisionId: r['P-00000000120']!, purpose: 'definition', documentId: 2, pageNo: 11, score: 7.6, status: 'suggested', productScope: [],
       hitTerms: ['J1', '관절'],
       text: 'J1 관절 모듈은 베이스 위에서 로봇 전체를 수직축으로 회전시키며, 감속기 · 서보 모터 · 엔코더 · 하우징으로 이루어진다.' },
   ];
@@ -225,17 +230,17 @@ export function createSeed(): MockDb {
     { id: 2, sourceSystem: 'PLM', status: 'submitted', requestedBy: 2, createdAt: '2026-10-21T10:00:00+09:00', updatedAt: '2026-10-21T10:05:00+09:00',
       payload: { name: 'Cable clamp', nameKo: '케이블 클램프', itemType: 'purchased', unit: 'EA', classIri: 'cls:C0100',
                  aliases: [{ scheme: 'supplier', value: 'SUP-C:CC-12' }] },
-      duplicateCheck: [{ itemNo: 'P0000140', name: 'Cable harness', method: 'fuzzy', score: 0.42 }] },
+      duplicateCheck: [{ itemNo: 'P-00000000140', name: 'Cable harness', method: 'fuzzy', score: 0.42 }] },
     { id: 3, sourceSystem: 'AGENT', status: 'draft', requestedBy: 1, classProposalId: 1, createdAt: '2026-10-22T02:13:00+09:00', updatedAt: '2026-10-22T02:13:00+09:00',
       payload: { name: 'Self tapping screw M3x6', nameKo: '셀프태핑 나사 M3x6', itemType: 'standard', unit: 'EA', materialIri: 'mat:M000001',
                  aliases: [{ scheme: 'cad_name', value: 'ST_M3x6' }], note: '분류 에이전트가 HCR3A 설명서 34쪽에서 찾은 부품' } },
-    { id: 4, sourceSystem: 'PDM', status: 'approved', requestedBy: 2, reviewedBy: 1, issuedItemNo: 'P0000150',
+    { id: 4, sourceSystem: 'PDM', status: 'approved', requestedBy: 2, reviewedBy: 1, issuedItemNo: 'P-00000000150',
       createdAt: '2026-10-19T09:00:00+09:00', updatedAt: '2026-10-19T09:30:00+09:00',
       payload: { name: 'J1 brake', nameKo: 'J1 브레이크', itemType: 'purchased', unit: 'EA', classIri: 'cls:C0604' } },
     { id: 5, sourceSystem: 'PDM', status: 'rejected', requestedBy: 2, reviewedBy: 1, reviewNote: 'P0000001과 같은 부품입니다. 기존 품번을 쓰세요.',
       createdAt: '2026-10-15T13:00:00+09:00', updatedAt: '2026-10-15T15:00:00+09:00',
       payload: { name: 'Hex socket bolt M3 8mm', nameKo: '육각 홈붙이 볼트 M3 8', itemType: 'standard', unit: 'EA', classIri: 'cls:C0101' },
-      duplicateCheck: [{ itemNo: 'P0000001', name: 'Bolt M3x8', method: 'fuzzy', score: 0.61 }] },
+      duplicateCheck: [{ itemNo: 'P-00000000001', name: 'Bolt M3x8', method: 'fuzzy', score: 0.61 }] },
   ];
 
   const classProposals: ClassProposal[] = [
@@ -263,16 +268,16 @@ export function createSeed(): MockDb {
   ];
 
   const outbox: OutboxRow[] = [
-    { id: 1, aggregate: 'item_revision', target: 'P0000100 R01', event: 'released', createdAt: '2026-09-28T11:00:00+09:00', publishedAt: '2026-09-28T11:00:02+09:00', attempts: 1 },
-    { id: 2, aggregate: 'item', target: 'P0000001', event: 'updated', createdAt: '2026-10-02T09:12:00+09:00', publishedAt: '2026-10-02T09:12:01+09:00', attempts: 1 },
+    { id: 1, aggregate: 'item_revision', target: 'P-00000000100 R01', event: 'released', createdAt: '2026-09-28T11:00:00+09:00', publishedAt: '2026-09-28T11:00:02+09:00', attempts: 1 },
+    { id: 2, aggregate: 'item', target: 'P-00000000001', event: 'updated', createdAt: '2026-10-02T09:12:00+09:00', publishedAt: '2026-10-02T09:12:01+09:00', attempts: 1 },
     { id: 3, aggregate: 'class', target: 'cls:C0604 브레이크', event: 'approved', createdAt: '2026-10-18T17:20:00+09:00', publishedAt: '2026-10-18T17:20:03+09:00', attempts: 1 },
-    { id: 4, aggregate: 'item_revision', target: 'P0000220 R00', event: 'released', createdAt: '2026-10-22T18:40:00+09:00', attempts: 3, lastError: 'GraphDB 503 Service Unavailable' },
-    { id: 5, aggregate: 'item', target: 'P0000122', event: 'updated', createdAt: '2026-10-23T08:55:00+09:00', attempts: 0 },
+    { id: 4, aggregate: 'item_revision', target: 'P-00000000220 R00', event: 'released', createdAt: '2026-10-22T18:40:00+09:00', attempts: 3, lastError: 'GraphDB 503 Service Unavailable' },
+    { id: 5, aggregate: 'item', target: 'P-00000000122', event: 'updated', createdAt: '2026-10-23T08:55:00+09:00', attempts: 0 },
   ];
 
   const products: Product[] = [
-    { id: 1, code: 'HCR3A', name: '협동로봇 3 kg', description: '가반하중 3 kg, 작업 반경 630 mm', rootItemNo: 'P0000100' },
-    { id: 2, code: 'HCR5A', name: '협동로봇 5 kg', description: '가반하중 5 kg, 작업 반경 915 mm', rootItemNo: 'P0000200' },
+    { id: 1, code: 'HCR3A', name: '협동로봇 3 kg', description: '가반하중 3 kg, 작업 반경 630 mm', rootItemNo: 'P-00000000100' },
+    { id: 2, code: 'HCR5A', name: '협동로봇 5 kg', description: '가반하중 5 kg, 작업 반경 915 mm', rootItemNo: 'P-00000000200' },
   ];
 
   return {

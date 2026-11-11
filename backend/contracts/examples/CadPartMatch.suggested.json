@@ -1,0 +1,14 @@
+{
+  "name": "기판 나사 M3",
+  "status": "suggested",
+  "item_no": "P-00000000001",
+  "item_name": "볼트 M3x8",
+  "method": "cad_name",
+  "score": 0.97,
+  "class_iri": "cls:C0101",
+  "class_label": "볼트",
+  "class_path": [
+    "체결류",
+    "볼트"
+  ]
+}

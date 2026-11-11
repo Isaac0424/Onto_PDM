@@ -7,8 +7,10 @@ CAD 파일 · 사양서 · 설명서 · BOM을 **품번** 기준으로 묶어 �
 | PDM 웹 화면 | [web/](web/) | React + TypeScript + Vite. 지금은 목(mock) 데이터로 동작 |
 | DB 스키마 · 권한 | [db/](db/) | PostgreSQL 15 이상. 테스트 포함 |
 | 온톨로지 · 검사 규칙 | [ontology/](ontology/) | GraphDB용 TBox, SHACL, 예시 데이터. 검사 스크립트 포함 |
+| Neo4j 그래프 모델 | [neo4j/](neo4j/) | 위 온톨로지를 OPMS와 같은 Neo4j(LPG)로 옮긴 것. 스키마 · 검사 규칙 · 질의 ([설계](docs/neo4j-lpg-design.md)) |
 | 3D 분해도 뷰어 | [src/](src/) | explode-studio 라이브러리. 웹 화면의 3D 탭이 이걸 쓴다 ([아래](#분해도-스튜디오-explode-studio)) |
 | AI 이름 · 설명 서버 | [server/](server/) | Claude API를 부르는 예제 서버 (선택) |
+| 파일 보관소 | [server/files-server.mjs](server/files-server.mjs) | 올린 CAD · BOM · 사양서 원본을 DB 밖에 따로 보관. OPMS와 폴더를 나눈다 ([아래](#파일-보관소)) |
 | 설계 문서 | [docs/](docs/) | PDM, 통합 품번 · 온톨로지 · 분류 에이전트 |
 
 ## Quick Start
@@ -40,6 +42,19 @@ pnpm dev             # http://localhost:5173
 
 자세한 내용은 [web/README.md](web/README.md)에 있어요.
 
+## 파일 보관소
+
+CAD · BOM · 사양서를 올리면 원본은 DB가 아니라 **파일 보관소**(`PDM_VAULT_DIR`)에 내용 해시(sha256) 이름으로 저장돼요. 같은 파일을 다시 올려도 저장은 한 번이고, 올린 기록(원래 이름 · 종류 · 시각)은 `manifest.jsonl`에 줄 단위로 남아요. DB(`file_object` · `document_file`)에는 메타데이터만 둬요.
+
+```bash
+node server/files-server.mjs     # http://127.0.0.1:8788/api/files  (.env의 PDM_VAULT_DIR · FILES_PORT)
+node --test server/vault.test.mjs
+```
+
+- 웹 개발 서버는 `/api/files`를 이 서버로 넘겨요. CAD 스튜디오의 **CAD · 사양서 · BOM 올리기**가 화면에서 여는 것과 별개로 원본을 보관소에 저장해요.
+- 받는 형식: CAD `step stp iges igs stl obj glb gltf`, BOM `xlsx csv`, 사양서 `pdf txt md`. 기본 최대 200MB.
+- **OPMS와 공유**: 보관소는 두 저장소 밖의 폴더(`.env.example` 참고)라 OPMS가 같은 경로를 읽을 수 있어요. 쓰는 쪽은 PDM 하나, OPMS는 읽기만 해요. OPMS의 `SOURCE_STORE_DIR`(`data/uploads`)과는 섞지 않아요. OPMS의 `registry reconcile`이 자기 행에 없는 파일을 고아로 보고하기 때문이에요.
+
 ## 테스트
 
 | 대상 | 위치 | 명령 | 준비 |
@@ -49,6 +64,8 @@ pnpm dev             # http://localhost:5173
 | DB 스키마 · 권한 | `db/` | `pnpm install` 후 `pnpm test` | 없음 (메모리 안 PostgreSQL인 PGlite로 돈다) |
 | DB + 실제 서버 · 동시성 | `db/` | `PGTEST_URL=… pnpm test` | PostgreSQL 15 이상, 슈퍼유저 계정 |
 | 온톨로지 | 저장소 루트 | `python ontology/tests/check_ontology.py` | Python 패키지 설치 (아래) |
+| Neo4j 그래프 모델 | 저장소 루트 | `python neo4j/test/verify.py` | Docker (일회용 Neo4j 컨테이너를 띄웠다 지움) |
+| 파일 보관소 | 저장소 루트 | `node --test server/vault.test.mjs` | 없음 |
 
 **웹**: 단위 · 화면 테스트는 목 API의 권한 규칙과 주요 화면을 확인해요. E2E는 다음을 확인해요.
 
@@ -126,6 +143,8 @@ db/               PostgreSQL 스키마(schema.sql) · 접근 권한(roles.sql)
   test/           스키마 · 권한 · 동시성 테스트 (node:test)
 ontology/         GraphDB용 핵심 온톨로지(core.ttl) · SHACL 규칙 · 예시 데이터
   tests/          온톨로지 검사 스크립트
+neo4j/            Neo4j(LPG) 스키마 · 예시 데이터 · 검사 규칙 · 질의
+  test/           일회용 Neo4j 컨테이너에서 확인하는 verify.py
 docs/             PDM · 통합 품번 · 온톨로지 · 분류 에이전트 설계 문서
 standards/        ECLASS · IEC CDD 원본을 두는 곳 (git 제외, README만 올림)
 src/              explode-studio (3D 분해도 뷰어) — 아래 절 참고
@@ -137,8 +156,15 @@ tools/            explode-studio 소스 생성 스크립트
 
 ## 설계 문서와 표준
 
+- [docs/attribute-extraction.md](docs/attribute-extraction.md): 속성 추출(CAD · 이름 · 사양서 · BOM 시트): 근거 · 신뢰도 · 한계 · 사람이 확정하는 흐름
+- [docs/mes-handoff.md](docs/mes-handoff.md): MES 발행 묶음(JSON · CSV) 형식과 규칙
+- [backend/README.md](backend/README.md): FastAPI 백엔드 · Neo4j 그래프 발행기 (설치 · 실행 · 시험)
+- [docs/PRD.md](docs/PRD.md): **제품 요구사항(PRD)**: 목표 · 기능 요구(ID · 우선순위 · 상태) · 속성 추출 가능 범위 · 단계 계획 · 열린 질문
 - [docs/pdm-design.md](docs/pdm-design.md): 기능 · 프로세스 · 매칭 규칙 · DB · 트랜잭션과 동시성 · API
 - [docs/integration-ontology-design.md](docs/integration-ontology-design.md): 통합 품번 · ERP/MES 공개 · GraphDB 온톨로지 · 분류 에이전트
+- [docs/neo4j-lpg-design.md](docs/neo4j-lpg-design.md): 같은 Neo4j를 OPMS와 쓰기 위한 RDF → LPG 대응 · 검사 · 질의 · OPMS와 정할 것
+- [docs/backend-plan.md](docs/backend-plan.md): OPMS와 백엔드를 공유하는 구현 계획 (결정 · 단계 · 위험 · OPMS에 요청할 변경)
+- [docs/assembly-rules-spec.md](docs/assembly-rules-spec.md): 조립 규칙 사양 (가상 회사 목업) · 필요한 문서 · 공정 용어 · MES와의 역할 · 온톨로지 구조
 - [standards/README.md](standards/README.md): ECLASS 무료판 받기, IEC CDD 무료 범위
 
 ---
@@ -148,7 +174,7 @@ tools/            explode-studio 소스 생성 스크립트
 CAD 파일(STEP · IGES · STL · OBJ · GLB)을 올리면 3D로 띄우고, 조립 구조를 따라 분해 모션으로 보여 주는 웹 컴포넌트예요. claude.ai에서 쓰던 "분해도 스튜디오"와 **같은 코드**에서 만들어져서 기능이 똑같아요.
 
 - 조립 구조 분해 모션: 하위 조립품 사슬, 맞닿은 축 방향 분리, 볼트는 박힌 방향으로 빠짐, 층 1~최대
-- 기준 부품으로 X·Y·Z 축 정렬, 시점 고정, 시점 정렬
+- 기준 부품으로 X·Y·Z 축 정렬, 시점 고정, 시점 맞추기(더블클릭)
 - 도면 번호 표시 + 층·부품 목록 하나로 연동, 부품 클릭 → 정보 패널
 - 모델명·부품명·조립품명으로 사양서(PDF·TXT)를 검색해 부품 정의와 결합 대상별 조립·분해 절차를 추리고, 근거 구절을 함께 표시
 - 선택적으로 AI를 연결해 한글 부품 이름과 설명을 생성 (`원래이름 [한글]`)
@@ -219,6 +245,10 @@ onBeforeUnmount(() => api.destroy());
 | `fonts` | `true` | IBM Plex 글꼴을 Google Fonts에서 불러올지 |
 | `title` | `'분해도 스튜디오'` | 상단 제목 |
 | `sampleStepUrl` | `null` | 예시 STEP 버튼에 연결할 파일 주소 (없으면 버튼 숨김) |
+| `skin` | `'holo'` | `'holo'`(남색 + 시안) · `'glass'`(밝은 글래스 + 시안 선, PDM 웹이 쓴다) · `'classic'`(어두운 놋쇠색) |
+| `chrome` | `true` | `false`면 3D 무대 · 설명 · 조작 버튼만 그린다. 제목 줄 · 파일 올리기 · 부품 목록은 호스트 화면이 맡는다 |
+| `axes` | `true` | `false`면 빨강 · 초록 · 파랑 기준 축 표시를 그리지 않는다 |
+| `pan` | `true` | `false`면 오른쪽 버튼 · 두 손가락 이동이 없고 무대 위에서 브라우저 메뉴가 열리지 않는다 |
 
 AI 연결 없이도 사양서에서 부품별 설명·조립 절차와 근거 구절을 찾을 수 있어요. AI 연결은 한글 이름과 생성형 설명이 필요할 때 선택해서 설정하면 돼요.
 
@@ -228,12 +258,14 @@ AI 연결 없이도 사양서에서 부품별 설명·조립 절차와 근거 �
 |---|---|
 | `loadFile(file)` / `loadUrl(url, name?)` | 모델 열기 (조립 상태로 열림) |
 | `loadSpec(file)` | 사양서 PDF·TXT 읽기 → 모델·부품별 정의 및 결합 대상별 조립·분해 절차와 근거 구절 검색 |
-| `explode()` / `assemble()` / `next()` / `prev()` / `go(step)` / `play()` | 분해·조립·단계 이동 |
+| `explode()` / `assemble()` / `next()` / `prev()` / `go(step)` / `play()` | 분해·조립·단계 이동. `play()`는 켜고 끄는 토글 |
+| `replay()` / `setSpin(on)` | 처음부터 다시 재생(토글 아님) / 자동 회전 켜고 끄기 |
 | `setLayerCount(n)` | 층 개수 (1 ~ 최대) |
 | `selectPart(이름 또는 id)` | 부품 선택 + 시점 이동 + 정보 패널 |
-| `alignView()` | 시점 정렬 |
+| `alignView()` | 시점 맞추기 (화면에서는 부품을 더블클릭, 빈 곳을 더블클릭하면 전체) |
 | `runAi()` | AI 이름·설명 한 번에 붙이기 (제품별 캐시) |
 | `getState()` | 현재 상태 |
+| `getParts()` / `getLayers()` | 모델의 부품(이름 · CAD 경로 · 층)과 조립 단계(층)를 읽는다 |
 | `on('model' \| 'step' \| 'select', fn)` | 이벤트 구독 (해제 함수 반환) |
 | `destroy()` | 정리 (렌더러·워커·이벤트 해제) |
 

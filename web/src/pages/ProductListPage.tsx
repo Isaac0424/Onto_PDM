@@ -30,6 +30,7 @@ export function ProductListPage() {
                     <dd><Link className="mono" to={`/items/${p.rootItemNo}`}>{p.rootItemNo}</Link></dd>
                   </dl>
                   <div className="row">
+                    <Link className="btn btn-sm btn-primary" to={`/products/${p.code}`}>연결 보기</Link>
                     <Link className="btn btn-sm" to={`/items/${p.rootItemNo}?tab=bom`}>BOM 보기</Link>
                     <Link className="btn btn-sm" to={`/items?product=${p.id}`}>이 제품의 품목</Link>
                   </div>

@@ -4,10 +4,13 @@
 //   품번 발급(등록 요청 승인)과 분류 제안 검토는 관리자 모드만 한다.
 import {
   ApiError,
-  type BomNode, type BomRule, type DocumentLink, type DuplicateCandidate, type Item, type ItemDetail,
+  type AssemblyPartInput, type BomNode, type BomRule, type BomSheetRowInput, type CadPartMatch, type DocumentLink, type DuplicateCandidate, type Item, type ItemDetail,
   type ItemQuery, type ItemSummary, type PartRequest, type PartRequestPayload, type Passage, type PdmApi, type Revision,
   type WhereUsedRow,
 } from '../types';
+import { describeRule, guideFor, ruleMatches, summarizeRules, validateRules } from './assemblyRules';
+import { matchBomSheet } from './bomSheetApi';
+import { createMesStore } from './mesApi';
 import { createSeed, type MockDb } from './seed';
 
 export interface Session {
@@ -191,6 +194,7 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
       .forEach(r => { r.payload.classIri = classIri; r.updatedAt = now(); });
   };
 
+  const mes = createMesStore();
   const api: PdmApi & { reset(): void } = {
     reset() {
       db = createSeed();
@@ -238,6 +242,90 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
         products: db.products.filter(p => usedBy.has(p.rootItemNo)),
       };
       return wait(detail);
+    },
+
+    async matchCadParts(names: string[]) {
+      const visible = db.items.filter(canSeeItem);
+      const aliasesOf = (id: number) => db.identifiers.filter(x => x.itemId === id);
+      const partClasses = db.classes.filter(c => c.kind === 'part');
+      const classPath = (iri: string): string[] => {
+        const out: string[] = [];
+        for (let c = db.classes.find(x => x.iri === iri); c; c = db.classes.find(x => x.iri === c!.parentIri)) out.unshift(c.labelKo);
+        return out;
+      };
+      // 이름으로 분류를 추정한다: 분류 이름이 그대로 들어 있거나, 흔한 동의어(나사 → 볼트)
+      const SYNONYMS: [RegExp, string][] = [[/나사|볼트|screw|bolt/i, '볼트'], [/모터/, '서보 모터'], [/감속/, '감속기']];
+      const classFor = (name: string) => {
+        const direct = partClasses
+          .filter(c => name.includes(c.labelKo) || (c.labelEn && name.toLowerCase().includes(c.labelEn.toLowerCase())))
+          .sort((a, b) => b.labelKo.length - a.labelKo.length)[0];
+        if (direct) return direct;
+        const hit = SYNONYMS.find(([re]) => re.test(name));
+        return hit && partClasses.find(c => c.labelKo === hit[1]);
+      };
+
+      const matchOne = (raw: string): CadPartMatch => {
+        const name = raw.trim();
+        const lower = name.toLowerCase();
+        const key = normKey(name);
+        const result = (it: Item, method: CadPartMatch['method'], score: number, status: 'matched' | 'suggested'): CadPartMatch => {
+          const cls = db.classes.find(c => c.iri === it.classIri);
+          return {
+            name: raw, status, itemNo: it.itemNo, itemName: it.nameKo ?? it.name, method, score,
+            ...(cls ? { classIri: cls.iri, classLabel: cls.labelKo, classPath: classPath(cls.iri) } : {}),
+          };
+        };
+
+        for (const it of visible) {
+          if ([it.itemNo, it.name, it.nameKo ?? ''].some(v => v.toLowerCase() === lower)) return result(it, 'exact', 1, 'matched');
+        }
+        for (const it of visible) {
+          if (aliasesOf(it.id).some(a => a.scheme !== 'cad_name' && a.value.toLowerCase() === lower)) return result(it, 'alias', 1, 'matched');
+        }
+        for (const it of visible) {
+          if (aliasesOf(it.id).some(a => a.scheme === 'cad_name' && a.value.toLowerCase() === lower)) return result(it, 'cad_name', 0.97, 'suggested');
+        }
+        for (const it of visible) {
+          if ([it.itemNo, it.name, it.nameKo ?? ''].some(v => v && normKey(v) === key)) return result(it, 'normalized', 0.95, 'suggested');
+        }
+        // 유사도: 설계는 0.3 이상이지만 목 데이터는 이름이 짧아 0.5 로 올렸다
+        let best: { it: Item; score: number } | undefined;
+        for (const it of visible) {
+          const score = Math.max(similarity(name, it.name), it.nameKo ? similarity(name, it.nameKo) : 0);
+          if (score >= 0.5 && (!best || score > best.score)) best = { it, score };
+        }
+        if (best) return result(best.it, 'fuzzy', Math.round(best.score * 100) / 100, 'suggested');
+
+        const cls = classFor(name);
+        return {
+          name: raw, status: 'none',
+          ...(cls ? { classIri: cls.iri, classLabel: cls.labelKo, classPath: classPath(cls.iri) } : {}),
+        };
+      };
+      return wait(names.map(matchOne));
+    },
+
+    async getAssemblyGuides(parts: AssemblyPartInput[]) {
+      return wait(parts.flatMap(p => guideFor(p) ?? []));
+    },
+
+    async listAssemblyRules() { return wait(summarizeRules()); },
+
+    async validateAssemblyRules() { return wait(validateRules()); },
+
+    async buildMesPackage(productCode: string, rule: BomRule) { return mes.buildPackage(api, productCode, rule); },
+    async listMesPublications() { return wait(await mes.list()); },
+    async publishMes(productCode: string, rule: BomRule) { return mes.publish(api, productCode, rule); },
+
+    async matchBomSheet(rows: BomSheetRowInput[]) { return wait(await matchBomSheet(api, rows)); },
+
+    async getAssemblyRule(id: string) {
+      const rule = describeRule(id);
+      if (!rule) throw new ApiError('규칙을 찾을 수 없습니다', 404);
+      const usedBy = db.items.filter(canSeeItem)
+        .filter(it => ruleMatches(id, it.nameKo ?? it.name))
+        .map(it => ({ itemNo: it.itemNo, name: it.nameKo ?? it.name }));
+      return wait({ ...rule, usedBy });
     },
 
     async getBom(revisionId: number, rule: BomRule) {
@@ -327,7 +415,7 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
         a.scheme !== 'cad_name' && db.identifiers.some(x => x.scheme === a.scheme && x.value === a.value));
       if (clash) throw new ApiError(`별칭 ${clash.value}(${clash.scheme})이(가) 이미 다른 품목에 있습니다`, 409);
 
-      const itemNo = `P${String(db.nextItemNo).padStart(7, '0')}`;
+      const itemNo = `P-${String(db.nextItemNo).padStart(11, '0')}`;
       db.nextItemNo += 1;
       const itemId = Math.max(...db.items.map(i => i.id)) + 1;
       db.items.push({

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -22,8 +22,8 @@ describe('화면', () => {
   it('품목 목록과 별칭 검색', async () => {
     renderApp('/items?q=BLT-0038');
     const table = await screen.findByRole('table', { name: '품목 목록' });
-    expect(within(table).getByText('P0000001')).toBeInTheDocument();
-    expect(within(table).queryByText('P0000002')).not.toBeInTheDocument();
+    expect(within(table).getByText('P-00000000001')).toBeInTheDocument();
+    expect(within(table).queryByText('P-00000000002')).not.toBeInTheDocument();
   });
 
   it('엔지니어에게는 관리자 메뉴가 없고, 관리자 화면은 막힌다', async () => {
@@ -35,11 +35,11 @@ describe('화면', () => {
 
   it('품목 상세의 BOM 트리와 총수량', async () => {
     const user = userEvent.setup();
-    renderApp('/items/P0000100?tab=bom');
+    renderApp('/items/P-00000000100?tab=bom');
     const bom = await screen.findByRole('table', { name: 'BOM' });
-    expect(within(bom).getAllByText('P0000001').length).toBe(2);       // J1 · J2 모듈 아래 볼트
+    expect(within(bom).getAllByText('P-00000000001').length).toBe(2);       // J1 · J2 모듈 아래 볼트
     await user.click(screen.getByRole('button', { name: '모두 접기' }));
-    expect(within(bom).queryByText('P0000001')).not.toBeInTheDocument();
+    expect(within(bom).queryByText('P-00000000001')).not.toBeInTheDocument();
   });
 
   it('새 등록 요청: 임시저장 → 제출', async () => {
@@ -48,8 +48,9 @@ describe('화면', () => {
     await user.type(await screen.findByLabelText(/이름 \(원래 이름\)/), 'Spacer 3mm');
     await user.selectOptions(screen.getByLabelText(/^분류/), 'cls:C0100');
     await user.click(screen.getByRole('button', { name: '임시저장' }));
-    expect(await screen.findByText(/임시저장했습니다/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '제출' }));
+    // 처음 저장하면 /requests/new → /requests/:id 로 바뀌며 화면이 다시 그려진다. 찾은 요소가 그 사이에 사라질 수 있으니 '지금 보이는가'를 기다린다
+    await waitFor(() => expect(screen.getByText(/임시저장했습니다/)).toBeInTheDocument());
+    await user.click(await screen.findByRole('button', { name: '제출' }));
     expect(await screen.findByText(/관리자 모드에서 검토 중입니다/)).toBeInTheDocument();
     unmount();
   });

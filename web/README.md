@@ -1,6 +1,6 @@
 # Onto PDM 웹 (프론트엔드)
 
-React 18 + TypeScript + Vite 8 (Node 20.19 이상 또는 22.12 이상). 백엔드 API가 생기기 전까지 **목(mock) 데이터**로 돈다.
+React 18 + TypeScript + Vite 8 + Tailwind CSS 3 (Node 20.19 이상 또는 22.12 이상). 백엔드 API가 생기기 전까지 **목(mock) 데이터**로 돈다.
 화면이 쓰는 API 형태(`src/api/types.ts`의 `PdmApi`)는 [docs/pdm-design.md](../docs/pdm-design.md) 9장의 REST API와 같다.
 
 ## Quick Start
@@ -32,6 +32,9 @@ pnpm dev                      # http://localhost:5173
 
 | 경로 | 화면 |
 |---|---|
+| `/` | **CAD 스튜디오(메인)**: 홀로그램 3D 분해도 + 제조 순서 + 온톨로지. CAD를 올리면 구조에서 제조(조립) 순서를 나누고, 단계마다 쓰이는 부품을 보유 품번과 매칭한다(확정 · 후보 · 미보유). 미보유 부품은 CAD 이름 그대로(추정 분류가 있으면 함께) 보이고 OPMS로 등록 요청을 보낼 수 있다. 부품을 고르면 그 부품의 분류 사슬 · 재료 · 속성 · 별칭 · 사용처를 온톨로지 그래프로 본다 |
+| `/products/:code` | **제품 연결 그래프**: 제품 → 조립품 → 부품이 BOM 관계로 이어진 3D 그래프(회전 · 확대, 목록 보기 전환 가능). 노드를 고르면 문서(CAD · 도면 · 사양서)와 적용되는 조립 규칙이 묶여 나온다 |
+| `/rules`, `/rules/:id` | **조립 규칙**: 규칙 목록(공정 필터 · 검색), 상세(값 · 조건표 · 주의사항 · 공구 · 쓰이는 품목), 온톨로지 3D 보기 |
 | `/items` | 품목 목록. 품번 · 이름 · 별칭(레거시 · ERP · CAD 이름) 검색, 구분 · 상태 · 제품 필터 |
 | `/items/:품번` | 품목 상세: 개요(분류 · 재료 · 질량 · 별칭 · 재고), BOM 정전개(생산 보기 / 설계 보기), 사용처, 문서 · 근거 구절, 3D(분해도 뷰어), 이력 |
 | `/products` | 제품과 최상위 조립품 |
@@ -50,6 +53,22 @@ pnpm dev                      # http://localhost:5173
   - 품번 발급과 분류 제안 검토는 관리자 모드만 한다.
   - 분류가 없는 요청은 승인할 수 없다.
   - 별칭이 기존 식별자와 겹치면 승인이 거부된다.
+
+## 디자인
+
+디자인은 **OPMS(`ernest_hemingway_OPMS/web`)를 따른다.** 둘이 충돌하면 OPMS가 기준이다.
+
+| 무엇 | 어디 | OPMS와의 관계 |
+|---|---|---|
+| 색 · 글꼴 · 간격 · 모서리 토큰 | [tailwind.config.ts](tailwind.config.ts) | OPMS `web/tailwind.config.ts`와 같은 값. 바뀌면 그대로 다시 복사한다 |
+| 앱 셸(글래스 사이드바 · 머리 · 접기 · 드로어) | [src/styles.css](src/styles.css) 위쪽, [AppShell.tsx](src/components/AppShell.tsx) | OPMS `index.css` · `Layout.tsx`와 같은 구조. 메뉴만 PDM 것 |
+| 페이지 부품(`.card` `.btn` `.table` `.badge` `.tabs` …) | [src/styles.css](src/styles.css) 아래쪽 | PDM 화면이 쓰는 클래스를 OPMS 토큰 위에서 정의 (화면 코드는 그대로) |
+| 글꼴 · 아이콘 | [index.html](index.html) | Inter · JetBrains Mono · Material Symbols (Google Fonts) |
+
+- 디자인 원칙 문서는 OPMS의 `web/docs/DESIGN.md`다. 여기에 복사하지 않는다.
+- 다크 모드는 없다 (OPMS가 없다).
+- `tone-${tone}`처럼 클래스 이름을 이어 붙여 쓰는 규칙은 Tailwind가 미사용으로 지우므로 `styles.css`의 레이어 밖에 둔다.
+- 사이드바 접기는 `Ctrl/⌘+B`, 상태는 `localStorage`의 `onto-pdm.sidebar`.
 
 ## 3D 뷰어
 

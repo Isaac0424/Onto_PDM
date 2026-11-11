@@ -34,3 +34,11 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+
+# File vault default location (set PDM_VAULT_DIR to keep it elsewhere)
+data/vault/
+
+# Backend (Python)
+backend/.venv/
+backend/.pytest_cache/
+backend/**/__pycache__/

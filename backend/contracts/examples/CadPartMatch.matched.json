@@ -1,0 +1,14 @@
+{
+  "name": "전원 버튼",
+  "status": "matched",
+  "item_no": "P-00000000160",
+  "item_name": "전원 버튼",
+  "method": "exact",
+  "score": 1.0,
+  "class_iri": "cls:C0605",
+  "class_label": "스위치 · 버튼",
+  "class_path": [
+    "전기 · 전자",
+    "스위치 · 버튼"
+  ]
+}

@@ -159,7 +159,7 @@ for (const backend of backends()) {
 
       S.newItem = (await one(`select approve_part_request($1) as id`, [draft])).id;
       S.issued = await one(`select item_no, class_iri from item where id=$1`, [S.newItem]);
-      assert.match(S.issued.item_no, /^P\d{7}$/);
+      assert.match(S.issued.item_no, /^P-\d{11}$/);
       assert.equal(S.issued.class_iri, 'cls:Bracket');
       assert.equal((await one(`select count(*)::int n from item_revision where item_id=$1 and rev='R00' and status='wip'`, [S.newItem])).n, 1);
       await expectError(db, `select approve_part_request($1)`, [draft], /제출된 요청만 승인할 수 있습니다/);

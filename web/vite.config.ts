@@ -14,7 +14,11 @@ export default defineConfig({
     // ../src 가 import 하는 three 를 web/node_modules 에서 찾게 한다
     dedupe: ['three'],
   },
-  server: { fs: { allow: [repoRoot] } },
+  server: {
+    fs: { allow: [repoRoot] },
+    // 올린 CAD · BOM · 사양서는 파일 보관소 서버(server/files-server.mjs)가 받는다
+    proxy: { '/api/files': `http://127.0.0.1:${process.env.FILES_PORT ?? 8788}` },
+  },
   // 3D 뷰어(three.js + explode-studio, 약 770 kB)는 3D 탭을 열 때만 따로 받는 청크라 경고 한도를 올린다
   build: { chunkSizeWarningLimit: 800 },
   test: {

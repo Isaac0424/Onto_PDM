@@ -117,12 +117,14 @@ CREATE INDEX item_material_idx      ON item (material_iri);
 
 -- 대표 품번 발급: PLM·PDM 공동 등록이 같은 순번을 쓴다.
 --   의미 없는 일련번호라 분류가 바뀌어도 번호는 그대로다. (순번은 롤백돼도 되돌지 않아 빈 번호가 생길 수 있다)
---   형식 'P' + 7자리는 잠정이다. 다른 시스템과 합치며 형식이 바뀌면 이 함수와
+--   형식 'P-' + 11자리는 OPMS(parts-registry)의 품번 형식과 같다 (settings.part_no, 예 P-00000000001).
+--   OPMS 와 같은 Neo4j 를 쓰면 번호의 주인은 OPMS :Sequence 다. 그때는 백엔드가 OPMS 에서 예약한 번호를 쓰고,
+--   이 함수는 PG 단독으로 돌릴 때(테스트 · 목 서버)의 발급기다. 형식을 바꿀 때는 이 함수와
 --   ontology/shapes-data.ttl 의 sh:pattern 두 곳만 바꾼다. 이미 발급된 번호는 renumber_item() 으로 옮긴다.
 CREATE SEQUENCE item_no_seq;
 CREATE OR REPLACE FUNCTION issue_item_no() RETURNS text
 LANGUAGE sql AS $$
-  SELECT 'P' || lpad(nextval('item_no_seq')::text, 7, '0')
+  SELECT 'P-' || lpad(nextval('item_no_seq')::text, 11, '0')
 $$;
 
 -- 품번 별칭: 레거시 번호, ERP·MES 코드, 공급사 품번, CAD 이름 … → 대표 품번 하나로 모은다

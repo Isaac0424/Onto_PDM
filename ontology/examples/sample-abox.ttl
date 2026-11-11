@@ -55,66 +55,66 @@ mat:M000003 a cls:M0120 ;
     opdm:density 2.70 .
 
 # ---------- 품목 (ABox, 승인본) ----------
-part:P0000001 a cls:C0101 , opdm:StandardPart ;
-    opdm:partNumber "P0000001" ;
+part:P-00000000001 a cls:C0101 , opdm:StandardPart ;
+    opdm:partNumber "P-00000000001" ;
     skos:prefLabel "볼트 M3x8"@ko , "Bolt M3x8"@en ;
     opdm:cadName "M3x8" ;
     opdm:legacyPartNumber "BLT-0038" ;
     opdm:hasMaterial mat:M000001 ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000001-R00 .
-rev:P0000001-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+    opdm:currentRevision rev:P-00000000001-R00 .
+rev:P-00000000001-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
 
-part:P0000002 a cls:C0200 , opdm:ManufacturedPart ;
-    opdm:partNumber "P0000002" ;
+part:P-00000000002 a cls:C0200 , opdm:ManufacturedPart ;
+    opdm:partNumber "P-00000000002" ;
     skos:prefLabel "브래킷 L"@ko ;
     opdm:hasMaterial mat:M000003 ;
     opdm:mass 0.042 ; opdm:massSource "cad_estimate" ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000002-R00 .
-rev:P0000002-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+    opdm:currentRevision rev:P-00000000002-R00 .
+rev:P-00000000002-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
 
-part:P0000003 a cls:C0200 , opdm:ManufacturedPart ;
-    opdm:partNumber "P0000003" ;
+part:P-00000000003 a cls:C0200 , opdm:ManufacturedPart ;
+    opdm:partNumber "P-00000000003" ;
     skos:prefLabel "브래킷 T"@ko ;
     opdm:hasMaterial mat:M000003 ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000003-R00 .
-rev:P0000003-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
+    opdm:currentRevision rev:P-00000000003-R00 .
+rev:P-00000000003-R00 a opdm:ItemRevision ; opdm:revisionLabel "R00" .
 
 # 프레임 조립품 R01: 볼트 4 + 브래킷 L 1
-part:P0000010 a cls:C0300 , opdm:Assembly ;
-    opdm:partNumber "P0000010" ;
+part:P-00000000010 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P-00000000010" ;
     skos:prefLabel "프레임"@ko ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000010-R01 .
-rev:P0000010-R01 a opdm:ItemRevision ;
+    opdm:currentRevision rev:P-00000000010-R01 .
+rev:P-00000000010-R01 a opdm:ItemRevision ;
     opdm:revisionLabel "R01" ;
-    opdm:hasBomLine bom:P0000010-R01-1 , bom:P0000010-R01-2 .
-bom:P0000010-R01-1 a opdm:BomLine ; opdm:child part:P0000001 ; opdm:quantity 4 ; opdm:findNo 1 .
-bom:P0000010-R01-2 a opdm:BomLine ; opdm:child part:P0000002 ; opdm:quantity 1 ; opdm:findNo 2 .
+    opdm:hasBomLine bom:P-00000000010-R01-1 , bom:P-00000000010-R01-2 .
+bom:P-00000000010-R01-1 a opdm:BomLine ; opdm:child part:P-00000000001 ; opdm:quantity 4 ; opdm:findNo 1 .
+bom:P-00000000010-R01-2 a opdm:BomLine ; opdm:child part:P-00000000002 ; opdm:quantity 1 ; opdm:findNo 2 .
 
 # 로봇 본체 (최상위): 프레임 1 → 볼트(스테인리스)는 두 단계 아래
-part:P0000020 a cls:C0300 , opdm:Assembly ;
-    opdm:partNumber "P0000020" ;
+part:P-00000000020 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P-00000000020" ;
     skos:prefLabel "HCR3A 본체"@ko ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000020-R00 .
-rev:P0000020-R00 a opdm:ItemRevision ;
+    opdm:currentRevision rev:P-00000000020-R00 .
+rev:P-00000000020-R00 a opdm:ItemRevision ;
     opdm:revisionLabel "R00" ;
-    opdm:hasBomLine bom:P0000020-R00-1 .
-bom:P0000020-R00-1 a opdm:BomLine ; opdm:child part:P0000010 ; opdm:quantity 1 ; opdm:findNo 1 .
+    opdm:hasBomLine bom:P-00000000020-R00-1 .
+bom:P-00000000020-R00-1 a opdm:BomLine ; opdm:child part:P-00000000010 ; opdm:quantity 1 ; opdm:findNo 1 .
 
 # 다른 제품: 알루미늄 브래킷 T 하나뿐
-part:P0000030 a cls:C0300 , opdm:Assembly ;
-    opdm:partNumber "P0000030" ;
+part:P-00000000030 a cls:C0300 , opdm:Assembly ;
+    opdm:partNumber "P-00000000030" ;
     skos:prefLabel "커버 조립품"@ko ;
     opdm:uom "EA" ;
-    opdm:currentRevision rev:P0000030-R00 .
-rev:P0000030-R00 a opdm:ItemRevision ;
+    opdm:currentRevision rev:P-00000000030-R00 .
+rev:P-00000000030-R00 a opdm:ItemRevision ;
     opdm:revisionLabel "R00" ;
-    opdm:hasBomLine bom:P0000030-R00-1 .
-bom:P0000030-R00-1 a opdm:BomLine ; opdm:child part:P0000003 ; opdm:quantity 2 ; opdm:findNo 1 .
+    opdm:hasBomLine bom:P-00000000030-R00-1 .
+bom:P-00000000030-R00-1 a opdm:BomLine ; opdm:child part:P-00000000003 ; opdm:quantity 2 ; opdm:findNo 1 .
 
-prod:HCR3A a opdm:Product ; skos:prefLabel "HCR3A"@ko ; opdm:rootItem part:P0000020 .
-prod:HCR5A a opdm:Product ; skos:prefLabel "HCR5A"@ko ; opdm:rootItem part:P0000030 .
+prod:HCR3A a opdm:Product ; skos:prefLabel "HCR3A"@ko ; opdm:rootItem part:P-00000000020 .
+prod:HCR5A a opdm:Product ; skos:prefLabel "HCR5A"@ko ; opdm:rootItem part:P-00000000030 .

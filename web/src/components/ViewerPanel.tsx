@@ -15,7 +15,7 @@ export function ViewerPanel({ fileUrl, title }: { fileUrl?: string; title: strin
     import('explode-studio')
       .then(({ mountExplodeStudio }) => {
         if (cancelled || !host.current) return;
-        studio = mountExplodeStudio(host.current, { assetsBase: '/occt/', initial: null, title });
+        studio = mountExplodeStudio(host.current, { assetsBase: '/occt/', initial: null, title, skin: 'glass', axes: false });   // 메인 화면과 같은 밝은 스킨
         if (fileUrl) studio.loadUrl(fileUrl).catch(e => setError(String(e?.message ?? e)));
         else studio.loadExample('box');
       })

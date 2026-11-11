@@ -72,7 +72,7 @@ describe('CAD 스튜디오 (메인 화면)', () => {
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
     expect(within(steps).getByText('CAD 구조에서 나눈 5단계 · 부품 5종')).toBeInTheDocument();
-    expect(within(steps).getByRole('link', { name: 'P-00000000160' })).toBeInTheDocument();        // 전원 버튼: 이름이 정확히 같아 확정
+    expect(within(steps).getByText('P-00000000160', { selector: '.chip-ok' })).toBeInTheDocument();   // 전원 버튼: 이름이 정확히 같아 확정
     expect(within(steps).getByText('후보 P-00000000001')).toBeInTheDocument();                       // 기판 나사 M3: CAD 이름 별칭 → 후보
     expect(within(steps).getByText('×2')).toBeInTheDocument();                                       // 같은 이름의 두 개는 한 줄로
     expect(within(steps).getByText('분류 커버')).toBeInTheDocument();                                 // 미보유: 추정 분류
@@ -102,40 +102,20 @@ describe('CAD 스튜디오 (메인 화면)', () => {
     expect(await within(onto).findByRole('img', { name: '전원 버튼 온톨로지 그래프' })).toBeInTheDocument();
     expect(await within(onto).findByText('전기 · 전자 › 스위치 · 버튼')).toBeInTheDocument();      // 분류 사슬
     expect(within(onto).getAllByText('정격 12V 50mA').length).toBeGreaterThan(0);                    // 속성이 그래프 노드로
-    expect(within(onto).getByRole('link', { name: '품목 상세' })).toHaveAttribute('href', '/items/P-00000000160');
+    expect(within(onto).queryByRole('link', { name: '품목 상세' })).not.toBeInTheDocument();           // 품목 화면은 삭제됨
   });
 
-  it('미보유 부품은 OPMS 등록 요청을 보낼 수 있고, 한 번 보내면 다시 보내지 않는다', async () => {
+  it('미보유 부품에도 OPMS 등록 요청 버튼은 없다 (등록 요청은 삭제됨, 사용자 지시)', async () => {
     const user = userEvent.setup();
-    const { api } = renderPage();
+    renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
     await user.click(within(steps).getByRole('button', { name: /^제어 기판/ }));
     const onto = screen.getByRole('region', { name: '온톨로지' });
     expect(within(onto).getByText('분류 없음 · OPMS 분류 제안 필요')).toBeInTheDocument();
-    await user.click(within(onto).getByRole('button', { name: 'OPMS에 등록 요청' }));
-
-    expect(await within(onto).findByText(/OPMS 등록 요청 #\d+ 전송됨/)).toBeInTheDocument();
-    const mine = await api.listPartRequests('mine');
-    const sent = mine.find(r => r.payload.name === '제어 기판')!;
-    expect(sent).toMatchObject({ status: 'submitted', sourceSystem: 'PDM' });
-    expect(sent.payload.aliases).toEqual([{ scheme: 'cad_name', value: '제어 기판' }]);
-    expect(sent.payload.note).toContain('제조 2단계');
-    expect(within(onto).queryByRole('button', { name: 'OPMS에 등록 요청' })).not.toBeInTheDocument();
-  });
-
-  it('미보유를 한꺼번에 요청한다', async () => {
-    const user = userEvent.setup();
-    const { api } = renderPage();
-    const steps = await screen.findByRole('region', { name: '제조 순서' });
-    await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
-
-    await user.click(within(steps).getByRole('button', { name: /OPMS 등록 요청 2/ }));
-    expect(await screen.findByText(/2종을 OPMS 등록 요청으로 보냈습니다/)).toBeInTheDocument();
-    const names = (await api.listPartRequests('mine')).filter(r => r.status === 'submitted').map(r => r.payload.name);
-    expect(names).toEqual(expect.arrayContaining(['제어 기판', '상부 커버']));
-    expect(within(steps).getByRole('button', { name: /OPMS 등록 요청/ })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /OPMS (에 )?등록 요청/ })).not.toBeInTheDocument();
+    expect(within(steps).getByRole('group', { name: '보유 품번 매칭 현황' })).toHaveTextContent('미보유 2');
   });
 
   it('후보 품번은 사람이 확정해야 보유로 바뀐다', async () => {
@@ -146,7 +126,7 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
     await user.click(within(steps).getByRole('button', { name: /^기판 나사 M3\s*×2/ }));
     await user.click(await screen.findByRole('button', { name: '이 품번으로 확정' }));
-    expect(await within(steps).findByRole('link', { name: 'P-00000000001' })).toBeInTheDocument();
+    expect(await within(steps).findByText('P-00000000001', { selector: '.chip-ok' })).toBeInTheDocument();
   });
 
   describe('파일 보관소', () => {

@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { RuleIssue } from '../../api/types';
 import { createMockApi } from '../../api/mock/mockApi';
 import { SessionProvider } from '../../session';
 import type { Graph3DProps } from '../graph/Graph3D';
@@ -105,7 +104,7 @@ describe('조립 규칙 화면', () => {
     expect(within(values).getByText('모터 쪽')).toBeInTheDocument();
     expect(within(detail).getByRole('list', { name: '주의사항' })).toHaveTextContent('입력축 방향이 반대면 조립 후 분해해야 합니다.');
     expect(within(detail).getByText('토크 렌치')).toBeInTheDocument();
-    expect(within(detail).getByRole('link', { name: 'P-00000000121' })).toHaveAttribute('href', '/items/P-00000000121');   // 보유 감속기
+    expect(within(detail).getByText('P-00000000121')).toBeInTheDocument();   // 보유 감속기 (품목 화면은 삭제돼 링크 없이 품번만)
     expect(within(detail).getByText(/온토전자 \(가상 회사\) 조립 표준 SP-RED-01/)).toBeInTheDocument();
   });
 
@@ -143,7 +142,7 @@ describe('조립 규칙 화면', () => {
     expect(within(detail).getByRole('button', { name: 'part:J1 감속기' })).toBeInTheDocument();         // 이 규칙이 쓰이는 보유 품목
 
     await user.click(within(detail).getByRole('button', { name: 'part:J1 감속기' }));
-    expect(within(detail).getByRole('link', { name: 'P-00000000121' })).toHaveAttribute('href', '/items/P-00000000121');
+    expect(within(detail).getByText('P-00000000121')).toBeInTheDocument();
     expect(within(detail).getByTestId('rule-picked')).toHaveTextContent('선택: J1 감속기 (품목)');
     expect(within(detail).getByRole('list', { name: '범례' })).toBeInTheDocument();
   });
@@ -178,79 +177,11 @@ describe('조립 규칙 화면', () => {
   });
 });
 
-describe('규칙 검증 영역 (F-RUL-6)', () => {
-  const checkOf = () => screen.getByRole('region', { name: '규칙 검증' });
-
-  it('지금 규칙: 오류 0, 경고 2(검토 전 규칙 둘). 문제가 있는 규칙은 목록에 표식이 붙는다', async () => {
+describe('규칙 검증은 삭제됨 (사용자 지시)', () => {
+  it('검증 영역과 검증 표식이 없다', async () => {
     renderPage();
-    const check = checkOf();
-    expect(await within(check).findByText('오류 0')).toBeInTheDocument();
-    expect(within(check).getByText('경고 2')).toBeInTheDocument();
-    const items = within(check).getByRole('list', { name: '검증 결과' });
-    expect(within(items).getAllByRole('listitem')).toHaveLength(2);
-    expect(within(items).getByRole('link', { name: 'SP-WLD-01' })).toHaveAttribute('href', '/rules/SP-WLD-01');
-    expect(within(items).getByRole('link', { name: 'SP-PRS-01' })).toBeInTheDocument();
-    expect(within(items).getAllByText(/검토 전 규칙/)).toHaveLength(2);
-
-    const list = listOf();
-    await waitFor(() => expect(within(list).getAllByRole('link')).toHaveLength(11));
-    expect(within(list).getByRole('link', { name: /SP-WLD-01/ })).toContainElement(within(list).getAllByLabelText('검증 문제 1건')[0]!);
-    expect(within(list).getAllByLabelText('검증 문제 1건')).toHaveLength(2);                          // 문제 없는 규칙에는 표식이 없다
-  });
-
-  it('문제가 없으면 "문제가 없습니다"', async () => {
-    renderPage('/rules', api => { api.validateAssemblyRules = async () => []; });
-    const check = checkOf();
-    expect(await within(check).findByText('문제가 없습니다.')).toBeInTheDocument();
-    expect(within(check).getByText('오류 0')).toBeInTheDocument();
-    expect(within(check).getByText('경고 0')).toBeInTheDocument();
-    expect(within(check).queryByRole('list', { name: '검증 결과' })).not.toBeInTheDocument();
-  });
-
-  it('오류와 경고를 구분해 보이고, 규칙 링크는 그 규칙의 상세를 연다. 상세에도 그 규칙의 결과가 보인다', async () => {
-    const user = userEvent.setup();
-    const issues: RuleIssue[] = [
-      { severity: 'error', ruleId: 'SP-BAT-01', code: 'no_source', message: '출처 문서가 없습니다.' },
-      { severity: 'warning', ruleId: 'SP-WLD-01', code: 'overlap', message: '다른 규칙도 걸립니다.' },
-    ];
-    renderPage('/rules', api => { api.validateAssemblyRules = async () => issues; });
-    const check = checkOf();
-    expect(await within(check).findByText('오류 1')).toBeInTheDocument();
-    expect(within(check).getByText('경고 1')).toBeInTheDocument();
-    const items = within(check).getByRole('list', { name: '검증 결과' });
-    expect(within(items).getByText('오류')).toBeInTheDocument();
-    expect(within(items).getByText('경고')).toBeInTheDocument();
-    expect(within(items).getByText('겹침')).toBeInTheDocument();
-
-    const list = listOf();
-    await waitFor(() => expect(within(list).getAllByRole('link')).toHaveLength(11));
-    expect(within(list).getByTitle('오류 1 · 경고 0')).toBeInTheDocument();
-
-    await user.click(within(items).getByRole('link', { name: 'SP-BAT-01' }));
-    const detail = detailOf();
-    expect(await within(detail).findByRole('heading', { level: 2, name: '배터리 장착' })).toBeInTheDocument();
-    const mine = await within(detail).findByRole('region', { name: '이 규칙의 검증 결과' });
-    expect(within(mine).getByText('출처 문서가 없습니다.')).toBeInTheDocument();
-    expect(within(mine).queryByText('다른 규칙도 걸립니다.')).not.toBeInTheDocument();           // 다른 규칙의 결과는 섞이지 않는다
-  });
-
-  it('접기 · 다시 검증', async () => {
-    const user = userEvent.setup();
-    const calls = vi.fn();
-    renderPage('/rules', api => {
-      const real = api.validateAssemblyRules.bind(api);
-      api.validateAssemblyRules = async () => { calls(); return real(); };
-    });
-    const check = checkOf();
-    await within(check).findByRole('list', { name: '검증 결과' });
-    expect(calls).toHaveBeenCalledTimes(1);
-
-    await user.click(within(check).getByRole('button', { name: '접기' }));
-    expect(within(check).queryByRole('list', { name: '검증 결과' })).not.toBeInTheDocument();
-    expect(within(check).getByRole('button', { name: '자세히' })).toHaveAttribute('aria-expanded', 'false');
-    expect(within(check).getByText('경고 2')).toBeInTheDocument();                                  // 개수는 접어도 보인다
-
-    await user.click(within(check).getByRole('button', { name: /다시 검증/ }));
-    await waitFor(() => expect(calls).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(within(listOf()).getAllByRole('link')).toHaveLength(11));
+    expect(screen.queryByRole('region', { name: '규칙 검증' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/검증 문제/)).not.toBeInTheDocument();
   });
 });

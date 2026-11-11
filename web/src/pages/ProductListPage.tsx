@@ -27,12 +27,10 @@ export function ProductListPage() {
                   {p.description && <p style={{ margin: 0 }} className="muted">{p.description}</p>}
                   <dl className="props">
                     <dt>최상위 조립품</dt>
-                    <dd><Link className="mono" to={`/items/${p.rootItemNo}`}>{p.rootItemNo}</Link></dd>
+                    <dd><span className="mono">{p.rootItemNo}</span></dd>
                   </dl>
                   <div className="row">
                     <Link className="btn btn-sm btn-primary" to={`/products/${p.code}`}>연결 보기</Link>
-                    <Link className="btn btn-sm" to={`/items/${p.rootItemNo}?tab=bom`}>BOM 보기</Link>
-                    <Link className="btn btn-sm" to={`/items?product=${p.id}`}>이 제품의 품목</Link>
                   </div>
                 </div>
               </section>

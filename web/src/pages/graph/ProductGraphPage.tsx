@@ -105,7 +105,7 @@ function groupDocs(links: DocumentLink[]): [DocType, DocumentLink[]][] {
   return DOC_ORDER.filter(t => byType.has(t)).map(t => [t, byType.get(t)!]);
 }
 
-function DocGroups({ links, itemNo }: { links: DocumentLink[]; itemNo?: string }) {
+function DocGroups({ links }: { links: DocumentLink[] }) {
   const groups = groupDocs(links);
   if (groups.length === 0) return <p className="faint pg-none">연결된 문서가 없습니다.</p>;
   return (
@@ -116,9 +116,7 @@ function DocGroups({ links, itemNo }: { links: DocumentLink[]; itemNo?: string }
           <ul>
             {rows.map(d => (
               <li key={d.documentId}>
-                {itemNo
-                  ? <Link to={`/items/${itemNo}?tab=docs`} className="mono">{d.docNo}</Link>
-                  : <span className="mono">{d.docNo}</span>}
+                <span className="mono">{d.docNo}</span>
                 <span className="pg-doc-title">{d.title}</span>
                 <span className="faint mono">{d.rev}</span>
                 {d.status === 'suggested' && <Badge tone="warning">제안</Badge>}
@@ -238,7 +236,7 @@ function ProductView({ bundle, rule, onRule }: { bundle: Extract<Bundle, { missi
           <p className="holo-eyebrow">제품 연결 · BOM · 문서 · 규칙</p>
           <h1>{product.name}</h1>
           <p className="pg-sub">
-            <span className="mono">{product.code}</span> · 최상위 조립품 <Link className="mono" to={`/items/${root.itemNo}`}>{root.itemNo}</Link>
+            <span className="mono">{product.code}</span> · 최상위 조립품 <span className="mono">{root.itemNo}</span>
             {rootRevision && <> <RevisionBadge revision={rootRevision} /></>}
           </p>
         </div>
@@ -261,9 +259,8 @@ function ProductView({ bundle, rule, onRule }: { bundle: Extract<Bundle, { missi
             <button type="button" aria-pressed={showList} onClick={() => setView('list')}><Icon name="account_tree" size={14} />목록</button>
           </div>
           <Link className="btn btn-sm btn-primary" to={`/mes?product=${encodeURIComponent(product.code)}&rule=${rule}`}>
-            <Icon name="factory" size={14} />MES 발행
+            <Icon name="assignment" size={14} />작업 표준
           </Link>
-          <Link className="btn btn-sm" to="/bom-import"><Icon name="table_chart" size={14} />BOM 가져오기</Link>
         </div>
       </header>
 
@@ -340,7 +337,7 @@ function ProductBundle({ product, root, fullGraph, docs, guides }: {
       <div className="pg-panel-body">
         <dl className="props">
           <dt>제품</dt><dd>{product.name} <span className="mono faint">{product.code}</span></dd>
-          <dt>최상위 품목</dt><dd><Link className="mono" to={`/items/${root.itemNo}`}>{root.itemNo}</Link> <span className="muted">{nameOf(root)}</span></dd>
+          <dt>최상위 품목</dt><dd><span className="mono">{root.itemNo}</span> <span className="muted">{nameOf(root)}</span></dd>
           <dt>문서</dt><dd>{allDocs.length}건</dd>
           <dt>조립 규칙</dt><dd>{ruleUse.size}개</dd>
         </dl>
@@ -402,16 +399,11 @@ function ItemBundle({ node, rec, guide, docs, classes, paths, onSelect, onClear 
           ))}
         </ul>
         <h3 className="pg-h3">문서</h3>
-        <DocGroups links={docs} itemNo={it.itemNo} />
+        <DocGroups links={docs} />
         <h3 className="pg-h3">적용되는 조립 규칙</h3>
         {guide
           ? <ul className="pg-rules"><li><Link to={`/rules/${guide.ruleId}`} className="chip-holo chip-sent mono">{guide.ruleId}</Link><span>{guide.ruleName}</span><span className="faint">{guide.operationLabel}</span></li></ul>
           : <p className="faint pg-none">연결된 규칙이 없습니다.</p>}
-        <div className="row pg-actions">
-          <Link className="btn btn-sm btn-primary" to={`/items/${it.itemNo}`}>품목 상세</Link>
-          <Link className="btn btn-sm" to={`/items/${it.itemNo}?tab=viewer`}><Icon name="view_in_ar" size={14} />3D 보기</Link>
-          <Link className="btn btn-sm" to={`/items/${it.itemNo}?tab=bom`}>BOM</Link>
-        </div>
       </div>
     </>
   );

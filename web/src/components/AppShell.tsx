@@ -1,6 +1,6 @@
 // 앱 셸: OPMS(ernest_hemingway_OPMS/web/src/components/Layout.tsx)의 글래스 사이드바 · 머리 · 드로어를 따른다.
 // 사이드바 접기(Ctrl/⌘+B), 모바일 드로어. 폭과 상태는 styles.css 가 <html data-sidebar / data-drawer> 로 바꾼다.
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import logoUrl from '../assets/onto-pdm-mark.svg';
 import { useSession } from '../session';
@@ -9,21 +9,10 @@ interface NavItem { to: string; icon: string; label: string; end?: boolean }
 
 const VIEW_NAV: NavItem[] = [
   { to: '/', icon: 'view_in_ar', label: 'CAD 스튜디오', end: true },
-  { to: '/items', icon: 'inventory_2', label: '품목' },
   { to: '/products', icon: 'category', label: '제품' },
 ];
 const ASSEMBLY_NAV: NavItem[] = [{ to: '/rules', icon: 'rule', label: '조립 규칙' }];
-const MAKE_NAV: NavItem[] = [{ to: '/mes', icon: 'factory', label: 'MES 발행' }];
-const REGISTER_NAV: NavItem[] = [
-  { to: '/requests', icon: 'edit_note', label: '내 등록 요청' },
-  { to: '/bom-import', icon: 'table_chart', label: 'BOM 가져오기' },
-];
-const ADMIN_NAV: NavItem[] = [
-  { to: '/admin/requests', icon: 'fact_check', label: '등록 요청 검토' },
-  { to: '/admin/proposals', icon: 'account_tree', label: '분류 제안 검토' },
-  { to: '/admin/publish', icon: 'sync_alt', label: '그래프 발행 상태' },
-];
-
+const MAKE_NAV: NavItem[] = [{ to: '/mes', icon: 'assignment', label: '작업 표준' }];
 const ACTIVE = 'bg-primary-container text-on-primary-container font-body-md-bold';
 const INACTIVE = 'text-on-surface-variant hover:bg-white/60 hover:text-on-surface';
 const ITEM = 'sb-item flex items-center gap-space-sm min-w-0 px-space-md py-space-sm rounded-xl transition-colors';
@@ -59,23 +48,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { users, user, adminMode, canUseAdminMode, setUserId, setAdminMode, api, bump } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
-  const [q, setQ] = useState('');
   const [collapsed, setCollapsed] = useState(readSaved);
   const [drawer, setDrawer] = useState(false);
   const [mobile, setMobile] = useState(() => mobileQuery().matches);
   const sidebarRef = useRef<HTMLElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
 
-  const search = (e: FormEvent) => {
-    e.preventDefault();
-    navigate(`/items?q=${encodeURIComponent(q.trim())}`);
-  };
   const resetDemo = () => {
     if (!api.reset) return;
-    if (window.confirm('목 데이터를 처음 상태로 되돌릴까요? 임시저장한 요청도 지워집니다.')) {
+    if (window.confirm('목 데이터를 처음 상태로 되돌릴까요?')) {
       api.reset();
       bump();
-      navigate('/items');
+      navigate('/');
     }
   };
 
@@ -121,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [drawer]);
 
-  const pageLabel = [...VIEW_NAV, ...ASSEMBLY_NAV, ...MAKE_NAV, ...REGISTER_NAV, ...ADMIN_NAV].find(n => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))?.label ?? '작업 영역';
+  const pageLabel = [...VIEW_NAV, ...ASSEMBLY_NAV, ...MAKE_NAV].find(n => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))?.label ?? '작업 영역';
   const roleLabel = user ? (user.role === 'admin' ? '관리자' : user.role === 'approver' ? '승인자' : '엔지니어') : '';
 
   return (
@@ -152,8 +136,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavSection title="조회" items={VIEW_NAV} />
             <NavSection title="조립" items={ASSEMBLY_NAV} />
             <NavSection title="제조" items={MAKE_NAV} />
-            <NavSection title="등록" items={REGISTER_NAV} />
-            {adminMode && <NavSection title="관리자 모드" items={ADMIN_NAV} />}
           </div>
         </div>
         <div className="sb-pad p-space-md border-t border-on-surface/[0.07] flex flex-col gap-space-sm shrink-0">
@@ -183,14 +165,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="text-on-surface font-body-md-bold text-body-md-bold truncate">{pageLabel}</span>
           </div>
         </div>
-        <form onSubmit={search} role="search" className="hidden md:flex items-center flex-1 max-w-xl mx-space-md">
-          <div className="relative w-full flex items-center">
-            <Icon name="search" className="absolute left-space-md text-outline" />
-            <input type="search" aria-label="품목 검색" value={q} onChange={e => setQ(e.target.value)}
-              placeholder="품번 · 이름 · 별칭(레거시 · ERP · CAD 이름) 검색"
-              className="w-full h-8 pl-9 pr-space-md bg-white/85 rounded-xl border-0 text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary" />
-          </div>
-        </form>
+        <div className="flex-1" />
         <div className="flex items-center gap-space-md shrink-0">
           <label className="switch" title={canUseAdminMode ? '' : '관리자 · 승인자 역할만 켤 수 있습니다'}>
             <input type="checkbox" checked={adminMode} disabled={!canUseAdminMode} onChange={e => setAdminMode(e.target.checked)} />
@@ -211,13 +186,4 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </>
   );
-}
-
-/** 관리자 모드 전용 화면 */
-export function AdminOnly({ children }: { children: ReactNode }) {
-  const { adminMode } = useSession();
-  if (!adminMode) {
-    return <div className="banner banner-warning">관리자 모드에서만 볼 수 있습니다. 관리자 · 승인자 역할로 관리자 모드를 켜세요.</div>;
-  }
-  return <>{children}</>;
 }

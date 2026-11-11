@@ -1,5 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { createMockApi } from './api/mock/mockApi';
@@ -19,39 +18,20 @@ function renderApp(path: string, session = { userId: 1, adminMode: true }) {
 }
 
 describe('화면', () => {
-  it('품목 목록과 별칭 검색', async () => {
-    renderApp('/items?q=BLT-0038');
-    const table = await screen.findByRole('table', { name: '품목 목록' });
-    expect(within(table).getByText('P-00000000001')).toBeInTheDocument();
-    expect(within(table).queryByText('P-00000000002')).not.toBeInTheDocument();
-  });
+  // 관리 기능(품목 관리 · BOM 가져오기 · 등록 요청 · 관리자 화면)은 사용자 지시로 삭제했다
+  it.each(['/items', '/items/P-00000000001', '/requests', '/requests/new', '/bom-import', '/admin/requests', '/admin/proposals', '/admin/publish'])(
+    '삭제된 관리 화면 %s 는 열리지 않는다',
+    async path => {
+      renderApp(path);
+      expect(await screen.findByText(/없는 화면입니다/)).toBeInTheDocument();
+    },
+  );
 
-  it('엔지니어에게는 관리자 메뉴가 없고, 관리자 화면은 막힌다', async () => {
-    renderApp('/admin/requests', { userId: 2, adminMode: true });
-    expect(await screen.findByText(/관리자 모드에서만 볼 수 있습니다/)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '등록 요청 검토' })).not.toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /관리자 모드/ })).toBeDisabled();
-  });
-
-  it('품목 상세의 BOM 트리와 총수량', async () => {
-    const user = userEvent.setup();
-    renderApp('/items/P-00000000100?tab=bom');
-    const bom = await screen.findByRole('table', { name: 'BOM' });
-    expect(within(bom).getAllByText('P-00000000001').length).toBe(2);       // J1 · J2 모듈 아래 볼트
-    await user.click(screen.getByRole('button', { name: '모두 접기' }));
-    expect(within(bom).queryByText('P-00000000001')).not.toBeInTheDocument();
-  });
-
-  it('새 등록 요청: 임시저장 → 제출', async () => {
-    const user = userEvent.setup();
-    const { unmount } = renderApp('/requests/new', { userId: 2, adminMode: false });
-    await user.type(await screen.findByLabelText(/이름 \(원래 이름\)/), 'Spacer 3mm');
-    await user.selectOptions(screen.getByLabelText(/^분류/), 'cls:C0100');
-    await user.click(screen.getByRole('button', { name: '임시저장' }));
-    // 처음 저장하면 /requests/new → /requests/:id 로 바뀌며 화면이 다시 그려진다. 찾은 요소가 그 사이에 사라질 수 있으니 '지금 보이는가'를 기다린다
-    await waitFor(() => expect(screen.getByText(/임시저장했습니다/)).toBeInTheDocument());
-    await user.click(await screen.findByRole('button', { name: '제출' }));
-    expect(await screen.findByText(/관리자 모드에서 검토 중입니다/)).toBeInTheDocument();
+  it('남은 화면: 조립 규칙과 작업 표준이 열린다', async () => {
+    const { unmount } = renderApp('/rules');
+    expect(await screen.findByRole('heading', { name: '조립 규칙' })).toBeInTheDocument();
     unmount();
+    renderApp('/mes');
+    expect(await screen.findByRole('heading', { name: '작업 표준' })).toBeInTheDocument();
   });
 });

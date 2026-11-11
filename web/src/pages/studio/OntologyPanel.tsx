@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import type { PartInfo } from 'explode-studio';
 import type { CadPartMatch } from '../../api/types';
 import { Icon } from '../../components/AppShell';
@@ -60,14 +59,12 @@ export function OntologyGraph({ graph, label }: { graph: Graph; label: string })
  * 고르지 않으면 모델 전체의 분류 분포를 그래프로 보인다.
  */
 export function OntologyPanel({
-  model, parts, matches, selectedName, requested, onRequest, onConfirm,
+  model, parts, matches, selectedName, onConfirm,
 }: {
   model: string;
   parts: PartInfo[];
   matches: Map<string, CadPartMatch>;
   selectedName?: string;
-  requested: Map<string, number>;
-  onRequest(name: string): void;
   onConfirm(name: string): void;
 }) {
   const { api } = useSession();
@@ -128,7 +125,7 @@ export function OntologyPanel({
               {STATUS_TEXT[match.status]}
               {match.method && <span className="faint"> · {match.method === 'exact' ? '이름 일치' : match.method === 'alias' ? '별칭 일치' : match.method === 'cad_name' ? 'CAD 이름 별칭' : match.method === 'normalized' ? '정규화 일치' : '유사도'} {Math.round((match.score ?? 0) * 100)}%</span>}
             </dd>
-            {itemNo && (<><dt>품번</dt><dd><Link to={`/items/${itemNo}`} className="mono">{itemNo}</Link> <span className="muted">{match.itemName}</span></dd></>)}
+            {itemNo && (<><dt>품번</dt><dd><span className="mono">{itemNo}</span> <span className="muted">{match.itemName}</span></dd></>)}
             <dt>분류</dt>
             <dd>{match.classPath?.length ? match.classPath.join(' › ') : <span className="faint">분류 없음 · OPMS 분류 제안 필요</span>}</dd>
             {item.data?.detail.identifiers.length ? (
@@ -139,10 +136,6 @@ export function OntologyPanel({
             {match.status === 'suggested' && (
               <button type="button" className="btn btn-sm" onClick={() => onConfirm(selectedName)}><Icon name="check" size={16} />이 품번으로 확정</button>
             )}
-            {match.status === 'none' && (requested.has(selectedName)
-              ? <span className="chip-holo chip-sent">OPMS 등록 요청 #{requested.get(selectedName)} 전송됨</span>
-              : <button type="button" className="btn btn-primary btn-sm" onClick={() => onRequest(selectedName)}><Icon name="outbox" size={16} />OPMS에 등록 요청</button>)}
-            {itemNo && <Link to={`/items/${itemNo}`} className="btn btn-sm">품목 상세</Link>}
           </div>
         </div>
       )}

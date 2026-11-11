@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { AssemblyOperation, AssemblyRuleDetail, AssemblyRuleSummary, RuleIssue } from '../../api/types';
+import type { AssemblyOperation, AssemblyRuleDetail, AssemblyRuleSummary } from '../../api/types';
 import { Icon } from '../../components/AppShell';
 import { Badge, Loaded } from '../../components/ui';
 import { useAsync } from '../../hooks/useAsync';
@@ -21,85 +21,10 @@ const KIND_LABEL: Record<NodeKind, string> = {
 
 type DetailTab = 'info' | 'onto' | 'list';
 
-const CODE_LABEL: Record<RuleIssue['code'], string> = {
-  overlap: '겹침', missing_value: '값 빠짐', no_source: '출처', empty_table: '조건표', no_scope: '적용 대상', no_caution: '주의사항', unused: '안 쓰임',
-};
-
-const SEVERITY_LABEL = { error: '오류', warning: '경고' } as const;
-
-/** 규칙마다 오류 · 경고 개수 */
-function countByRule(issues: RuleIssue[] | undefined) {
-  const m = new Map<string, { error: number; warning: number }>();
-  (issues ?? []).forEach(i => {
-    if (!i.ruleId) return;
-    const c = m.get(i.ruleId) ?? { error: 0, warning: 0 };
-    c[i.severity] += 1;
-    m.set(i.ruleId, c);
-  });
-  return m;
-}
-
-function IssueItem({ issue, withRule }: { issue: RuleIssue; withRule: boolean }) {
-  return (
-    <li className={`check-item check-item-${issue.severity}`}>
-      <span className={`check-badge check-badge-${issue.severity}`}>
-        <Icon name={issue.severity === 'error' ? 'error' : 'warning'} size={13} />{SEVERITY_LABEL[issue.severity]}
-      </span>
-      <span className="check-code">{CODE_LABEL[issue.code]}</span>
-      <span className="check-msg">{issue.message}</span>
-      {withRule && issue.ruleId && <Link to={`/rules/${issue.ruleId}`} className="mono check-rule">{issue.ruleId}</Link>}
-    </li>
-  );
-}
-
-/**
- * 규칙 검증: 겹침 · 빠진 값 · 출처 · 조건표 · 적용 대상 · 주의사항을 점검한 결과.
- * 오류는 쓸 수 없는 규칙, 경고는 쓸 수는 있지만 확인할 것이다. 의도치 않은 빨강을 피하려고 둘 다 주황 · 호박색으로 구분한다.
- */
-function RuleCheck({ issues, loading, error, onRecheck }: { issues: RuleIssue[] | undefined; loading: boolean; error: Error | undefined; onRecheck(): void }) {
-  const [open, setOpen] = useState(true);
-  const errors = issues?.filter(i => i.severity === 'error').length ?? 0;
-  const warnings = issues?.filter(i => i.severity === 'warning').length ?? 0;
-  return (
-    <section className="glass-panel rules-check" aria-label="규칙 검증">
-      <header className="rules-check-head">
-        <div>
-          <h2>규칙 검증</h2>
-          <p className="panel-sub">겹침 · 빠진 값 · 출처 · 조건표 · 적용 대상을 점검합니다</p>
-        </div>
-        <div className="rules-check-chips" aria-live="polite">
-          {issues
-            ? <><span className="check-chip check-chip-error">오류 {errors}</span><span className="check-chip check-chip-warning">경고 {warnings}</span></>
-            : <span className="faint">{loading ? '검증 중…' : ''}</span>}
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn-sm" onClick={onRecheck}><Icon name="refresh" size={16} />다시 검증</button>
-          <button type="button" className="btn btn-sm btn-ghost" aria-expanded={open} aria-controls="rules-check-list" onClick={() => setOpen(o => !o)}>{open ? '접기' : '자세히'}</button>
-        </div>
-      </header>
-      {error && <div className="banner banner-danger" role="alert">{error.message}</div>}
-      {open && issues && (
-        issues.length === 0
-          ? <p className="rules-check-ok"><Icon name="check_circle" size={16} />문제가 없습니다.</p>
-          : <ul id="rules-check-list" className="check-list" aria-label="검증 결과">{issues.map((i, n) => <IssueItem key={`${i.ruleId}${i.code}${n}`} issue={i} withRule />)}</ul>
-      )}
-    </section>
-  );
-}
-
 function StatusBadge({ status }: { status: AssemblyRuleSummary['status'] }) {
   return status === 'approved'
     ? <Badge tone="success" title="승인된 규칙">승인</Badge>
     : <Badge tone="warning" title="가상 값 · 검토 전입니다. 실제 작업에 쓰지 않습니다">검토 전</Badge>;
-}
-
-function RuleFlag({ counts }: { counts: { error: number; warning: number } }) {
-  const total = counts.error + counts.warning;
-  return (
-    <span className={`rule-flag ${counts.error > 0 ? 'rule-flag-error' : 'rule-flag-warning'}`} aria-label={`검증 문제 ${total}건`} title={`오류 ${counts.error} · 경고 ${counts.warning}`}>
-      <Icon name={counts.error > 0 ? 'error' : 'warning'} size={13} />{total}
-    </span>
-  );
 }
 
 function OperationChip({ operation, label }: { operation: AssemblyOperation; label: string }) {
@@ -114,9 +39,6 @@ export function RulesPage() {
   const { api } = useSession();
   const { ruleId } = useParams();
   const list = useAsync(() => api.listAssemblyRules(), []);
-  const [checkTick, setCheckTick] = useState(0);
-  const check = useAsync(() => api.validateAssemblyRules(), [checkTick]);
-  const issuesByRule = useMemo(() => countByRule(check.data), [check.data]);
   const [query, setQuery] = useState('');
   const [operation, setOperation] = useState<AssemblyOperation | 'all'>('all');
 
@@ -143,8 +65,6 @@ export function RulesPage() {
           <p className="sub">부품을 조립할 때 따르는 사내 규칙입니다. 조립 안내(3D 위의 카드와 자막)가 여기서 값을 읽습니다. 가상 회사의 목업이고 숫자는 시연용입니다.</p>
         </div>
       </div>
-
-      <RuleCheck issues={check.data} loading={check.loading} error={check.error} onRecheck={() => setCheckTick(t => t + 1)} />
 
       <div className="rules-layout">
         <section className="glass-panel rules-list-panel" aria-label="규칙 목록">
@@ -175,7 +95,6 @@ export function RulesPage() {
                       <span className="rule-item-head">
                         <span className="mono rule-id">{r.id}</span>
                         <span className="rule-item-flags">
-                          {issuesByRule.get(r.id) && <RuleFlag counts={issuesByRule.get(r.id)!} />}
                           <StatusBadge status={r.status} />
                         </span>
                       </span>
@@ -196,13 +115,13 @@ export function RulesPage() {
           </Loaded>
         </section>
 
-        <RuleDetailPanel ruleId={selectedId} issues={(check.data ?? []).filter(i => i.ruleId === selectedId)} />
+        <RuleDetailPanel ruleId={selectedId} />
       </div>
     </div>
   );
 }
 
-function RuleDetailPanel({ ruleId, issues }: { ruleId: string | undefined; issues: RuleIssue[] }) {
+function RuleDetailPanel({ ruleId }: { ruleId: string | undefined }) {
   const { api } = useSession();
   const detail = useAsync<AssemblyRuleDetail | undefined>(() => (ruleId ? api.getAssemblyRule(ruleId) : Promise.resolve(undefined)), [ruleId]);
   const [tab, setTab] = useState<DetailTab>('info');
@@ -210,14 +129,14 @@ function RuleDetailPanel({ ruleId, issues }: { ruleId: string | undefined; issue
   return (
     <section className="glass-panel rules-detail-panel" aria-label="규칙 상세">
       <Loaded state={detail} empty={d => !d}>
-        {d => d && <RuleDetail key={d.id} rule={d} issues={issues} tab={tab} onTab={setTab} />}
+        {d => d && <RuleDetail key={d.id} rule={d} tab={tab} onTab={setTab} />}
       </Loaded>
       {!ruleId && !detail.loading && <div className="empty">규칙을 고르세요.</div>}
     </section>
   );
 }
 
-function RuleDetail({ rule, issues, tab, onTab }: { rule: AssemblyRuleDetail; issues: RuleIssue[]; tab: DetailTab; onTab(t: DetailTab): void }) {
+function RuleDetail({ rule, tab, onTab }: { rule: AssemblyRuleDetail; tab: DetailTab; onTab(t: DetailTab): void }) {
   const graph = useMemo(() => ruleGraph(rule), [rule]);
   const [unsupported, setUnsupported] = useState(false);
   const [nodeId, setNodeId] = useState<string | null>(null);
@@ -251,13 +170,6 @@ function RuleDetail({ rule, issues, tab, onTab }: { rule: AssemblyRuleDetail; is
       {tab === 'info' && (
         <div className="rule-body" role="tabpanel" aria-label="정보">
           <p className="rule-desc">{rule.description}</p>
-
-          {issues.length > 0 && (
-            <section className="rule-section" aria-label="이 규칙의 검증 결과">
-              <h3>검증 결과 <span className="faint">{issues.length}</span></h3>
-              <ul className="check-list">{issues.map((i, n) => <IssueItem key={`${i.code}${n}`} issue={i} withRule={false} />)}</ul>
-            </section>
-          )}
 
           <section className="rule-section">
             <h3>적용 조건</h3>
@@ -306,7 +218,7 @@ function RuleDetail({ rule, issues, tab, onTab }: { rule: AssemblyRuleDetail; is
             {rule.usedBy.length === 0
               ? <p className="faint">적용되는 보유 품목이 없습니다.</p>
               : <ul className="rule-used">{rule.usedBy.map(u => (
-                  <li key={u.itemNo}><Link to={`/items/${u.itemNo}`} className="mono">{u.itemNo}</Link> <span className="muted">{u.name}</span></li>
+                  <li key={u.itemNo}><span className="mono">{u.itemNo}</span> <span className="muted">{u.name}</span></li>
                 ))}</ul>}
           </section>
 
@@ -332,7 +244,7 @@ function RuleDetail({ rule, issues, tab, onTab }: { rule: AssemblyRuleDetail; is
           <p className="rule-picked" aria-live="polite" data-testid="rule-picked">
             {node
               ? <>선택: <strong>{node.sub && node.kind === 'caution' ? node.sub : node.label}</strong> <span className="faint">({KIND_LABEL[node.kind]})</span>
-                  {node.kind === 'part' && node.ref && <> · <Link to={`/items/${node.ref}`} className="mono">{node.ref}</Link></>}</>
+                  {node.kind === 'part' && node.ref && <> · <span className="mono">{node.ref}</span></>}</>
               : <span className="faint">노드를 누르면 여기에 표시됩니다.</span>}
           </p>
         </div>

@@ -28,13 +28,12 @@ function readText(file: File): Promise<string> {
  * 보유하지 않은 부품은 CAD 이름 그대로(추정 분류가 있으면 함께) 보이고, OPMS로 등록 요청을 보낼 수 있다.
  */
 export function StudioPage() {
-  const { api, bump } = useSession();
+  const { api } = useSession();
   const studio = useStudio();
   const { parts, layers, model, selected } = studio;
 
   const [matches, setMatches] = useState<Map<string, CadPartMatch>>(new Map());
   const [confirmed, setConfirmed] = useState<Map<string, CadPartMatch>>(new Map());
-  const [requested, setRequested] = useState<Map<string, number>>(new Map());
   const [guides, setGuides] = useState<Map<string, AssemblyGuide>>(new Map());
   const [example, setExample] = useState<ExampleName>('box');
   const [notice, setNotice] = useState<string>();
@@ -160,34 +159,11 @@ export function StudioPage() {
 
   // 다른 모델을 열면 확정 · 요청 기록을 비운다
   useEffect(() => {
-    setConfirmed(new Map()); setRequested(new Map()); setNotice(undefined);
+    setConfirmed(new Map()); setNotice(undefined);
     setSpecCands(new Map()); setDecisions(new Map()); setAttrNotice(undefined);
   }, [model]);
 
   const effective = useMemo(() => new Map([...matches, ...confirmed]), [matches, confirmed]);
-
-  const stepOf = useCallback((name: string) => (parts.find(p => p.name === name)?.layer ?? -1) + 1, [parts]);
-
-  const request = useCallback(async (name: string) => {
-    const m = effective.get(name);
-    const created = await api.savePartRequest(null, {
-      name,
-      itemType: 'part',
-      unit: 'EA',
-      ...(m?.classIri ? { classIri: m.classIri } : {}),
-      aliases: [{ scheme: 'cad_name', value: name }],
-      note: `CAD 분석 · ${model} · 제조 ${stepOf(name)}단계`,
-    });
-    const sent = await api.submitPartRequest(created.id);
-    setRequested(prev => new Map(prev).set(name, sent.id));
-    bump();
-  }, [api, bump, effective, model, stepOf]);
-
-  const requestAll = useCallback(async () => {
-    const todo = names.filter(n => effective.get(n)?.status === 'none' && !requested.has(n));
-    for (const n of todo) await request(n);
-    setNotice(`${todo.length}종을 OPMS 등록 요청으로 보냈습니다. 내 등록 요청에서 처리 상태를 볼 수 있습니다.`);
-  }, [effective, names, request, requested]);
 
   const confirm = useCallback((name: string) => {
     const m = matches.get(name);
@@ -270,9 +246,9 @@ export function StudioPage() {
 
       <aside className="holo-side">
         <AssemblySteps
-          layers={layers} parts={parts} matches={effective} requested={requested} step={studio.step}
+          layers={layers} parts={parts} matches={effective} step={studio.step}
           {...(selected ? { selectedName: selected.name } : {})}
-          onStep={studio.goStep} onSelect={studio.selectPart} onRequestAll={() => void requestAll()}
+          onStep={studio.goStep} onSelect={studio.selectPart}
         />
         <div className="seg inspector-tabs" role="tablist" aria-label="부품 정보">
           <button type="button" role="tab" aria-selected={tab === 'onto'} onClick={() => setTab('onto')}>온톨로지</button>
@@ -280,9 +256,9 @@ export function StudioPage() {
         </div>
         {tab === 'onto' ? (
           <OntologyPanel
-            model={model} parts={parts} matches={effective} requested={requested}
+            model={model} parts={parts} matches={effective}
             {...(selected ? { selectedName: selected.name } : {})}
-            onRequest={name => void request(name)} onConfirm={confirm}
+            onConfirm={confirm}
           />
         ) : (
           <AttributePanel

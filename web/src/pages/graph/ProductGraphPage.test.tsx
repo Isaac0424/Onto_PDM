@@ -36,7 +36,7 @@ describe('제품 연결 그래프 화면', () => {
     renderAt('/products/HCR3A');
     expect(await screen.findByRole('heading', { level: 1, name: '협동로봇 3 kg' })).toBeInTheDocument();
     const heading = screen.getByRole('heading', { level: 1 }).parentElement!;                // 머리의 최상위 조립품 링크 (묶음 패널에도 같은 링크가 있다)
-    expect(within(heading).getByRole('link', { name: 'P-00000000100' })).toHaveAttribute('href', '/items/P-00000000100');
+    expect(within(heading).getByText('P-00000000100')).toBeInTheDocument();
 
     const chips = await screen.findByRole('group', { name: '요약' });
     expect(within(chips).getByText('부품 10종')).toBeInTheDocument();
@@ -74,13 +74,12 @@ describe('제품 연결 그래프 화면', () => {
     expect(within(panel).getByText('J1 관절 모듈', { selector: 'dd' })).toBeInTheDocument();    // 사용처
 
     const spec = within(panel).getByRole('region', { name: '사양서 1건' });                   // 문서는 종류별로 묶는다
-    expect(within(spec).getByRole('link', { name: 'D-SPEC-HCR' })).toHaveAttribute('href', '/items/P-00000000121?tab=docs');
+    expect(within(spec).getByText('D-SPEC-HCR')).toBeInTheDocument();
     const manual = within(panel).getByRole('region', { name: '설명서 1건' });
     expect(within(manual).getByText('제안')).toBeInTheDocument();                              // 확정 전 연결은 제안으로 표시
 
     expect(within(panel).getByRole('link', { name: 'SP-RED-01' })).toHaveAttribute('href', '/rules/SP-RED-01');
-    expect(within(panel).getByRole('link', { name: '품목 상세' })).toHaveAttribute('href', '/items/P-00000000121');
-    expect(within(panel).getByRole('link', { name: /3D 보기/ })).toHaveAttribute('href', '/items/P-00000000121?tab=viewer');
+    expect(within(panel).queryByRole('link', { name: '품목 상세' })).not.toBeInTheDocument();     // 품목 화면은 삭제됨
 
     await user.click(within(panel).getByRole('button', { name: '선택 해제' }));
     expect(screen.getByRole('complementary', { name: '묶음' })).toHaveTextContent('제품 묶음');
@@ -282,15 +281,15 @@ describe('제품 연결 그래프 화면', () => {
     expect(await within(panel).findByRole('heading', { level: 2, name: '제품 묶음' })).toBeInTheDocument();   // 제품 칩은 제품 묶음으로
   });
 
-  it('MES 발행 링크는 제품과 지금의 BOM 기준을 담고, BOM 가져오기 링크도 있다', async () => {
+  it('작업 표준 링크는 제품과 지금의 BOM 기준을 담고, BOM 가져오기 링크는 없다', async () => {
     const user = userEvent.setup();
     renderAt('/products/HCR3A');
     await listOf();
-    expect(screen.getByRole('link', { name: 'MES 발행' })).toHaveAttribute('href', '/mes?product=HCR3A&rule=released');
-    expect(screen.getByRole('link', { name: 'BOM 가져오기' })).toHaveAttribute('href', '/bom-import');
+    expect(screen.getByRole('link', { name: '작업 표준' })).toHaveAttribute('href', '/mes?product=HCR3A&rule=released');
+    expect(screen.queryByRole('link', { name: 'BOM 가져오기' })).not.toBeInTheDocument();
 
     await user.click(within(filterGroup('BOM 기준')).getByRole('button', { name: '최신' }));
-    await waitFor(() => expect(screen.getByRole('link', { name: 'MES 발행' })).toHaveAttribute('href', '/mes?product=HCR3A&rule=latest'));
+    await waitFor(() => expect(screen.getByRole('link', { name: '작업 표준' })).toHaveAttribute('href', '/mes?product=HCR3A&rule=latest'));
   });
 
   it('조립 규칙은 이름만이 아니라 분류 · 속성을 함께 넣어 품목마다 묻는다', async () => {

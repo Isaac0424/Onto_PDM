@@ -10,7 +10,6 @@ import copy
 import json
 import re
 import threading
-from datetime import datetime, timezone
 from importlib import resources
 from typing import Any
 
@@ -22,25 +21,20 @@ from onto_pdm.contracts import (
     AssemblyRuleSummary,
     BomNode,
     BomRule,
-    BomSheetMatch,
-    BomSheetRowInput,
     CadPartMatch,
     DocumentLink,
     ItemDetail,
     ItemSummary,
     Material,
-    PartRequest,
-    PartRequestPayload,
     Product,
     ProductBom,
     Revision,
-    RuleIssue,
     TaxonomyClass,
     User,
     WhereUsedRow,
 )
-from onto_pdm.errors import bad_request, conflict, forbidden, not_found
-from onto_pdm.matching import Catalog, duplicate_candidates, match_bom_sheet_row, match_cad_part
+from onto_pdm.errors import not_found
+from onto_pdm.matching import Catalog, match_cad_part
 from onto_pdm.store.base import Session
 
 _CAMEL = re.compile(r"(?<!^)(?=[A-Z])")
@@ -65,10 +59,6 @@ def _snake_keys(node: Any, *, free_keys: bool = False) -> Any:
 def load_seed() -> dict[str, Any]:
     raw = resources.files("onto_pdm.seed").joinpath("seed.json").read_text(encoding="utf-8")
     return _snake_keys(json.loads(raw))
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 class InMemoryPdmStore:
@@ -269,10 +259,6 @@ class InMemoryPdmStore:
         cat = self._catalog(s)
         return [CadPartMatch(**match_cad_part(cat, n)) for n in names]
 
-    def match_bom_sheet(self, s: Session, rows: list[BomSheetRowInput]) -> list[BomSheetMatch]:
-        cat = self._catalog(s)
-        return [BomSheetMatch(**match_bom_sheet_row(cat, r.model_dump())) for r in rows]
-
     def get_assembly_guides(self, parts: list[AssemblyPartInput]) -> list[AssemblyGuide]:
         return [g for p in parts if (g := rules.guide_for(p)) is not None]
 
@@ -286,9 +272,6 @@ class InMemoryPdmStore:
         if detail is None:
             raise not_found("RULE_NOT_FOUND", "규칙을 찾을 수 없습니다")
         return detail
-
-    def validate_assembly_rules(self) -> list[RuleIssue]:
-        return rules.validate_rules()
 
     # ---------- 그래프 발행 ----------
 
@@ -337,56 +320,3 @@ class InMemoryPdmStore:
                             for x in self.db["identifiers"] if x["item_id"] in items],
             "materials": [{"concept_code": name, "density": d} for name, d in sorted(used.items())],
         }
-
-    # ---------- 등록 요청 ----------
-
-    def _find_request(self, s: Session, request_id: int) -> dict[str, Any]:
-        r = next((x for x in self.db["part_requests"] if x["id"] == request_id), None)
-        if r is None or (r["requested_by"] != s.user.id and not s.is_admin):
-            raise not_found("REQUEST_NOT_FOUND", "등록 요청을 찾을 수 없습니다")
-        return r
-
-    def list_part_requests(self, s: Session, scope: str) -> list[PartRequest]:
-        if scope == "all" and not s.is_admin:
-            raise forbidden("ADMIN_MODE_REQUIRED", "관리자 모드에서만 할 수 있습니다")
-        rows = [r for r in self.db["part_requests"] if scope == "all" or r["requested_by"] == s.user.id]
-        return [PartRequest(**r) for r in sorted(rows, key=lambda r: r["updated_at"], reverse=True)]
-
-    def get_part_request(self, s: Session, request_id: int) -> PartRequest:
-        return PartRequest(**self._find_request(s, request_id))
-
-    def save_part_request(self, s: Session, request_id: int | None, payload: PartRequestPayload) -> PartRequest:
-        body = payload.model_dump(exclude_none=True)
-        with self._lock:
-            if request_id is None:
-                r: dict[str, Any] = {
-                    "id": max([0, *[x["id"] for x in self.db["part_requests"]]]) + 1, "source_system": "PDM", "status": "draft",
-                    "payload": body, "requested_by": s.user.id, "created_at": _now(), "updated_at": _now(),
-                }
-                self.db["part_requests"].append(r)
-                return PartRequest(**r)
-            r = self._find_request(s, request_id)
-            if r["requested_by"] != s.user.id:
-                raise forbidden("NOT_REQUEST_OWNER", "다른 사람의 요청은 고칠 수 없습니다")
-            if r["status"] != "draft":
-                raise conflict("REQUEST_NOT_DRAFT", "임시저장 상태에서만 고칠 수 있습니다")
-            r["payload"] = body
-            r["updated_at"] = _now()
-            return PartRequest(**r)
-
-    def submit_part_request(self, s: Session, request_id: int) -> PartRequest:
-        with self._lock:
-            r = self._find_request(s, request_id)
-            if r["requested_by"] != s.user.id:
-                raise forbidden("NOT_REQUEST_OWNER", "다른 사람의 요청은 제출할 수 없습니다")
-            if r["status"] != "draft":
-                raise conflict("REQUEST_NOT_DRAFT", "임시저장 상태에서만 제출할 수 있습니다")
-            name = (r["payload"].get("name") or "").strip()
-            if not name:
-                raise bad_request("NAME_REQUIRED", "제출하려면 이름이 필요합니다")
-            r["status"] = "submitted"
-            r["duplicate_check"] = duplicate_candidates(
-                self.db["items"], self.db["identifiers"], r["payload"]["name"],
-                [a["value"] for a in r["payload"].get("aliases", [])])
-            r["updated_at"] = _now()
-            return PartRequest(**r)

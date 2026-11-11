@@ -18,8 +18,6 @@ from onto_pdm.contracts import (
     AssemblyRuleSummary,
     BomNode,
     BomRule,
-    BomSheetMatch,
-    BomSheetMatchRequest,
     CadMatchRequest,
     CadPartMatch,
     DocumentLink,
@@ -27,11 +25,8 @@ from onto_pdm.contracts import (
     ItemDetail,
     ItemPage,
     Material,
-    PartRequest,
-    PartRequestPayload,
     Product,
     ProductBom,
-    RuleIssue,
     TaxonomyClass,
     User,
     WhereUsedRow,
@@ -132,10 +127,6 @@ def build_router() -> APIRouter:
     def cad_match(body: CadMatchRequest, store: Store, s: Ctx) -> list[CadPartMatch]:
         return store.match_cad_parts(s, body.names)
 
-    @r.post("/bom-sheet/match", response_model=list[BomSheetMatch], tags=["matching"], summary="BOM 시트 줄 → 보유 품번", **_COMMON)
-    def bom_sheet_match(body: BomSheetMatchRequest, store: Store, s: Ctx) -> list[BomSheetMatch]:
-        return store.match_bom_sheet(s, body.rows)
-
     @r.post("/assembly/guides", response_model=list[AssemblyGuide], tags=["rules"], summary="부품별 조립 안내 (규칙이 있는 부품만)", **_COMMON)
     def assembly_guides(body: AssemblyGuidesRequest, store: Store) -> list[AssemblyGuide]:
         return store.get_assembly_guides(body.parts)
@@ -144,35 +135,9 @@ def build_router() -> APIRouter:
     def rules(store: Store) -> list[AssemblyRuleSummary]:
         return store.list_assembly_rules()
 
-    @r.get("/rules/validate", response_model=list[RuleIssue], tags=["rules"], summary="규칙 검증(기본 검사)", **_COMMON)
-    def rules_validate(store: Store) -> list[RuleIssue]:
-        return store.validate_assembly_rules()
-
     @r.get("/rules/{rule_id}", response_model=AssemblyRuleDetail, tags=["rules"], **_COMMON)
     def rule(rule_id: str, store: Store, s: Ctx) -> AssemblyRuleDetail:
         return store.get_assembly_rule(s, rule_id)
-
-    # ---- 등록 요청 ----
-    @r.get("/requests", response_model=list[PartRequest], tags=["requests"], **_COMMON)
-    def requests_(store: Store, s: Ctx, scope: Annotated[str, Query(pattern="^(mine|all)$")] = "mine") -> list[PartRequest]:
-        return store.list_part_requests(s, scope)
-
-    @r.get("/requests/{request_id}", response_model=PartRequest, tags=["requests"], **_COMMON)
-    def request_(request_id: int, store: Store, s: Ctx) -> PartRequest:
-        return store.get_part_request(s, request_id)
-
-    @r.post("/requests", response_model=PartRequest, status_code=201, tags=["requests"], summary="등록 요청 임시저장(새로 만들기)", **_COMMON)
-    def request_create(body: PartRequestPayload, store: Store, s: Ctx) -> PartRequest:
-        return store.save_part_request(s, None, body)
-
-    @r.put("/requests/{request_id}", response_model=PartRequest, tags=["requests"], summary="임시저장 고치기", **_COMMON)
-    def request_save(request_id: int, body: PartRequestPayload, store: Store, s: Ctx) -> PartRequest:
-        return store.save_part_request(s, request_id, body)
-
-    @r.post("/requests/{request_id}/submit", response_model=PartRequest, status_code=200, tags=["requests"],
-            summary="제출: 중복 후보가 붙는다", **_COMMON)
-    def request_submit(request_id: int, store: Store, s: Ctx) -> PartRequest:
-        return store.submit_part_request(s, request_id)
 
     return r
 

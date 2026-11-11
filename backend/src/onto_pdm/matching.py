@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -121,65 +120,3 @@ def match_cad_part(cat: Catalog, raw: str) -> dict[str, Any]:
     if cls:
         out.update(class_iri=cls["iri"], class_label=cls["label_ko"], class_path=cat.class_path(cls["iri"]))
     return out
-
-
-def duplicate_candidates(items: Iterable[dict[str, Any]], identifiers: list[dict[str, Any]], name: str,
-                         alias_values: list[str] | None = None) -> list[dict[str, Any]]:
-    """등록 요청을 제출할 때 붙는 중복 후보 (match_item_candidates 근사). items 는 **전체** 품목이다."""
-    alias_values = alias_values or []
-    items = list(items)
-    by_id = {it["id"]: it for it in items}
-    found: dict[str, dict[str, Any]] = {}
-
-    def put(c: dict[str, Any]) -> None:
-        prev = found.get(c["item_no"])
-        if prev is None or prev["score"] < c["score"]:
-            found[c["item_no"]] = c
-
-    for it in items:
-        if name in (it["item_no"], it["name"]):
-            put({"item_no": it["item_no"], "name": it["name"], "method": "exact", "score": 1})
-        elif norm_key(it["item_no"]) == norm_key(name) or norm_key(it["name"]) == norm_key(name):
-            put({"item_no": it["item_no"], "name": it["name"], "method": "normalized", "score": 0.95})
-        else:
-            s = max(similarity(it["name"], name), similarity(it["name_ko"], name) if it.get("name_ko") else 0.0)
-            if s >= 0.3:
-                put({"item_no": it["item_no"], "name": it["name"], "method": "fuzzy", "score": round2(s)})
-    # 이름과 요청에 적은 별칭 값 모두로 기존 별칭을 찾는다
-    for term in [name, *alias_values]:
-        for x in identifiers:
-            if x["value"] == term or norm_key(x["value"]) == norm_key(term):
-                it = by_id[x["item_id"]]
-                score = 0.95 if x["value"] != term else 0.97 if x["scheme"] == "cad_name" else 1
-                put({"item_no": it["item_no"], "name": it["name"], "method": "cad_name" if x["scheme"] == "cad_name" else "alias", "score": score})
-    return sorted(found.values(), key=lambda c: -c["score"])[:5]
-
-
-def match_bom_sheet_row(cat: Catalog, row: dict[str, Any]) -> dict[str, Any]:
-    """BOM 시트 한 줄을 보유 품번과 맞춘다.
-
-    - 품번이 정확히(공백 · 하이픈 · 대소문자 무시) 일치 → matched (자동 확정)
-    - 이름이 일치하거나 비슷하면 → suggested (사람이 확정)
-    - 아니면 → none
-    """
-    line = row["line"]
-    item_no = (row.get("item_no") or "").strip()
-    name = (row.get("name") or "").strip()
-
-    if item_no:
-        key = norm_key(item_no)
-        for it in cat.items:
-            if norm_key(it["item_no"]) == key:
-                return {"line": line, "status": "matched", "item_no": it["item_no"], "item_name": it.get("name_ko") or it["name"],
-                        "reason": "품번 일치"}
-        for it in cat.items:
-            if any(norm_key(a["value"]) == key for a in cat.identifiers.get(it["id"], [])):
-                return {"line": line, "status": "suggested", "item_no": it["item_no"], "item_name": it.get("name_ko") or it["name"],
-                        "reason": f"별칭 {item_no} 로 찾았습니다. 대표 품번을 확인하세요"}
-    if name:
-        m = match_cad_part(cat, name)
-        if m["status"] != "none":
-            how = {"exact": "이름 일치", "alias": "별칭 일치", "cad_name": "CAD 이름 별칭", "normalized": "이름이 거의 같음", "fuzzy": "이름이 비슷함"}[m["method"]]
-            return {"line": line, "status": "suggested", "item_no": m["item_no"], "item_name": m["item_name"],
-                    "reason": f"{how}: 품번이 {'없어서' if not item_no else '맞지 않아서'} 이름으로 찾았습니다. 확인하세요"}
-    return {"line": line, "status": "none", "reason": "보유 품번 없음" + (f" ({item_no})" if item_no else "")}

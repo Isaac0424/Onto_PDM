@@ -19,7 +19,6 @@ from onto_pdm.contracts import (
     AssemblyRuleSummary,
     GuideParam,
     LabeledValue,
-    RuleIssue,
     RuleTable,
     RuleUsedBy,
 )
@@ -354,66 +353,3 @@ def rule_matches(rule_id: str, name: str) -> bool:
     """이 규칙이 적용되는 부품 이름인가 (이름만으로. 분류와 속성까지 보려면 rule_applies)."""
     r = _BY_ID.get(rule_id)
     return bool(r and rule_applies(r, AssemblyPartInput(name=name)))
-
-
-def _blank(v: object) -> bool:
-    return not isinstance(v, str) or v.strip() == ""
-
-
-def validate_rule_defs(defs: tuple[RuleDef, ...] | list[RuleDef]) -> list[RuleIssue]:
-    """규칙 정의를 점검한다 (PRD F-RUL-6). 웹 `validateRuleDefs` 와 같은 검사 · 같은 문장이다.
-
-    error: 쓸 수 없는 규칙(값이 비었음 · 출처 없음 · 조건표가 깨짐 · 적용 대상 없음)
-    warning: 쓸 수는 있지만 확인할 것(주의사항 없음 · 다른 규칙과 겹침 · 검토 전 · 대표 부품에도 안 걸림)
-    """
-    issues: list[RuleIssue] = []
-
-    def add(severity: str, r: RuleDef, code: str, message: str) -> None:
-        issues.append(RuleIssue(severity=severity, rule_id=r.id, code=code, message=message))  # type: ignore[arg-type]
-
-    for r in defs:
-        if not [a for a in r.applies_to if not _blank(a)]:
-            add("error", r, "no_scope", "적용 대상(분류 · 부품 종류)이 비어 있습니다.")
-        if not [c for c in r.conditions if not _blank(c)]:
-            add("error", r, "missing_value", "적용 조건이 비어 있어 언제 걸리는지 알 수 없습니다.")
-        if _blank(r.source if r.source is not None else source_of(r.id)):
-            add("error", r, "no_source", "출처 문서가 없습니다. 어느 표준에서 온 규칙인지 적어야 합니다.")
-
-        g = r.build(r.sample)
-        empty_param = next((p for p in g.params if _blank(p.label) or _blank(p.value)), None)
-        if not g.params:
-            add("error", r, "missing_value", "값이 하나도 없습니다.")
-        elif empty_param is not None:
-            add("error", r, "missing_value", f"값이 비어 있습니다: {'(이름 없음)' if _blank(empty_param.label) else empty_param.label}")
-        if not g.cautions:
-            add("warning", r, "no_caution", "주의사항이 없습니다. 작업자가 확인할 것이 정말 없는지 검토하세요.")
-
-        if r.table is not None:
-            columns, rows = r.table.columns, r.table.rows
-            if not rows:
-                add("error", r, "empty_table", f'조건표 "{r.table.title}"에 행이 없습니다.')
-            elif any(len(row) != len(columns) for row in rows):
-                add("error", r, "empty_table", f'조건표 "{r.table.title}"의 열 수가 맞지 않는 행이 있습니다.')
-            elif any(_blank(c) for row in rows for c in row):
-                add("error", r, "missing_value", f'조건표 "{r.table.title}"에 빈 칸이 있습니다.')
-
-        if r.status == "draft":
-            add("warning", r, "no_source", "검토 전 규칙(가상 값)입니다. 승인된 출처 문서가 없어 실제 작업에 쓰면 안 됩니다.")
-        if not rule_applies(r, r.sample):
-            add("warning", r, "unused", f'대표 부품 "{r.sample.name}"에도 걸리지 않습니다. 분류 · 이름 조건을 확인하세요.')
-
-    # 겹침: 한 규칙의 대표 부품에 다른 규칙도 걸리면 어느 쪽이 쓰일지 순서에 달려 있다
-    defs = list(defs)
-    for i in range(len(defs)):
-        for j in range(i + 1, len(defs)):
-            a, b = defs[i], defs[j]
-            if rule_applies(b, a.sample):
-                add("warning", a, "overlap", f'{a.id}의 대표 부품 "{a.sample.name}"에 {b.id}도 걸립니다. 순서가 앞선 {a.id}가 쓰입니다.')
-            elif rule_applies(a, b.sample):
-                add("warning", b, "overlap", f'{b.id}의 대표 부품 "{b.sample.name}"에 {a.id}도 걸립니다. 순서가 앞선 {a.id}가 쓰입니다.')
-    return issues
-
-
-def validate_rules() -> list[RuleIssue]:
-    """지금 정의된 규칙 전체의 검증 결과."""
-    return validate_rule_defs(RULES)

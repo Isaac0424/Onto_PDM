@@ -206,43 +206,7 @@ class DocumentLink(ContractModel):
     status: LinkStatus
 
 
-# ---------------------------------------------------------------- 등록 요청 · 매칭
-
-
-RequestStatus = Literal["draft", "submitted", "approved", "rejected", "cancelled"]
-
-
-class PartRequestPayload(ContractModel):
-    name: str | None = None
-    name_ko: str | None = None
-    item_type: ItemType | None = None
-    unit: str | None = None
-    class_iri: str | None = None
-    material_iri: str | None = None
-    aliases: list[Identifier] | None = None
-    note: str | None = None
-
-
-class DuplicateCandidate(ContractModel):
-    item_no: str
-    name: str
-    method: Literal["exact", "alias", "cad_name", "normalized", "fuzzy"]
-    score: float
-
-
-class PartRequest(ContractModel):
-    id: int
-    source_system: Literal["PDM", "PLM", "AGENT"]
-    status: RequestStatus
-    payload: PartRequestPayload
-    class_proposal_id: int | None = None
-    duplicate_check: list[DuplicateCandidate] | None = None
-    issued_item_no: str | None = None
-    requested_by: int
-    reviewed_by: int | None = None
-    review_note: str | None = None
-    created_at: str
-    updated_at: str
+# ---------------------------------------------------------------- 매칭 (CAD 부품 이름 → 보유 품번)
 
 
 class CadMatchRequest(ContractModel):
@@ -339,14 +303,7 @@ class AssemblyRuleDetail(AssemblyRuleSummary):
     used_by: list[RuleUsedBy]
 
 
-class RuleIssue(ContractModel):
-    severity: Literal["error", "warning"]
-    rule_id: str | None = None
-    code: Literal["overlap", "missing_value", "no_source", "empty_table", "no_scope", "no_caution", "unused"]
-    message: str
-
-
-# ---------------------------------------------------------------- MES 발행 (PRD 6.6)
+# ---------------------------------------------------------------- 작업 표준 묶음 (구 MES 발행 묶음, PRD 6.6)
 
 
 class MesBomLine(ContractModel):
@@ -397,49 +354,11 @@ class MesPackage(ContractModel):
     warnings: list[str]
 
 
-class MesPublication(ContractModel):
-    id: int
-    product_code: str
-    revision: str
-    rule: BomRule
-    status: Literal["pending", "sent", "failed"]
-    created_at: str
-    sent_at: str | None = None
-    error: str | None = None
-    bom_lines: int
-    steps: int
-
-
-# ---------------------------------------------------------------- BOM 시트(csv) 가져오기
-
-
-class BomSheetRowInput(ContractModel):
-    line: int
-    item_no: str | None = None
-    name: str | None = None
-    quantity: float
-    find_no: int | None = None
-
-
-class BomSheetMatchRequest(ContractModel):
-    rows: list[BomSheetRowInput]
-
-
-class BomSheetMatch(ContractModel):
-    line: int
-    status: Literal["matched", "suggested", "none"]
-    item_no: str | None = None
-    item_name: str | None = None
-    reason: str  # 왜 이렇게 판단했나 (사람이 읽는 한 줄)
-
-
 # ---------------------------------------------------------------- 계약 목록 (export 가 읽는다)
 
 REQUEST_MODELS: tuple[type[ContractModel], ...] = (
     CadMatchRequest,
     AssemblyGuidesRequest,
-    BomSheetMatchRequest,
-    PartRequestPayload,
 )
 
 RESPONSE_MODELS: tuple[type[ContractModel], ...] = (
@@ -456,13 +375,9 @@ RESPONSE_MODELS: tuple[type[ContractModel], ...] = (
     ProductBom,
     WhereUsedRow,
     DocumentLink,
-    PartRequest,
     CadPartMatch,
     AssemblyGuide,
     AssemblyRuleSummary,
     AssemblyRuleDetail,
-    RuleIssue,
     MesPackage,
-    MesPublication,
-    BomSheetMatch,
 )

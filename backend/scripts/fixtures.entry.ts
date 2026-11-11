@@ -66,7 +66,6 @@ async function main() {
     await rec('matchCadParts', NAMES, () => api.matchCadParts(NAMES));
     await rec('getAssemblyGuides', PARTS, () => api.getAssemblyGuides(PARTS as never));
     await rec('listAssemblyRules', null, () => api.listAssemblyRules());
-    await rec('validateAssemblyRules', null, () => api.validateAssemblyRules());
     for (const id of RULE_IDS) await rec('getAssemblyRule', id, () => api.getAssemblyRule(id));
 
     const queries = [{}, { q: 'BLT-0038' }, { q: '볼트' }, { itemType: 'standard' }, { itemType: 'assembly' }, { status: 'wip' }, { status: 'released' }, { productId: 1 }, { productId: 2 }];
@@ -80,23 +79,6 @@ async function main() {
     }
     for (const rev of [1, 5, 8, 14, 99]) await rec('getDocuments', rev, () => api.getDocuments(rev));
     for (const id of [1, 2, 5, 8, 9, 14, 19]) await rec('getWhereUsed', id, () => api.getWhereUsed(id));
-    await rec('listPartRequests', 'mine', () => api.listPartRequests('mine'));
-    if (who === 'admin') await rec('listPartRequests', 'all', () => api.listPartRequests('all'));
-
-    // 등록 요청을 저장 → 제출하면 중복 후보가 붙는다 (시각은 비교하지 않는다)
-    const payloads = [
-      { name: 'Bolt M3x8', aliases: [{ scheme: 'legacy', value: 'BLT-0038' }] },
-      { name: '기판 나사 M3', itemType: 'standard' },
-      { name: 'Cable clamp', aliases: [{ scheme: 'supplier', value: 'SUP-C:CC-12' }] },
-      { name: 'ERP 77121' },
-    ];
-    for (const payload of payloads) {
-      await rec('submitDuplicateCheck', payload, async () => {
-        const r = await api.savePartRequest(null, payload as never);
-        const s = await api.submitPartRequest(r.id);
-        return { status: s.status, sourceSystem: s.sourceSystem, duplicateCheck: s.duplicateCheck };
-      });
-    }
   }
 
   const seed = createSeed();

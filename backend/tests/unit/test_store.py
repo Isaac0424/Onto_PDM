@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from onto_pdm.contracts import BomSheetRowInput, PartRequestPayload
 from onto_pdm.errors import ApiException
 from onto_pdm.store import InMemoryPdmStore, Session
 
@@ -36,9 +35,6 @@ def test_admin_role_without_admin_mode_is_not_admin(store: InMemoryPdmStore) -> 
     cover = next(i for i in store.list_items(s) if i.item_no == "P-00000000112")
     assert cover.latest_revision is not None and cover.latest_revision.rev == "R00"      # 검토중 R01 은 안 보인다
     assert cover.latest_revision.status == "released"
-    with pytest.raises(ApiException) as e:
-        store.list_part_requests(s, "all")
-    assert e.value.status == 403
 
 
 def test_bom_uses_released_or_latest_revision(store: InMemoryPdmStore) -> None:
@@ -74,42 +70,3 @@ def test_unknown_product_and_revision(store: InMemoryPdmStore) -> None:
     with pytest.raises(ApiException) as e2:
         store.get_bom(s, 999, "released")
     assert (e2.value.status, e2.value.code) == (404, "REVISION_NOT_FOUND")
-
-
-def test_request_flow_save_then_submit_adds_duplicate_candidates(store: InMemoryPdmStore) -> None:
-    s = as_user(store, "lee", False)
-    draft = store.save_part_request(s, None, PartRequestPayload(name="Bolt M3x8"))
-    assert draft.status == "draft" and draft.source_system == "PDM" and draft.requested_by == s.user.id
-    sent = store.submit_part_request(s, draft.id)
-    assert sent.status == "submitted"
-    assert sent.duplicate_check and sent.duplicate_check[0].item_no == "P-00000000001" and sent.duplicate_check[0].method == "exact"
-
-    with pytest.raises(ApiException) as e:                                              # 제출된 요청은 고칠 수 없다
-        store.save_part_request(s, draft.id, PartRequestPayload(name="x"))
-    assert e.value.status == 409
-    empty = store.save_part_request(s, None, PartRequestPayload())
-    with pytest.raises(ApiException) as e2:
-        store.submit_part_request(s, empty.id)
-    assert e2.value.status == 400 and e2.value.code == "NAME_REQUIRED"
-
-
-def test_request_is_private_to_its_author_unless_admin_mode(store: InMemoryPdmStore) -> None:
-    lee = as_user(store, "lee", False)
-    draft = store.save_part_request(lee, None, PartRequestPayload(name="x"))
-    with pytest.raises(ApiException) as e:
-        store.get_part_request(as_user(store, "kim", False), draft.id)
-    assert e.value.status == 404
-    assert store.get_part_request(as_user(store, "kim", True), draft.id).id == draft.id
-
-
-def test_bom_sheet_rows_match_by_part_number_then_name(store: InMemoryPdmStore) -> None:
-    s = as_user(store, "kim", True)
-    out = store.match_bom_sheet(s, [
-        BomSheetRowInput(line=1, item_no="p-00000000001", quantity=4),        # 대소문자 · 하이픈 무시
-        BomSheetRowInput(line=2, item_no="BLT-0038", quantity=1),             # 별칭 → 후보
-        BomSheetRowInput(line=3, name="전원 버튼", quantity=1),               # 이름 일치 → 후보
-        BomSheetRowInput(line=4, item_no="X-9", name="볼펜 심", quantity=1),
-    ])
-    assert [(m.status, m.item_no) for m in out] == [
-        ("matched", "P-00000000001"), ("suggested", "P-00000000001"), ("suggested", "P-00000000160"), ("none", None)]
-    assert "품번 일치" == out[0].reason

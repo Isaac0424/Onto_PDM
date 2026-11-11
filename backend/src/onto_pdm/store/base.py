@@ -15,18 +15,13 @@ from onto_pdm.contracts import (
     AssemblyRuleSummary,
     BomNode,
     BomRule,
-    BomSheetMatch,
-    BomSheetRowInput,
     CadPartMatch,
     DocumentLink,
     ItemDetail,
     ItemSummary,
     Material,
-    PartRequest,
-    PartRequestPayload,
     Product,
     ProductBom,
-    RuleIssue,
     TaxonomyClass,
     User,
     WhereUsedRow,
@@ -61,11 +56,9 @@ class PdmStore(Protocol):
     def get_documents(self, s: Session, revision_id: int) -> list[DocumentLink]: ...
 
     def match_cad_parts(self, s: Session, names: list[str]) -> list[CadPartMatch]: ...
-    def match_bom_sheet(self, s: Session, rows: list[BomSheetRowInput]) -> list[BomSheetMatch]: ...
     def get_assembly_guides(self, parts: list[AssemblyPartInput]) -> list[AssemblyGuide]: ...
     def list_assembly_rules(self) -> list[AssemblyRuleSummary]: ...
     def get_assembly_rule(self, s: Session, rule_id: str) -> AssemblyRuleDetail: ...
-    def validate_assembly_rules(self) -> list[RuleIssue]: ...
 
     def export_publication(self, code: str) -> dict[str, Any]:
         """제품 하나의 **승인본**(released · obsolete 리비전)과 그 BOM · 별칭 · 재료를 그래프 발행용으로 내보낸다.
@@ -74,8 +67,3 @@ class PdmStore(Protocol):
         키는 snake_case: product, items, revisions, lines, current, identifiers, materials. docs/backend-plan.md 의 outbox 자리다.
         """
         ...
-
-    def list_part_requests(self, s: Session, scope: str) -> list[PartRequest]: ...
-    def get_part_request(self, s: Session, request_id: int) -> PartRequest: ...
-    def save_part_request(self, s: Session, request_id: int | None, payload: PartRequestPayload) -> PartRequest: ...
-    def submit_part_request(self, s: Session, request_id: int) -> PartRequest: ...

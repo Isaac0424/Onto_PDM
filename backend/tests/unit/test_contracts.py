@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from onto_pdm import contract_export
-from onto_pdm.contracts import PDM_CONTRACT_VERSION, RESPONSE_MODELS, ItemPage, ItemSummary, Page, PartRequestPayload
+from onto_pdm.contracts import PDM_CONTRACT_VERSION, RESPONSE_MODELS, CadMatchRequest, ItemPage, ItemSummary, Page
 
 
 def test_committed_contracts_are_up_to_date() -> None:
@@ -17,7 +17,8 @@ def test_schema_has_every_contract_model_and_version() -> None:
     assert schema["x-contract-version"] == PDM_CONTRACT_VERSION == "1"
     names = set(schema["properties"])
     assert {m.__name__ for m in RESPONSE_MODELS} <= names
-    assert {"CadMatchRequest", "AssemblyGuidesRequest", "BomSheetMatchRequest", "PartRequestPayload"} <= names
+    assert {"CadMatchRequest", "AssemblyGuidesRequest"} <= names
+    assert not ({"BomSheetMatchRequest", "PartRequestPayload", "PartRequest", "MesPublication", "RuleIssue"} & names)   # 관리 기능 삭제
     # 선(wire) 형식은 snake_case
     detail = schema["$defs"]["ItemDetail"]["properties"]
     assert "item_no" in detail and "latest_revision" in detail and "itemNo" not in detail
@@ -41,7 +42,7 @@ def test_extra_fields_are_rejected() -> None:
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        PartRequestPayload.model_validate({"name": "x", "nmae": "oops"})
+        CadMatchRequest.model_validate({"names": ["x"], "nmae": "oops"})
 
 
 def test_page_is_the_opms_shape() -> None:

@@ -94,39 +94,14 @@ def test_rules_endpoints(client: TestClient) -> None:
     red = client.get(url("/rules/SP-RED-01"), headers=KIM_ON).json()
     assert {u["item_no"] for u in red["used_by"]} >= {"P-00000000121", "P-00000000131"}  # 보유한 감속기 품목
     assert client.get(url("/rules/SP-NOPE")).status_code == 404
-    issues = client.get(url("/rules/validate")).json()                                    # /rules/{id} 보다 앞에서 잡힌다
-    assert isinstance(issues, list) and all({"severity", "code", "message"} <= set(i) for i in issues)
-
-
-def test_request_flow(client: TestClient) -> None:
-    created = client.post(url("/requests"), json={"name": "Bolt M3x8", "aliases": [{"scheme": "legacy", "value": "BLT-0038"}]}, headers=LEE)
-    assert created.status_code == 201
-    rid = created.json()["id"]
-    assert created.json()["status"] == "draft"
-
-    saved = client.put(url(f"/requests/{rid}"), json={"name": "Bolt M3x8", "item_type": "standard"}, headers=LEE).json()
-    assert saved["payload"]["item_type"] == "standard"
-    sent = client.post(url(f"/requests/{rid}/submit"), headers=LEE).json()
-    assert sent["status"] == "submitted" and sent["duplicate_check"][0]["item_no"] == "P-00000000001"
-    assert client.put(url(f"/requests/{rid}"), json={"name": "x"}, headers=LEE).status_code == 409
-    assert client.post(url(f"/requests/{rid}/submit"), headers=LEE).json()["error"]["code"] == "REQUEST_NOT_DRAFT"
-
-    assert client.get(url(f"/requests/{rid}"), headers={"X-PDM-User": "kim"}).status_code == 404   # 남의 요청
-    assert client.get(url("/requests"), params={"scope": "all"}, headers={"X-PDM-User": "kim"}).status_code == 403
-    allr = client.get(url("/requests"), params={"scope": "all"}, headers=KIM_ON).json()
-    assert rid in [r["id"] for r in allr]
-    mine = client.get(url("/requests"), headers=LEE).json()
-    assert all(r["requested_by"] == 2 for r in mine)
-
-
-def test_bom_sheet_match_route(client: TestClient) -> None:
-    r = client.post(url("/bom-sheet/match"), json={"rows": [
-        {"line": 1, "item_no": "P-00000000002", "quantity": 8}, {"line": 2, "name": "없는 부품", "quantity": 1}]}, headers=KIM_ON).json()
-    assert [x["status"] for x in r] == ["matched", "none"] and r[0]["reason"] == "품번 일치"
+    assert client.get(url("/rules/validate")).status_code == 404                           # 규칙 검증은 삭제됨 (규칙 id 'validate' 는 없다)
 
 
 def test_openapi_lists_the_routes(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
     for p in ("/items", "/items/{item_no}", "/products/{code}/bom", "/rules", "/rules/{rule_id}", "/assembly/guides", "/cad/match",
-              "/bom-sheet/match", "/documents", "/requests", "/requests/{request_id}/submit", "/health"):
+              "/documents", "/health"):
         assert url(p) in paths, p
+    # 관리 기능은 삭제했다 (사용자 지시)
+    for p in ("/bom-sheet/match", "/requests", "/rules/validate"):
+        assert url(p) not in paths, p

@@ -71,17 +71,3 @@ def test_list_and_detail() -> None:
     assert weld is not None and weld.table is not None and len(weld.table.rows) == 4
     assert weld.table.rows[0][0] == "< 1.5 mm" and weld.table.rows[-1][0] == "≥ 6 mm"
     assert rules.describe_rule("SP-NOPE", []) is None
-
-
-def test_validation_finds_broken_definitions_and_overlaps() -> None:
-    issues = rules.validate_rules()
-    assert {i.code for i in issues} >= {"no_source"}                                    # 검토 전 규칙 경고
-    assert all(i.rule_id for i in issues)
-
-    import dataclasses
-
-    broken = dataclasses.replace(rules.RULES[0], applies_to=[], conditions=[" "], source=" ")
-    codes = {i.code for i in rules.validate_rule_defs([broken])}
-    assert {"no_scope", "missing_value", "no_source"} <= codes
-    bad_table = dataclasses.replace(rules.RULES[-2], table=rules.RuleTable(title="t", columns=["a", "b"], rows=[["1"]]))
-    assert any(i.code == "empty_table" for i in rules.validate_rule_defs([bad_table]))

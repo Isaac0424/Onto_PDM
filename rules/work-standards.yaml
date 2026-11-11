@@ -1,0 +1,255 @@
+# 작업표준서 (PDM 소유). 대상: 한화 협동로봇 HCR-A(2G) 시리즈 HCR-3A · HCR-5A · HCR-12A의 **설치 · 점검 작업**(사용설명서 3 · 7 · 15장)과
+# **CAD 구조에서 뽑은 본체 체결 부품 목록**.
+# 사용설명서는 설치 · 운영 설명서라서 **공장의 로봇 암 본체 조립 절차는 어디에도 없다.** 그래서 본체 조립은 구조(어느 조립품에 어떤 부품이 몇 개)만 CAD 에서 옮기고
+# 절차(순서 · 토크 · 공구 · 시간)는 쓰지 않았다 — 공백은 gaps.yaml 에 있다.
+#
+# 모든 단계 · 확인 항목 · 수량에 source(manual · cad · unknown)와 ref 가 있다. 단계 순서는 사용설명서의 절 순서를 따른 것이며,
+# 매뉴얼이 "이 순서로 해야 한다"고 명시한 곳은 `order_binding: manual` 로 따로 표시했다(나머지는 G-015).
+# 값(토크 · 볼트 규격)의 정본은 규칙(rules.yaml)이고 단계는 `rules:` 로 가리킨다. 읽기 쉽게 단계 문장에 값을 옮겨 적은 곳(WS-HCR-INS-02 단계 3)은
+# rules/tests/test_rules.py 가 규칙의 값과 같은지 비교한다 — 값을 고칠 때는 규칙을 먼저 고치고 시험이 알려 주는 문장을 맞춘다.
+
+version: 1
+
+work_standards:
+  # ===================== 설치 =====================
+  WS-HCR-INS-01:
+    title: 설치 장소 · 유형 확인과 운반
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 로봇을 설치하기 전에 장소와 설치 유형을 확인하고 안전하게 옮긴다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-SIT-001, AR-SIT-002, AR-SIT-003]
+    tools: []
+    steps:
+      - {seq: 1, operation: SiteCheck, rules: [AR-SIT-001], text: "설치 장소가 권장 조건(내진 설계 건물 · 누수 없음 · 인화성 및 폭발 물질 없음 · 온도와 습도 일정 · 먼지 유입 적음)을 만족하는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "3.1", page: 47}}
+      - {seq: 2, operation: SiteCheck, rules: [AR-SIT-002], text: "설치 유형(바닥 · 벽면 · 천장)을 정한다. HCR-12A 는 바닥과 천장에만 설치할 수 있다.", source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+      - {seq: 3, operation: SiteCheck, rules: [AR-SIT-002], condition: 대차 · 고정 포스트에 설치하는 경우, text: "로봇을 대차에 설치했다면 작동할 때 반드시 대차를 지면에 고정한다. 대차와 고정 포스트는 제품에 포함되어 있지 않다.", source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+      - {seq: 4, operation: Handling, rules: [AR-SIT-003], text: "로봇 암과 컨트롤러를 옮긴다. 컨트롤러는 상단의 손잡이로 운반한다. 무게는 모델별로 다르다(규칙 AR-SIT-003).", source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+    checks:
+      - {text: 설치 장소가 권장 조건을 만족한다, criterion: {text: "권장하는 장소에 설치하지 않으면 로봇의 성능 및 수명이 감소될 수 있다"}, source: manual, ref: {doc: UG-KR, sec: "3.1", page: 47}}
+
+  WS-HCR-INS-02:
+    title: 로봇 암 베이스 고정
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 로봇 암을 볼트 4개로 설치면에 정해진 토크로 고정한다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-FAS-001, AR-FAS-002, AR-FAS-003, AR-LOC-001, AR-SAF-001]
+    tools: [TL-TORQUE]
+    steps:
+      - {seq: 1, operation: BaseMounting, condition: 설치면의 평면도 · 강성이 로봇 암을 지지하기에 부족한 경우, text: "고정 베이스를 이용해 설치한다.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {seq: 2, operation: PinLocating, rules: [AR-LOC-001], condition: 로봇 암을 정확한 위치에 설치하려는 경우(선택), text: "위치 결정 핀 2개로 설치 위치를 정한다. 핀 지름은 HCR-3A Φ5 · HCR-5A Φ8 · HCR-12A Φ5 mm.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {seq: 3, operation: BoltFastening, rules: [AR-FAS-001], text: "로봇 암을 볼트 4개로 천장 · 벽면 · 바닥에 고정한다. 볼트와 토크: HCR-3A M6×15 mm 30 N·m, HCR-5A M8×15 mm 45 N·m, HCR-12A M12×25 mm 140 N·m.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}, targets: [{role: robot_base_mount, quantity: 4, source: manual}]}
+      - {seq: 4, operation: BoltFastening, rules: [AR-FAS-002], text: "정전기 방지를 위해 M4×10 mm 볼트로 접지 라인을 연결한다. 체결 토크는 매뉴얼에 없다(G-003).", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {seq: 5, operation: CoverFitting, rules: [AR-FAS-003], condition: HCR-3A · HCR-5A, text: "동봉된 로봇 고정 볼트 커버 4개를 덮는다.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    precautions: [AR-SAF-001]            # 조립되어 있는 볼트는 분해하지 않는다
+    checks:
+      - {text: 로봇 암의 설치면이 베이스면과 완전히 밀착되었는지 확인한다, criterion: {text: 완전 밀착}, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {text: 로봇 암을 작동하기 전에 모든 볼트가 잘 고정되어 있는지 확인한다, criterion: {text: 모든 볼트 고정}, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 50}}
+
+  WS-HCR-INS-03:
+    title: 툴 장착과 TCP 설정
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 툴 플랜지에 툴을 고정하고 케이블을 연결한 뒤 TCP를 입력한다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-FAS-004, AR-CON-004, AR-CFG-002]
+    tools: [TL-TORQUE]
+    steps:
+      - {seq: 1, operation: ToolMounting, rules: [AR-FAS-004], text: "M6 볼트 4개로 툴 플랜지(ISO 9409-1-50-4-M6)에 툴을 고정한다. 볼트 길이와 토크는 툴마다 다르다(툴 제조사 사용설명서, G-002). 툴과 M6 볼트는 제품에 포함되지 않는다.", source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}, targets: [{role: tool_mount, quantity: 4, source: manual}]}
+      - {seq: 2, operation: Wiring, rules: [AR-CON-004], text: "툴을 고정한 후 툴 I/O 또는 EtherCAT 포트에 필요한 케이블을 연결한다. 핀 맵은 Appendix E.", source: manual, ref: {doc: UG-KR, sec: "3.4, App. E", page: [50, 51, 263]}, order_binding: manual}
+      - {seq: 3, operation: Configuration, rules: [AR-CFG-002], condition: 툴을 처음 장착한 경우, text: "TCP(툴 끝 위치 · 방향 · 무게 · 무게 중심)를 설정한다.", source: manual, ref: {doc: UG-KR, sec: "7.2", page: [96, 97]}}
+    checks:
+      - {text: 로봇을 가동하기 전에 TCP 의 유형에 따라 정확한 값을 입력했다, criterion: {text: "반드시 정확한 값을 입력(잘못 입력하면 충돌 · 협착 위험)"}, source: manual, ref: {doc: UG-KR, sec: "7.2", page: 96}}
+
+  WS-HCR-INS-04:
+    title: 컨트롤러 고정과 케이블 · 전원 · I/O 연결
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 컨트롤러를 두고 티칭 펜던트 · 로봇 암 · 전원 · I/O 를 연결한다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-FAS-005, AR-CON-001, AR-CON-002, AR-CON-003, AR-CFG-003]
+    tools: [TL-TORQUE]
+    steps:
+      - {seq: 1, operation: ControllerMounting, rules: [AR-FAS-005], condition: 컨트롤러를 지면에 고정하는 경우(선택), text: "하단의 고정용 브라켓에 M14 45 mm 이상 볼트를 평와셔와 함께 조합해 고정한다. 볼트와 나사는 제품에 포함되지 않는다. 체결 토크는 매뉴얼에 없다(G-004).", source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}
+      - {seq: 2, operation: Wiring, rules: [AR-CON-001], text: "티칭 펜던트 케이블을 컨트롤러에 연결한 다음 고정용 걸쇠를 건다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 52}}
+      - {seq: 3, operation: Wiring, rules: [AR-CON-001], text: "로봇 암의 케이블을 컨트롤러에 연결한 다음 고정용 걸쇠를 건다. 3A · 5A 컨트롤러와 12A 컨트롤러는 커넥터 위치가 다르다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 53}}
+      - {seq: 4, operation: Wiring, rules: [AR-CON-002], text: "전원 단자에 나라별 전원 케이블을 연결한다(표준 IEC 플러그). 입력전원 100 ~ 240 VAC, 외부 전원 퓨즈 8 ~ 16 A, 50 ~ 60 Hz. 접지 · 메인 퓨즈 · 누전 차단기는 구매자나 설치하는 사람이 준비한다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      - {seq: 5, operation: Wiring, rules: [AR-CON-003], text: "I/O 배선은 제어기 전원을 끈 뒤 I/O 커넥터에 사전 배선한다.", source: manual, ref: {doc: UG-KR, sec: "3.7", page: 56}, order_binding: manual}
+      - {seq: 6, operation: Configuration, rules: [AR-CFG-003], condition: HCR-12A, text: "제어기와 로봇바디의 시리얼 번호가 일치하는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "1.1", page: 14}}
+    checks:
+      - {text: 로봇이 켜진 상태에서 로봇 · 전원 · 티칭 펜던트 커넥터를 뽑지 않았다, criterion: {text: 금지 사항(주의)}, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      - {text: 티칭 펜던트 연결 시 커넥터의 Pin 을 확인했다, criterion: {text: Pin 확인(주의)}, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+
+  WS-HCR-INS-05:
+    title: 설치 후 설치 각도 설정 · 값 확인 · 위험성 평가
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 로봇을 가동하기 전에 설치 유형에 맞는 값을 입력하고 안전을 확인한다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-CFG-001, AR-CFG-004]
+    tools: []
+    steps:
+      - {seq: 1, operation: Configuration, rules: [AR-CFG-001], text: "로봇 설정 > 마운팅에서 설치 각도를 설정한다: 바닥 0°, 벽 90°, 천장 180°. HCR-12A 는 바닥(0°) · 천장(180°)만, X · Y 축 방향 ±30° 이내.", source: manual, ref: {doc: UG-KR, sec: "7.1", page: [93, 94, 95]}, order_binding: manual}
+      - {seq: 2, operation: Configuration, rules: [AR-CFG-004], text: "설치 각도 · 툴 설정 · 안전 설정 등의 값이 올바르게 입력되었는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "2.2", page: 38}}
+      - {seq: 3, operation: Configuration, rules: [AR-CFG-004], text: "위험성 평가를 수행한다(ISO 12100 · ISO 10218-2 · ISO/TS 15066 참조). 설치한 직후에 반드시 한다. 사내 절차는 작성이 필요하다(G-012).", source: manual, ref: {doc: UG-KR, sec: "2.12", page: 46}, order_binding: manual}
+    checks:
+      - {text: 설치 유형에 맞는 각도를 입력했다, criterion: {text: "자동으로 인식하지 못하므로 가동 전에 정확한 값을 입력"}, source: manual, ref: {doc: UG-KR, sec: "7.1", page: 93}}
+
+  # ===================== 점검 =====================
+  WS-HCR-MNT-01:
+    title: 정기 점검 항목과 주기
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 로봇을 최상의 상태로 유지하기 위해 항목별 주기로 점검한다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-MNT-001, AR-MNT-004]
+    tools: []
+    steps: []                             # 이 문서는 절차가 아니라 항목표다. 절차는 WS-HCR-MNT-02 · 03
+    inspection_items:                     # 사용설명서 15.1 표 8건. 합격 기준은 없다(G-013)
+      - {seq: 1, group: 로봇 암, target: 전체, check: "로봇에 적용한 프로그램에 따라 의도한 위치로 이동하는지 확인합니다.", cycle: {value: 1, unit: 일, label: 매일}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {seq: 2, group: 로봇 암, target: 전체, check: "얼룩, 먼지 등 오염물질 제거합니다.", cycle: {value: 3, unit: 개월}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {seq: 3, group: 로봇 암, target: 전체, check: "서보 전원을 켜고 끌 때 로봇 암이나 툴이 아래로 쳐지지 않는지 확인합니다.", cycle: {value: 1, unit: 일, label: 매일}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {seq: 4, group: 로봇 암, target: 주요 볼트, check: "로봇 외부에 노출되는 볼트가 느슨해 지지 않았는지 확인합니다.", cycle: {value: 3, unit: 개월}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {seq: 5, group: 로봇 암, target: 모터, check: "이상 발열이나 소음이 발생하는지 확인합니다.", cycle: {value: 1, unit: 일, label: 매일}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {seq: 6, group: 로봇 컨트롤러, target: 케이블, check: "케이블 연결 상태를 확인합니다.", cycle: {value: 6, unit: 개월}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}, cycle_note: "표의 병합 셀로 읽은 값(텍스트 추출 기준): 6개월이 컨트롤러 3행(케이블 · 내부 · 필터)에 걸친다고 해석했다. 원본 표로 확인 필요"}
+      - {seq: 7, group: 로봇 컨트롤러, target: 내부, check: "내부의 먼지를 제거합니다.", cycle: {value: 6, unit: 개월}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}, cycle_note: 위와 같다}
+      - {seq: 8, group: 로봇 컨트롤러, target: 필터, check: "필터의 먼지를 제거합니다.", cycle: {value: 6, unit: 개월}, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}, cycle_note: 위와 같다}
+    event_checks:
+      - {event: "120°/sec 이상의 속도로 구동 중 충돌 또는 비상정지가 발생한 경우", rules: [AR-MNT-004], text: "관절 영점을 확인한다. 이상이 있으면 영점을 조절한 뒤 툴의 이동 경로가 정확한지 확인한다. 영점 조절은 구매처에 문의한다(G-017).", source: manual, ref: {doc: UG-KR, sec: "2.7", page: 44}}
+    checks: []
+
+  WS-HCR-MNT-02:
+    title: 로봇 암 확인 및 청소
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 로봇 암의 케이블 · 외부 나사 · 모터 · 브레이크 · 감속기와 오염을 확인한다 (최소 6개월마다)
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-MNT-002]
+    tools: []
+    steps:
+      - {seq: 1, operation: Inspection, rules: [AR-MNT-002], text: "로봇 암의 자세를 초기(Home) 위치로 전환한다.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}, order_binding: manual}
+      - {seq: 2, operation: Inspection, rules: [AR-MNT-002], text: "로봇 컨트롤러의 전원을 끈다.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}, order_binding: manual}
+      - {seq: 3, operation: Inspection, rules: [AR-MNT-002], text: "컨트롤러와 로봇 암을 연결하는 케이블에 이상이 없는지, 외부에 노출된 나사가 느슨해지거나 풀리지 않았는지, 모터 · 브레이크 · 감속기 등에 이상이 없는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}, order_binding: manual}
+      - {seq: 4, operation: Cleaning, rules: [AR-MNT-002], condition: 얼룩이나 먼지 등 오염 물질이 있는 경우, text: "오염 물질을 제거한다.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}, order_binding: manual}
+    checks: []
+
+  WS-HCR-MNT-03:
+    title: 로봇 컨트롤러 확인 · 먼지 제거 · 필터 청소
+    models: [HCR-3A, HCR-5A, HCR-12A]
+    purpose: 컨트롤러 내부 먼지로 인한 정전기와 과열 오작동을 막는다 (최소 6개월마다)
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-MNT-003]
+    tools: [TL-VACUUM]
+    steps:
+      - {seq: 1, operation: Inspection, rules: [AR-MNT-003], text: "로봇 컨트롤러의 전원을 끈다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}, order_binding: manual}
+      - {seq: 2, operation: Inspection, rules: [AR-MNT-003], text: "로봇 컨트롤러의 덮개를 연다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}, order_binding: manual}
+      - {seq: 3, operation: Inspection, rules: [AR-MNT-003], text: "내부에 먼지가 쌓여 있는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}, order_binding: manual}
+      - {seq: 4, operation: Cleaning, rules: [AR-MNT-003], condition: 먼지가 있는 경우, text: "진공 청소기 등으로 조심스럽게 먼지를 제거한다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}, order_binding: manual}
+      - {seq: 5, operation: Inspection, rules: [AR-MNT-003], text: "커넥터의 선이 빠지지 않고 잘 연결되어 있는지 확인한다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}, order_binding: manual}
+      - {seq: 6, operation: Cleaning, rules: [AR-MNT-003], text: "공기 흡입구와 배출구의 먼지 필터를 분리해 진공 청소기나 공기 압축기 등으로 먼지를 제거한다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 232}}
+    checks: []
+
+  # ===================== 본체 조립 구조 (CAD, 절차 없음) =====================
+  WS-HCR12A-ASM-01:
+    title: HCR-12A 서브 조립별 체결 부품 (CAD 구조 · 조립 절차는 작성 필요)
+    models: [HCR-12A]
+    kind: structure_only
+    purpose: 12A STEP 의 조립 계층에서 서브 조립품마다 들어가는 볼트와 주요 부품의 수량을 옮겼다. 조립 순서 · 토크 · 공구 · 시간은 근거가 없어 비워 두었다
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-FAS-006]
+    tools: [TL-HEXKEY, TL-TORQUE]
+    steps: []                              # 절차를 쓰지 않았다(G-005)
+    procedure_gap: G-005
+    source_files: [CAD-12A, CAD-BOM]
+    assemblies:
+      - cad_name: HCR12A_1ST_ARM_ASSY_R1_ASM
+        label: 1번 암 조립품
+        parts:
+          - {cad_name: BOLT-M4X25, quantity: 20, class: SocketHeadBolt, threadSize: M4, length_mm: 25, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_1ST_ARM_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_1ST_ARM_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_1ST_ARM_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_1ST_ARM_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_1ST_ARM_ASSY_R1_ASM}}
+      - cad_name: HCR12A_2ND_ARM_ASSY_R1_ASM
+        label: 2번 암 조립품
+        parts:
+          - {cad_name: BOLT-M4X15, quantity: 18, class: SocketHeadBolt, threadSize: M4, length_mm: 15, class_basis: step_description, source: cad, ref: {doc: CAD-BOM, node: HCR12A_2ND_ARM_ASSY_R1_ASM}, note: "STEP 설명 SCREW-SOCKET_HEAD_CAP_SCREW-M4X15;0.7,15 로 소켓 헤드 캡 볼트가 확인된 유일한 부품"}
+          - {cad_name: HCR12A_2ND_ARM_COVER_A_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_2ND_ARM_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_2ND_ARM_COVER_B_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_2ND_ARM_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_2ND_ARM_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_2ND_ARM_ASSY_R1_ASM}}
+      - cad_name: HCR12A_J1_ASSY_R1_ASM
+        label: J1 관절 조립품
+        parts:
+          - {cad_name: BOLT-M3X8, quantity: 12, class: SocketHeadBolt, threadSize: M3, length_mm: 8, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+          - {cad_name: CONNECTOR-HAN_3A_AGG_QB_K_1_1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+          - {cad_name: CONNECTOR-JL05_2A20_29_1_1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_BOTTOM_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J1_HOUSING_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_UTILITY_PANEL_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J1_ASSY_R1_ASM}}
+      - cad_name: HCR12A_J2_ASSY_R1_ASM
+        label: J2 관절 조립품
+        parts:
+          - {cad_name: BOLT-M4, quantity: 16, class: SocketHeadBolt, threadSize: M4, length_mm: null, length_source: unknown, gap: G-019, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J2_ASSY_R1_ASM}, note: CAD 이름에 길이가 없고 모델은 머리만 있다}
+          - {cad_name: HCR12A_J1_HOUSING_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J2_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J2_HOUSING_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J2_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J2_HOUSING_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J2_ASSY_R1_ASM}}
+      - cad_name: HCR12A_J3_J4_ASSY_R1_ASM
+        label: J3 · J4 관절 조립품
+        parts:
+          - {cad_name: BOLT-M3X15, quantity: 13, class: SocketHeadBolt, threadSize: M3, length_mm: 15, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J3_J4_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J3_HOUSING_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J3_J4_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J3_J4_HOUSING_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J3_J4_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J4_HOUSING_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J3_J4_ASSY_R1_ASM}}
+      - cad_name: HCR12A_J5_J6_ASSY_R1_ASM
+        label: J5 · J6 관절 조립품
+        parts:
+          - {cad_name: BOLT-M3X15, quantity: 8, class: SocketHeadBolt, threadSize: M3, length_mm: 15, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J5_J6_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J5_J6_HOUSING_COVER_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J5_J6_ASSY_R1_ASM}}
+          - {cad_name: HCR12A_J5_J6_HOUSING_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_J5_J6_ASSY_R1_ASM}}
+      - cad_name: HCR12A_TOOL_IO_ASSY_R1_ASM
+        label: 툴 I/O 조립품
+        parts:
+          - {cad_name: BOLT-M4, quantity: 7, class: SocketHeadBolt, threadSize: M4, length_mm: null, length_source: unknown, gap: G-019, class_basis: shape_classifier, estimated: true, source: cad, ref: {doc: CAD-BOM, node: HCR12A_TOOL_IO_ASSY_R1_ASM}, note: CAD 이름에 길이가 없고 모델은 머리만 있다}
+          - {cad_name: HCR12A_TOOL_IO_MOUNT_R1, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_TOOL_IO_ASSY_R1_ASM}}
+          - {cad_name: HCR_TOOL_IO_CON_ECAT, quantity: 1, source: cad, ref: {doc: CAD-BOM, node: HCR12A_TOOL_IO_ASSY_R1_ASM}}
+          - {cad_name: HCR_TOOL_IO_CON_GPIO, quantity: 2, source: cad, ref: {doc: CAD-BOM, node: HCR12A_TOOL_IO_ASSY_R1_ASM}}
+    checks: []
+
+  WS-HCR3A5A-ASM-01:
+    title: HCR-3A · HCR-5A 커버 볼트 (CAD 구조 · 조립 절차는 작성 필요)
+    models: [HCR-3A, HCR-5A]
+    kind: structure_only
+    purpose: 3A · 5A STEP 에서 수량이 확인되는 커버 볼트를 옮겼다. 두 STEP 의 조립 계층 중 이 볼트들이 어느 조립품에 들어가는지는 아직 옮기지 않았다(수량은 STEP 전체 합계)
+    status: unreviewed
+    revision: R00 (초안, 사람 검토 전)
+    standard_time: {value: null, source: unknown, gap: G-006}
+    rules: [AR-FAS-006, AR-FAS-003]
+    tools: [TL-HEXKEY, TL-TORQUE]
+    steps: []
+    procedure_gap: G-005
+    source_files: [CAD-3A, CAD-5A, CAD-BOM]
+    assemblies:
+      - cad_name: BODY_HCR3A_R00_3D_ASM
+        label: HCR-3A 본체 (조립품 계층 미옮김)
+        model: HCR-3A
+        parts:
+          - {cad_name: HCR_COVER_BOLT_1, quantity: 9, class: SocketHeadBolt, threadSize: M4, length_mm: 12, socket_size_mm: 3, class_basis: step_description, estimated: true, source: cad, ref: {doc: CAD-3A, node: HCR_COVER_BOLT_1}, note: "STEP 설명이 소켓 헤드를 가리키고, 나사 지름 · 길이 · 구멍 크기는 형상 분류기 추정"}
+          - {cad_name: HCR_COVER_BOLT_3, quantity: 9, class: SocketHeadBolt, threadSize: M3, length_mm: 12, socket_size_mm: 2.5, class_basis: step_description, estimated: true, source: cad, ref: {doc: CAD-3A, node: HCR_COVER_BOLT_3}, note: 위와 같다}
+          - {cad_name: HCR3A_BASE_COVER_BOLT_1, quantity: 4, kind: bolt_cover_inferred, class: null, class_basis: shape_classifier_low_confidence, gap: G-010, estimated: true, source: cad, ref: {doc: CAD-3A, node: HCR3A_BASE_COVER_BOLT_1}, note: "매뉴얼의 '로봇 고정 볼트 커버 4개(3A·5A)'로 추정. 형상은 접시머리 · 십자 구멍(0.6)으로 읽혀 신뢰가 낮다"}
+      - cad_name: BODY_HCR5A_R00-3D_ASM
+        label: HCR-5A 본체 (조립품 계층 미옮김)
+        model: HCR-5A
+        parts:
+          - {cad_name: HCR_COVER_BOLT_1, quantity: 16, class: SocketHeadBolt, threadSize: M4, length_mm: 12, socket_size_mm: 3, class_basis: step_description, estimated: true, source: cad, ref: {doc: CAD-5A, node: HCR_COVER_BOLT_1}}
+          - {cad_name: HCR_COVER_BOLT_2, quantity: 8, class: SocketHeadBolt, threadSize: M4, length_mm: 12, socket_size_mm: 3, class_basis: step_description, estimated: true, source: cad, ref: {doc: CAD-5A, node: HCR_COVER_BOLT_2}}
+    checks: []

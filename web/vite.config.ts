@@ -16,8 +16,13 @@ export default defineConfig({
   },
   server: {
     fs: { allow: [repoRoot] },
-    // 올린 CAD · BOM · 사양서는 파일 보관소 서버(server/files-server.mjs)가 받는다
-    proxy: { '/api/files': `http://127.0.0.1:${process.env.FILES_PORT ?? 8788}` },
+    // 올린 CAD 는 파일 서버(server/files-server.mjs)의 /api/cads(CAD 파일 DB)가 받고, /api/files 는 OPMS 와 공유하는 파일 보관소다.
+    // /api/v1/pdm 은 PDM 백엔드(backend/, onto-pdm serve): OPMS 의 분류 · 부품을 읽기만 해서 준다
+    proxy: {
+      '/api/files': `http://127.0.0.1:${process.env.FILES_PORT ?? 8788}`,
+      '/api/cads': `http://127.0.0.1:${process.env.FILES_PORT ?? 8788}`,
+      '/api/v1/pdm': `http://127.0.0.1:${process.env.PDM_API_PORT ?? 8100}`,
+    },
   },
   // 3D 뷰어(three.js + explode-studio, 약 770 kB)는 3D 탭을 열 때만 따로 받는 청크라 경고 한도를 올린다
   build: { chunkSizeWarningLimit: 800 },
@@ -26,5 +31,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: false,
+    // 스튜디오 화면 시험은 형상 분석 + 렌더가 겹쳐 컴퓨터가 바쁠 때(여러 시험 파일 병렬) 5초(기본)를 넘길 수 있다
+    testTimeout: 20_000,
   },
 });

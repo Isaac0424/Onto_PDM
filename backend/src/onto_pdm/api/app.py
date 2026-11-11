@@ -6,6 +6,9 @@ prefix 는 /api/v1/pdm. 응답은 snake_case 이고, 값이 없는 필드는 nul
 
 from __future__ import annotations
 
+import os
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, Header, Query, Request
@@ -31,7 +34,16 @@ from onto_pdm.contracts import (
     User,
     WhereUsedRow,
 )
+from onto_pdm.api.changes_routes import build_changes_router
+from onto_pdm.api.feeds_routes import build_feeds_router
+from onto_pdm.api.opms_routes import build_opms_router
+from onto_pdm.api.rulebook_routes import build_rulebook_router
+from onto_pdm.changes.fixtures import brk_m8 as brk_m8_fixture
+from onto_pdm.changes.service import ChangeService
+from onto_pdm.changes.store import ChangeStore, InMemoryChangeStore
 from onto_pdm.errors import ERROR_RESPONSES, forbidden, install_error_handlers
+from onto_pdm.opms import OpmsReader, reader_from_env
+from onto_pdm.rulebook import RulebookStore
 from onto_pdm.store import InMemoryPdmStore, PdmStore, Session
 
 PREFIX = "/api/v1/pdm"
@@ -142,14 +154,39 @@ def build_router() -> APIRouter:
     return r
 
 
-def create_app(store: PdmStore | None = None) -> FastAPI:
+def create_app(
+    store: PdmStore | None = None, opms: OpmsReader | None = None, rulebook: RulebookStore | None = None,
+    changes: ChangeStore | None = None, env: Mapping[str, str] | None = None,
+) -> FastAPI:
+    e = os.environ if env is None else env
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        yield
+        app.state.opms.close()                                 # OPMS Neo4j 드라이버를 닫는다 (읽기 전용 연결)
+
     app = FastAPI(
-        title="Onto PDM API", version="0.1.0",
+        title="Onto PDM API", version="0.1.0", lifespan=lifespan,
         description=f"CAD · BOM · 사양서 관리, 조립 규칙, 부품 매칭. 계약 버전 {PDM_CONTRACT_VERSION}",
     )
-    app.state.store = store if store is not None else InMemoryPdmStore()
+    # 시험 · 시연 픽스처(앱 목 금지): PDM_FIXTURE=brk-m8 일 때만, 그리고 기본 시드와 섞이지 않게 **빈 시드 저장소**에만 올린다.
+    fixture_on = brk_m8_fixture.fixture_enabled(e)
+    app.state.store = store if store is not None else InMemoryPdmStore(brk_m8_fixture.empty_seed() if fixture_on else None)
+    app.state.changes = changes if changes is not None else InMemoryChangeStore()
+    if fixture_on and isinstance(app.state.store, InMemoryPdmStore):
+        brk_m8_fixture.load_from_env(e, app.state.store, app.state.changes)
+    # OPMS 읽기 어댑터: PDM_NEO4J_* 가 있으면 OPMS Neo4j 를 **읽기만** 한다. 없으면 /opms/* 가 503 (OPMS_NOT_CONFIGURED)
+    app.state.opms = opms if opms is not None else reader_from_env()
+    # 조립 규칙 · 작업표준서: 저장소의 rules/ YAML(PDM_RULES_DIR)을 읽기만 한다. 로드할 때 tools/check_rules.py 로 검증하고 오류면 /rulebook/* 가 503
+    app.state.rulebook = rulebook if rulebook is not None else RulebookStore.from_env()
+    # 설계 변경 영향 분석: 외부(ERP · MES) 입구는 PDM_FEED_TOKEN 이 있어야 열린다(없으면 403 FEED_NOT_CONFIGURED)
+    app.state.change_service = ChangeService(app.state.store, app.state.changes, app.state.opms, feed_token=e.get("PDM_FEED_TOKEN") or None)
     install_error_handlers(app)
     app.include_router(build_router())
+    app.include_router(build_opms_router())
+    app.include_router(build_rulebook_router())
+    app.include_router(build_changes_router())
+    app.include_router(build_feeds_router())
 
     @app.get("/api/health", response_model=Health, tags=["health"])
     def health() -> Health:

@@ -9,7 +9,7 @@
 
 표기: ✅ 있음 · 🟡 일부 · ⬜ 없음 · **판단 필요** = 사용자가 정할 것 · *추정* = 읽은 근거로 짐작한 것. 근거는 `파일:줄`. 날짜는 절대 날짜.
 
-> **근거 기준**: OPMS는 `D:\ernest_hemingway_OPMS`의 **PDM 브랜치**만 읽었다(HEAD `7d1e484`, 온톨로지 0.18.0. 작업 트리에 미커밋 0.19.0 — `holeDepth` · `fit_check` 1개 추가 — 이 있다). OPMS는 읽기만 했고 수정하지 않았다. 이 PDM 저장소는 작업 트리 상태 그대로 읽었다.
+> **근거 기준**: OPMS는 `D:\ernest_hemingway_OPMS`의 **PDM 브랜치**만 읽었다(HEAD `03331ba`, 온톨로지 0.19.0 — `holeDepth` · `fit_check` 1개는 커밋 `58ffed2`. 처음 조사 때는 `7d1e484`(0.18.0)였고 그 뒤 OPMS가 앞서 나갔다). OPMS는 읽기만 했고 수정하지 않았다. 이 PDM 저장소는 작업 트리 상태 그대로 읽었다.
 
 ## 1. 무엇을 풀려는가
 
@@ -268,7 +268,7 @@ graph LR
 
 | 판정 | OPMS가 서버로 주나 | 그래서 PDM은 | 표시 |
 |---|---|---|---|
-| 길이 ↔ 홈 깊이 (`fit_check` `bolt_length_vs_hole_depth`: 볼트 길이 ≥ 홈 깊이 + 2.0) | ✅ `POST /api/v1/fit/judge` (A-42 · 43, 4상태) — 단 미커밋 0.19.0 | 이 변경 분석의 **관통 볼트 · 너트에는 쓰지 않는다**(탭 구멍용) | `OPMS` |
+| 길이 ↔ 홈 깊이 (`fit_check` `bolt_length_vs_hole_depth`: 볼트 길이 ≥ 홈 깊이 + 2.0) | ✅ `POST /api/v1/fit/judge` (A-42 · 43, 4상태) — 0.19.0(커밋 `58ffed2`) | 이 변경 분석의 **관통 볼트 · 너트에는 쓰지 않는다**(탭 구멍용) | `OPMS` |
 | 볼트 ↔ 너트 · 와셔 짝 (`mates_with`) | ❌ 서버 판정 API 없음. 규칙은 `rules.yaml:11-34` · `relations.yaml` `matesWith`에 있고 계산형이다 (`CR-NEXT-mating-rules.md:86-105`). `POST /parts/match`는 중복 매칭용이고 **보류**다(`CR-NEXT-parts-match-api.md:3`) | OPMS 스냅샷(A-31 `ontology/versions/{v}/schema`)에서 `mates_with` 명세를 읽어 **같은 4상태 의미**로 계산 | `temporary: true` · "임시 판정" |
 | 그립 길이 (두께 + 와셔 + 너트 + 나사 끝 여유) | ❌ 규칙이 없다. 어느 문서에도 이 공식이 없다(조사 2026-11-12) | PDM이 **참고 판정**으로 계산. OPMS 규칙이 아니다 | `PDM 참고` |
 | 강도 등급 짝 | ❌ 순서 비교가 없어 `mates_with`로 못 쓴다(`CR-NEXT-mating-rules.md:233`) | 같은 문자열이면 같음, **다르면 항상 "검토 필요"** | `review` |
@@ -646,7 +646,7 @@ RETURN 'no_ontology_version_as_revision' AS rule, toString(r.pdm_revision_id) AS
 
 ### 10.1 OPMS에 부탁할 것 (요청서 초안 목록, 아직 전달하지 않았다)
 
-없어도 막히지 않는다. PDM이 임시로 대신한다. 기준 브랜치는 OPMS `PDM`(`7d1e484`, 작업 트리 0.19.0).
+없어도 막히지 않는다. PDM이 임시로 대신한다. 기준 브랜치는 OPMS `PDM`(`03331ba`, 온톨로지 0.19.0).
 
 | # | 요청 | 지금 PDM의 대신 | 왜 필요한가 |
 |---|---|---|---|

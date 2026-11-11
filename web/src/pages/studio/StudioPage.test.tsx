@@ -2,11 +2,15 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockApi } from '../../api/mock/mockApi';
+import { createEmptyApi } from '../../api/emptyApi';
+import type { PdmApi } from '../../api/types';
 import { SessionProvider } from '../../session';
 import { StudioPage } from './StudioPage';
+import { studioTestApi } from './testApi';
+import { seedCad } from './testSeed';
+import { createFakeCadDb, type FakeCadDb } from './testServer';
 
-// jsdom 에는 WebGL 이 없어 뷰어는 같은 API 모양의 가짜로 바꾼다. 부품 · 단계는 실제 예시 모델과 같은 꼴이다.
+// jsdom 에는 WebGL 이 없어 뷰어는 같은 API 모양의 가짜로 바꾼다. 스튜디오는 예시(목업) 모델 없이 시작하므로, 시험은 CAD 를 미리 등록하고 열어 둔 상태에서 시작한다(seedCad).
 const PARTS = [
   { id: 0, name: '하우징', path: '본체', layer: 0, ko: '', size: [120, 80, 20] },
   { id: 1, name: '제어 기판', path: '전장', layer: 1, ko: '', size: [96, 60, 1.6] },
@@ -30,17 +34,16 @@ vi.mock('explode-studio', () => ({
     const handlers: Record<string, ((d: unknown) => void)[]> = {};
     const emit = (type: string, d: unknown) => (handlers[type] ?? []).forEach(fn => fn(d));
     const state = { destroyed: false };
+    let model = '';
     const root = Object.assign(document.createElement('div'), { innerHTML: '<div class="stage"></div>' });   // 실제 뷰어처럼 컨테이너 안에 붙인다
     container.appendChild(root);
     studio.last = state;
     return {
       on: (type: string, fn: (d: unknown) => void) => { (handlers[type] ??= []).push(fn); return () => { handlers[type] = (handlers[type] ?? []).filter(f => f !== fn); }; },
-      loadExample: () => emit('model', { name: '제어 박스 · 예시 모델', parts: PARTS.length }),
-      loadFile: async () => emit('model', { name: 'uploaded.step', parts: PARTS.length }),
-      loadSpec: async () => {},
+      loadFile: async (f: File) => { model = f.name; emit('model', { name: model, parts: PARTS.length }); },
       replay: () => { studio.calls.push('replay'); },
       setSpin: (on: boolean) => { studio.calls.push(`spin:${on}`); },
-      getState: () => ({ model: '제어 박스 · 예시 모델', step: 1 }),
+      getState: () => ({ model, step: 1 }),
       getParts: () => PARTS,
       getLayers: () => LAYERS,
       root,
@@ -51,10 +54,9 @@ vi.mock('explode-studio', () => ({
   },
 }));
 
-function renderPage(prepare?: (api: ReturnType<typeof createMockApi>) => void) {
-  window.localStorage.setItem('onto-pdm-session', JSON.stringify({ userId: 2, adminMode: false }));
-  const api = createMockApi(() => JSON.parse(window.localStorage.getItem('onto-pdm-session')!));
-  prepare?.(api);
+/** 기본은 시험용 답이 들어 있는 API(studioTestApi). 아무것도 연결되지 않은 모습은 createEmptyApi() 를 넘겨 본다 */
+async function renderPage(api: PdmApi = studioTestApi()) {
+  await seedCad();                                                    // 보관함에 CAD 하나 + 마지막에 열어 둔 CAD 로 기록
   const view = render(
     <SessionProvider api={api}>
       <MemoryRouter><StudioPage /></MemoryRouter>
@@ -67,13 +69,13 @@ beforeEach(() => { studio.goCalls.length = 0; studio.calls.length = 0; });
 
 describe('CAD 스튜디오 (메인 화면)', () => {
   it('제조 순서를 단계별로 나누고 부품마다 보유 품번 매칭을 보인다', async () => {
-    renderPage();
+    await renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
     expect(within(steps).getByText('CAD 구조에서 나눈 5단계 · 부품 5종')).toBeInTheDocument();
-    expect(within(steps).getByText('P-00000000160', { selector: '.chip-ok' })).toBeInTheDocument();   // 전원 버튼: 이름이 정확히 같아 확정
-    expect(within(steps).getByText('후보 P-00000000001')).toBeInTheDocument();                       // 기판 나사 M3: CAD 이름 별칭 → 후보
+    expect(within(steps).getByText('P-T0000000160', { selector: '.chip-ok' })).toBeInTheDocument();   // 전원 버튼: 이름이 정확히 같아 확정
+    expect(within(steps).getByText('후보 P-T0000000001')).toBeInTheDocument();                       // 기판 나사 M3: CAD 이름 별칭 → 후보
     expect(within(steps).getByText('×2')).toBeInTheDocument();                                       // 같은 이름의 두 개는 한 줄로
     expect(within(steps).getByText('분류 커버')).toBeInTheDocument();                                 // 미보유: 추정 분류
     expect(within(steps).getByText('미보유', { selector: '.chip-none' })).toBeInTheDocument();         // 미보유: 분류도 없음(제어 기판)
@@ -82,7 +84,7 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('단계를 누르면 뷰어가 그 단계로 간다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await user.click(within(steps).getByRole('button', { name: /^3\s*기판 나사 M3/ }));
     expect(studio.goCalls).toEqual([4]);
@@ -91,13 +93,13 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('고르지 않으면 모델 전체의 분류 그래프, 보유 부품을 고르면 그 부품의 온톨로지가 보인다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const onto = await screen.findByRole('region', { name: '온톨로지' });
-    expect(await within(onto).findByRole('img', { name: '제어 박스 · 예시 모델 온톨로지 그래프' })).toBeInTheDocument();
+    expect(await within(onto).findByRole('img', { name: 'base.step 온톨로지 그래프' })).toBeInTheDocument();
 
     const steps = screen.getByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
-    await user.click(within(steps).getByRole('button', { name: /^전원 버튼\s*P-00000000160/ }));
+    await user.click(within(steps).getByRole('button', { name: /^전원 버튼\s*P-T0000000160/ }));
 
     expect(await within(onto).findByRole('img', { name: '전원 버튼 온톨로지 그래프' })).toBeInTheDocument();
     expect(await within(onto).findByText('전기 · 전자 › 스위치 · 버튼')).toBeInTheDocument();      // 분류 사슬
@@ -107,7 +109,7 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('미보유 부품에도 OPMS 등록 요청 버튼은 없다 (등록 요청은 삭제됨, 사용자 지시)', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
@@ -120,67 +122,51 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('후보 품번은 사람이 확정해야 보유로 바뀐다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
     await user.click(within(steps).getByRole('button', { name: /^기판 나사 M3\s*×2/ }));
     await user.click(await screen.findByRole('button', { name: '이 품번으로 확정' }));
-    expect(await within(steps).findByText('P-00000000001', { selector: '.chip-ok' })).toBeInTheDocument();
+    expect(await within(steps).findByText('P-T0000000001', { selector: '.chip-ok' })).toBeInTheDocument();
   });
 
-  describe('파일 보관소', () => {
-    const fetchMock = vi.fn();
-    beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock); });
+  describe('서버 DB', () => {
+    // CAD 는 서버 DB(/api/cads)에 저장된다. 사양서 · BOM 올리기는 없다(삭제됨, 사용자 지시)
+    let db: FakeCadDb;
+    beforeEach(() => {
+      db = createFakeCadDb();
+      vi.stubGlobal('fetch', db.fetch);
+    });
     afterEach(() => { vi.unstubAllGlobals(); });
+    /** 마지막에 열어 둔 CAD 가 열릴 때까지 기다린다 (열리면 화면이 안내를 비우므로, 그 뒤에 올려야 안내가 남는다) */
+    const opened = () => screen.findByText('base.step', { selector: '.holo-model' });
 
-    const saved = (kind: string, duplicate = false) => new Response(
-      JSON.stringify({ sha256: 'ab12cd34'.padEnd(64, '0'), size: 3, name: 'x', format: 'x', kind, duplicate }),
-      { status: duplicate ? 200 : 201 });
-
-    it('CAD · 사양서 · BOM 을 올리면 원본이 종류와 함께 보관소로 간다', async () => {
-      fetchMock.mockImplementation(() => Promise.resolve(saved('cad')));
+    it('CAD 는 서버 DB 로 올라가고, 사양서 · BOM 으로는 아무것도 보내지 않는다', async () => {
       const user = userEvent.setup();
-      renderPage();
-      await screen.findByRole('region', { name: '제조 순서' });
-
+      await renderPage();
+      await opened();
       await user.upload(screen.getByLabelText('CAD 파일'), new File(['solid'], '브래킷.step'));
-      await user.upload(screen.getByLabelText('사양서 파일'), new File(['spec'], '사양.pdf'));
-      await user.upload(screen.getByLabelText('BOM 파일'), new File(['a,b'], 'bom.csv'));
 
-      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
-      expect(fetchMock.mock.calls.map(c => c[0])).toEqual([
-        `/api/files?name=${encodeURIComponent('브래킷.step')}&kind=cad`,
-        `/api/files?name=${encodeURIComponent('사양.pdf')}&kind=spec`,
-        '/api/files?name=bom.csv&kind=bom',
-      ]);
-      expect(fetchMock.mock.calls[0]![1]).toMatchObject({ method: 'POST' });
-      expect(await screen.findByText(/bom\.csv을\(를\) 보관소에 저장했어요/)).toBeInTheDocument();
+      await waitFor(() => expect(db.urls).toContain(`POST /api/cads?name=${encodeURIComponent('브래킷.step')}`));
+      expect(db.urls.some(u => u.startsWith('POST /api/files'))).toBe(false);                 // 파일 보관소(/api/files)로는 올리지 않는다
+      expect(db.rows.size).toBeGreaterThanOrEqual(1);
     });
 
-    it('같은 내용이 이미 있으면 그렇게 알려준다', async () => {
-      fetchMock.mockResolvedValue(saved('bom', true));
+    it('서버가 꺼져 있어도 화면에서는 열리고, 저장 실패를 알려준다', async () => {
+      db.down = true;
       const user = userEvent.setup();
-      renderPage();
-      await screen.findByRole('region', { name: '제조 순서' });
-      await user.upload(screen.getByLabelText('BOM 파일'), new File(['a,b'], 'bom.csv'));
-      expect(await screen.findByText(/같은 파일이 이미 보관소에 있어요/)).toBeInTheDocument();
-    });
-
-    it('보관소 서버가 꺼져 있어도 화면에서는 열리고, 저장 실패를 알려준다', async () => {
-      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
-      const user = userEvent.setup();
-      renderPage();
-      await screen.findByRole('region', { name: '제조 순서' });
+      await renderPage();
+      await opened();
       await user.upload(screen.getByLabelText('CAD 파일'), new File(['solid'], 'a.step'));
-      expect(await screen.findByRole('alert')).toHaveTextContent('파일 보관소 서버에 연결하지 못했습니다');
+      expect(await screen.findByRole('alert')).toHaveTextContent('서버에 연결하지 못했습니다');
       expect(screen.getByRole('region', { name: '제조 순서' })).toBeInTheDocument();
     });
   });
 
   it('부품을 고르면 3D 위에 그 부품의 조립 규칙 카드와 자막이 겹쳐 뜬다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
     expect(await screen.findByRole('status', { name: /단계나 부품을 고르면/ })).toBeInTheDocument();     // 고르기 전: 안내 자막
@@ -200,10 +186,7 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('규칙이 없는 부품은 없다고 말하고, 카드는 접을 수 있다', async () => {
     const user = userEvent.setup();
-    renderPage(api => {                                  // 하우징에서만 규칙을 걷어 낸다 (지금은 하우징 규칙 SP-HSG-01 이 있다)
-      const real = api.getAssemblyGuides.bind(api);
-      api.getAssemblyGuides = async parts => (await real(parts)).filter(g => g.partName !== '하우징');
-    });
+    await renderPage();                                        // 시험용 API 에는 하우징에 걸리는 규칙이 없다
     const steps = await screen.findByRole('region', { name: '제조 순서' });
     await waitFor(() => expect(within(steps).queryByText('매칭 중…')).not.toBeInTheDocument());
 
@@ -217,17 +200,77 @@ describe('CAD 스튜디오 (메인 화면)', () => {
 
   it('CAD 를 올리면 자동 회전을 켜고 처음부터 재생한다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     await screen.findByRole('region', { name: '제조 순서' });
-    expect(studio.calls).toEqual([]);                                  // 예시 모델을 열 때는 시작하지 않는다
+    expect(studio.calls).toEqual([]);                                  // 열어 둔 CAD 를 다시 열 때는 재생하지 않는다 (올릴 때만 시작한다)
     await user.upload(screen.getByLabelText('CAD 파일'), new File(['solid'], 'a.step'));
     await waitFor(() => expect(studio.calls).toEqual(['spin:true', 'replay']));
   });
 
   it('화면을 떠나면 뷰어를 정리한다', async () => {
-    const { unmount } = renderPage();
+    const { unmount } = await renderPage();
     await screen.findByRole('region', { name: '제조 순서' });
     unmount();
     expect(studio.last?.destroyed).toBe(true);
+  });
+});
+
+describe('CAD 스튜디오: 보유 품번 · 규칙 · 온톨로지를 읽어 올 곳(OPMS)이 없을 때', () => {
+  // 기본 API 는 비어 있다(가짜 데이터 없음). 화면은 "없음"이 아니라 "OPMS 에 연결되면 표시돼요"라고 말하고, CAD 에서 계산하는 것은 그대로 보인다.
+  it('제조 순서는 CAD 구조 그대로 보이고, 매칭 칩 대신 연결 안내가 나온다 (보유 · 후보 · 미보유 숫자를 지어내지 않는다)', async () => {
+    await renderPage(createEmptyApi());
+    const steps = await screen.findByRole('region', { name: '제조 순서' });
+    expect(within(steps).getByText('CAD 구조에서 나눈 5단계 · 부품 5종')).toBeInTheDocument();
+    expect(within(steps).getByRole('note')).toHaveTextContent('보유 품번 매칭은 OPMS에 연결되면 표시돼요.');
+    expect(within(steps).queryByRole('group', { name: '보유 품번 매칭 현황' })).not.toBeInTheDocument();
+    expect(within(steps).queryByText('미보유')).not.toBeInTheDocument();
+    expect(within(steps).queryByText(/매칭 중…/)).not.toBeInTheDocument();
+    expect(within(steps).getByRole('button', { name: /^하우징/ })).toBeInTheDocument();
+  });
+
+  it('온톨로지 패널은 그래프 대신 연결 안내를 보인다 (오류가 아니다)', async () => {
+    const user = userEvent.setup();
+    await renderPage(createEmptyApi());
+    const steps = await screen.findByRole('region', { name: '제조 순서' });
+    await user.click(within(steps).getByRole('button', { name: /^전원 버튼/ }));
+    const onto = screen.getByRole('region', { name: '온톨로지' });
+    const note = within(onto).getByRole('status', { name: 'OPMS 연결 안내' });
+    expect(note).toHaveTextContent('온톨로지를 읽을 곳이 없어요');
+    expect(note).toHaveTextContent('속성 탭');
+    expect(within(onto).queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('부품을 고르면 3D 위 카드는 "연결된 규칙 없음"이 아니라 OPMS 에 연결되면 표시된다고 말한다', async () => {
+    const user = userEvent.setup();
+    await renderPage(createEmptyApi());
+    const steps = await screen.findByRole('region', { name: '제조 순서' });
+    expect(await screen.findByRole('status', { name: /조립 규칙은 OPMS에 연결되면/ })).toBeInTheDocument();    // 고르기 전 자막
+    await user.click(within(steps).getByRole('button', { name: /^제어 기판/ }));
+    const card = await screen.findByRole('complementary', { name: '조립 안내' });
+    expect(within(card).getByText('OPMS에 연결되면 표시돼요')).toBeInTheDocument();
+    expect(within(card).queryByText('연결된 규칙 없음')).not.toBeInTheDocument();
+    expect(await screen.findByRole('status', { name: '제어 기판: 조립 규칙은 OPMS에 연결되면 이 위에 표시돼요.' })).toBeInTheDocument();
+  });
+
+  it('CAD 에서 계산하는 속성 후보는 연결과 상관없이 나온다', async () => {
+    const user = userEvent.setup();
+    await renderPage(createEmptyApi());
+    const steps = await screen.findByRole('region', { name: '제조 순서' });
+    await user.click(screen.getByRole('tab', { name: /^속성/ }));
+    await user.click(within(steps).getByRole('button', { name: /^상부 커버/ }));
+    const list = await screen.findByRole('list', { name: '상부 커버 속성 후보' });
+    expect(within(list).getByText('두께')).toBeInTheDocument();                                      // 크기 3 mm 에서 계산한 값
+  });
+
+  it('머리에 CAD 올리기만 있고 사양서 올리기 · BOM 올리기는 없다', async () => {
+    await renderPage(createEmptyApi());
+    await screen.findByRole('region', { name: '제조 순서' });
+    expect(screen.getByRole('button', { name: /CAD 올리기/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /사양서 올리기/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /BOM 올리기/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('사양서 파일')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('BOM 파일')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('CAD 파일')).toBeInTheDocument();
   });
 });

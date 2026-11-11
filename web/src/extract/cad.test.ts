@@ -99,3 +99,24 @@ describe('extractCadAttributes: 이름의 규격 표기', () => {
     expect(r.map(x => x.partName)).toEqual(['A', 'B M3']);
   });
 });
+
+describe('단위 정보가 없는 CAD (STL · OBJ · GLB)', () => {
+  it('뷰어가 \'단위\' 같은 자리표시를 돌려줘도 mm 로 가정해 치수 · 두께 후보를 만들고, 추정으로 표시한다', () => {
+    for (const unit of ['', '단위', 'unit']) {
+      const a = attrsOf({ name: '하우징', size: [120, 80, 20], unit });
+      expect(byKey(a, 'length')[0]).toMatchObject({ value: 120, unit: 'mm', estimated: true, confidence: 0.55 });
+      expect(byKey(a, 'thickness')[0]).toMatchObject({ value: 20, unit: 'mm', estimated: true });
+      expect(byKey(a, 'thickness')[0]!.evidence).toContain('단위 정보가 없어 mm 로 가정');
+    }
+  });
+
+  it('단위가 명시된 파일은 가정이 아니다 (추정 표시 없음, 신뢰도 그대로)', () => {
+    const a = attrsOf({ name: '하우징', size: [120, 80, 20], unit: 'mm' });
+    expect(byKey(a, 'length')[0]).toMatchObject({ confidence: 0.9 });
+    expect(byKey(a, 'length')[0]).not.toHaveProperty('estimated');
+  });
+
+  it('모르는 단위는 여전히 만들지 않는다', () => {
+    expect(attrsOf({ name: '하우징', size: [1, 2, 3], unit: 'furlong' })).toEqual([]);
+  });
+});

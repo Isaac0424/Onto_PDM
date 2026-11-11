@@ -1503,6 +1503,22 @@ export function mountExplodeStudio(container, options = {}) {
     getParts() {
       return S.parts.map((p, id) => ({ id, name: p.name, path: p.path || '', layer: typeof p.layer === 'number' ? p.layer : -1, ko: koOf(p.name) || '', size: Array.isArray(p.size) ? p.size.map(v => +v.toPrecision(4)) : null, unit: S.unit }));
     },
+    /** read-only copy of one part's triangle mesh, for shape analysis (e.g. telling bolt heads apart): positions = x y z per vertex in S.unit,
+     *  indices = triangle vertex numbers (absent when positions is already a plain triangle list). null if the part has no geometry */
+    getPartGeometry(nameOrId) {
+      const p = typeof nameOrId === 'number' ? S.parts[nameOrId] : S.parts.find(q => q.name === String(nameOrId));
+      if (!p || !p.meshes || !p.meshes.length) return null;
+      let nv = 0, ni = 0, indexed = false;
+      p.meshes.forEach(m => { nv += m.pos.length / 3; if (m.idx) { indexed = true; ni += m.idx.length; } else ni += m.pos.length / 3; });
+      const positions = new Float32Array(nv * 3), indices = indexed ? new Uint32Array(ni) : null;
+      let vo = 0, io = 0;
+      p.meshes.forEach(m => {
+        positions.set(m.pos, vo * 3);
+        if (indexed) { if (m.idx) { for (let i = 0; i < m.idx.length; i++) indices[io++] = m.idx[i] + vo; } else { for (let i = 0; i < m.pos.length / 3; i++) indices[io++] = vo + i; } }
+        vo += m.pos.length / 3;
+      });
+      return indexed ? { name: p.name, unit: S.unit, positions, indices } : { name: p.name, unit: S.unit, positions };
+    },
     /** assembly steps: layer index, the step number go() takes, title and the part ids in that layer */
     getLayers() {
       return S.layers.map((L, index) => ({ index, step: index + 2, title: L.title, partIds: L.partIds.slice() }));

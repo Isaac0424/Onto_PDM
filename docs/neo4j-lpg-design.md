@@ -118,6 +118,9 @@ Neo4j **Community**에는 고유 제약만 있고 존재 · 타입 · 관계 개
 1. **조립품 분류.** OPMS `classes.yaml`은 체결 부품 중심이라 조립품 · 브래킷 같은 클래스가 없다. 지금 조립품 `:Part`는 `INSTANCE_OF` 없이 둔다. OPMS 온톨로지 제안(`/ontology-proposals`)으로 올리면 분류된다.
 2. **공급사 별칭을 `SupplierPart`와 합치기.** PDM `item_identifier.scheme='supplier'`는 `:PartIdentifier`로 옮겼다. OPMS의 중복 검사(`find_by_supplier_part`)에 PDM이 등록한 공급사 품번이 보이려면 `:SupplierPart`로 합쳐야 하고, `REFERS_TO.source` 어휘(`input` `document` `seed`)에 PDM 값이 필요하다.
 
+5. **온톨로지는 OPMS 소유, PDM은 읽기만 한다**(2026-11-11). PDM이 쓰는 라벨은 `PdmItem` `ItemRevision` `ProductModel` `PartIdentifier` `MaterialProfile` 뿐이고(앞으로 PDM이 만드는 CAD 측정 · 분류 결과 라벨도 PDM 소유), OPMS 라벨(`Class` `Concept` `Part` …)에는 쓰지 않는다. Community 에디션은 사용자 DB 가 하나이고 읽기 전용 계정(RBAC)이 없어 DB 단위로 나눌 수 없으므로 **코드로 지킨다**.
+6. **읽기 경로 = Neo4j 직접(임시)**(2026-11-12). PDM 백엔드(`backend/`의 `onto_pdm.opms`)가 OPMS Neo4j 를 읽기 모드로만 읽는다: `:OntologyVersion {current:true}.snapshot`(분류 · 속성 · 핵심 속성 · 개념)과 `(:Part)-[:INSTANCE_OF]->(:Class)`. 이유: OPMS API 는 로그인이 필요하고 PDM 이 OPMS 계정을 만들 수 없으며, OPMS 의 `POST /parts/match`(OPMS `CR-NEXT-parts-match-api.md`)는 보류다. 그 API 가 열리면 `OpmsReader` 구현과 임시 매칭(`opms/matching.py`, OPMS dedupe 와 같은 방식)을 OPMS API 호출로 바꾼다. 확인한 것(0.15.0, 이 PC): 분류 18 · 부품 50+ · 개념 20, 볼트 계열은 `HexBolt` · `HexFlangeBolt` · `SocketHeadBolt`, 스냅샷에 `headType` 은 아직 없다.
+
 ### 아직 정하지 않은 것
 - PDM이 가져가지 않은(OPMS가 문서 검토로 등록한) `:Part`를 PDM이 처음 가져갈 때의 규칙: `:PdmItem`과 R00을 만든다는 것만 정했다.
 

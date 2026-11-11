@@ -34,6 +34,7 @@ dev = [
 testpaths = ["tests/unit"]
 markers = [
     "neo4j: 일회용 Neo4j 컨테이너(docker)가 필요한 시험. 기본 실행에서 빠진다 (tests/neo4j)",
+    "opms_live: 실제 OPMS Neo4j 를 **읽기만** 하는 시험. PDM_NEO4J_* 환경 변수가 있어야 하고 기본 실행에서 빠진다 (tests/opms_live)",
 ]
 filterwarnings = [
     "ignore:Using `httpx` with `starlette.testclient` is deprecated",

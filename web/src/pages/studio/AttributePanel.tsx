@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Icon } from '../../components/AppShell';
 import type { ExtractedAttribute } from '../../extract';
+import { FastenerBlock, type ShapeView } from './FastenerBlock';
+import { RequiredBlock, type RequiredBlockView } from './RequiredBlock';
 
 export type Decision = 'confirmed' | 'rejected';
 
@@ -29,6 +31,12 @@ export interface AttributePanelProps {
   onDecide(id: string, decision: Decision | undefined): void;
   onRestore(): void;
   onSelectPart(name: string): void;
+  /** 형상으로 본 볼트 종류 (분석 중이거나 볼트로 분류됐을 때만. 볼트가 아니면 없다) */
+  shape?: ShapeView;
+  /** 볼트 종류를 이 클래스로 확정한다(undefined 면 확정 취소) */
+  onPickClass?(code: string | undefined): void;
+  /** 분류가 요구하는 OPMS 필수 속성 체크리스트 (볼트로 분류된 부품만. 없으면 블록이 없다) */
+  required?: RequiredBlockView;
 }
 
 /** 같은 키에 값이 서로 다른 후보가 둘 이상(제외하지 않은 것 중)이면 그 키는 충돌이다 */
@@ -56,7 +64,7 @@ function Confidence({ value }: { value: number }) {
  * 속성 후보: CAD 형상 · 부품 이름 · 사양서에서 뽑은 값을 보여 주고, 사람이 확정하거나 제외한다.
  * 원문에 없는 값은 채우지 않는다. 뽑은 값은 후보이고, 확정해야 부품 속성이 되어 조립 규칙에 쓰인다.
  */
-export function AttributePanel({ partName, candidates, decisions, overview, onDecide, onRestore, onSelectPart }: AttributePanelProps) {
+export function AttributePanel({ partName, candidates, decisions, overview, onDecide, onRestore, onSelectPart, shape, onPickClass, required }: AttributePanelProps) {
   const conflicts = useMemo(() => conflictKeys(candidates, decisions), [candidates, decisions]);
   const shown = candidates.filter(a => decisions.get(candidateId(a)) !== 'rejected');
   const rejected = candidates.length - shown.length;
@@ -74,6 +82,8 @@ export function AttributePanel({ partName, candidates, decisions, overview, onDe
 
       {partName ? (
         <div className="attr-body">
+          {shape && <FastenerBlock view={shape} onPick={code => onPickClass?.(code)} />}
+          {required && <RequiredBlock view={required} />}
           {shown.length === 0 ? (
             <p className="attr-empty">{candidates.length === 0 ? '이 부품에서 뽑은 속성 후보가 없습니다.' : '남은 후보가 없습니다.'}</p>
           ) : (

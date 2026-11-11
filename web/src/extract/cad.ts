@@ -10,9 +10,19 @@ const round = (v: number, digits = 3): number => {
   return Math.round(v * k) / k;
 };
 
-/** 단위 문자열 → mm 환산 계수. 모르는 단위면 undefined (그 단위로는 값을 만들지 않는다) */
+/** 단위 정보가 없는 파일(STL · OBJ · GLB 는 단위를 담지 않는다)이 뷰어에서 돌려주는 값들 */
+const UNSPECIFIED_UNITS = new Set(['', '단위', 'unit', 'units', 'unitless', 'none']);
+
+/** 단위가 적혀 있지 않은가 (그 경우 CAD 의 기본 단위인 mm 로 가정한다) */
+export const isUnitUnspecified = (unit: string | undefined): boolean => unit !== undefined && UNSPECIFIED_UNITS.has(unit.trim().toLowerCase());   // 값을 아예 안 넘기면 '기본 mm' 계약이라 가정이 아니다
+
+/**
+ * 단위 문자열 → mm 환산 계수. 단위가 적혀 있지 않으면 mm 로 가정한다(isUnitUnspecified 로 구분해 추정 표시를 한다).
+ * 모르는 단위(예: furlong)면 undefined: 그 단위로는 값을 만들지 않는다.
+ */
 export function mmFactor(unit: string | undefined): number | undefined {
-  return UNIT_TO_MM[(unit ?? 'mm').trim().toLowerCase()];
+  if (unit === undefined || isUnitUnspecified(unit)) return 1;
+  return UNIT_TO_MM[unit.trim().toLowerCase()];
 }
 
 const DIM_LABEL = { length: '길이', width: '너비', height: '높이' } as const;
@@ -21,8 +31,11 @@ function geometryAttributes(p: CadPartInput): ExtractedAttribute[] {
   const out: ExtractedAttribute[] = [];
   const f = mmFactor(p.unit);
   if (f === undefined) return out;                                                  // 모르는 단위: 만들지 않는다
-  const unitName = (p.unit ?? 'mm').trim();
+  const assumed = isUnitUnspecified(p.unit);                                       // 단위가 없으면 mm 로 가정한 값이다: 추정으로 표시하고 신뢰도를 낮춘다
+  const unitName = assumed ? 'mm' : (p.unit ?? 'mm').trim();
   const converted = f !== 1;
+  const note = assumed ? ' · 파일에 단위 정보가 없어 mm 로 가정' : '';
+  const mark = assumed ? { estimated: true as const } : {};
 
   if (p.size) {
     const raw = p.size.filter(v => Number.isFinite(v) && v > 0);
@@ -33,15 +46,15 @@ function geometryAttributes(p: CadPartInput): ExtractedAttribute[] {
         const orig = sorted[i]!;
         const mm = round(orig * f);
         out.push({
-          key, label: DIM_LABEL[key], value: mm, unit: 'mm', source: 'cad', confidence: 0.9,
-          evidence: `CAD 형상 크기 ${p.size!.map(v => round(v)).join(' × ')} ${unitName}에서 큰 순으로 ${i + 1}번째` + (converted ? ` (원값 ${round(orig)} ${unitName} → ${mm} mm)` : ''),
+          key, label: DIM_LABEL[key], value: mm, unit: 'mm', source: 'cad', confidence: assumed ? 0.55 : 0.9, ...mark,
+          evidence: `CAD 형상 크기 ${p.size!.map(v => round(v)).join(' × ')} ${unitName}에서 큰 순으로 ${i + 1}번째` + (converted ? ` (원값 ${round(orig)} ${unitName} → ${mm} mm)` : '') + note,
         });
       });
       const thin = sorted[2]!;
       const thinMm = round(thin * f);
       out.push({
-        key: 'thickness', label: '두께', value: thinMm, unit: 'mm', source: 'cad', confidence: 0.85,
-        evidence: `가장 얇은 치수 = ${thinMm} mm` + (converted ? ` (원값 ${round(thin)} ${unitName})` : ''),
+        key: 'thickness', label: '두께', value: thinMm, unit: 'mm', source: 'cad', confidence: assumed ? 0.5 : 0.85, ...mark,
+        evidence: `가장 얇은 치수 = ${thinMm} mm` + (converted ? ` (원값 ${round(thin)} ${unitName})` : '') + note,
       });
     }
   }
@@ -50,9 +63,9 @@ function geometryAttributes(p: CadPartInput): ExtractedAttribute[] {
     const mm3 = round(p.volume * f ** 3, 1);
     out.push({
       key: 'volume', label: '체적', value: mm3, unit: 'mm³', source: 'cad',
-      confidence: p.volumeEstimated ? 0.4 : 0.8,
-      evidence: p.volumeEstimated ? 'CAD 메시가 열려 있어 상자 체적에서 추정한 값' : '닫힌 CAD 메시에서 계산한 체적',
-      ...(p.volumeEstimated ? { estimated: true } : {}),
+      confidence: p.volumeEstimated ? 0.4 : assumed ? 0.5 : 0.8,
+      evidence: (p.volumeEstimated ? 'CAD 메시가 열려 있어 상자 체적에서 추정한 값' : '닫힌 CAD 메시에서 계산한 체적') + note,
+      ...(p.volumeEstimated || assumed ? { estimated: true } : {}),
     });
   }
   return out;

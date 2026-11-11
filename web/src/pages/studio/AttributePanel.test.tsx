@@ -2,15 +2,14 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockApi } from '../../api/mock/mockApi';
 import type { AssemblyPartInput } from '../../api/types';
 import { SessionProvider } from '../../session';
 import { conflictKeys, candidateId, type Decision } from './AttributePanel';
 import { StudioPage } from './StudioPage';
+import { studioTestApi } from './testApi';
+import { seedCad } from './testSeed';
 
 // 속성 추출 엔진(A 작업)은 따로 시험한다. 여기서는 화면이 후보를 어떻게 보이고 · 확정하고 · 규칙에 넘기는지를 본다.
-const extract = vi.hoisted(() => ({ specCalls: [] as { text: string; names: string[] }[] }));
-
 vi.mock('../../extract', () => ({
   extractCadAttributes: (parts: { name: string; size: number[] | null }[]) => parts.map(p => ({
     partName: p.name,
@@ -22,18 +21,6 @@ vi.mock('../../extract', () => ({
       : p.name === '기판 나사 M3' ? [{ key: 'threadSize', label: '나사 규격', value: 'M3', source: 'name', evidence: '이름의 "M3"', confidence: 0.9 }]
       : [],
   })),
-  extractSpecAttributes: (text: string, names: string[]) => {
-    extract.specCalls.push({ text, names });
-    return /3\.2/.test(text)
-      ? [{ partName: '상부 커버', attributes: [{ key: 'thickness', label: '두께', value: 3.2, unit: 'mm', source: 'spec', evidence: '상부 커버 두께는 3.2 mm 로 한다', confidence: 0.8 }] }]
-      : [];
-  },
-  parseBomSheet: () => ({ rows: [], columns: {}, warnings: [] }),
-}));
-
-// 파일 보관소 서버는 쓰지 않는다
-vi.mock('../../api/vault', () => ({
-  uploadToVault: async (file: File, kind: string) => ({ sha256: 'ab'.repeat(32), size: file.size, name: file.name, format: 'txt', kind, duplicate: false }),
 }));
 
 const PARTS = [
@@ -53,12 +40,10 @@ vi.mock('explode-studio', () => ({
     const emit = (type: string, d: unknown) => (handlers[type] ?? []).forEach(fn => fn(d));
     const root = Object.assign(document.createElement('div'), { innerHTML: '<div class="stage"></div>' });
     container.appendChild(root);
-    let model = '제어 박스 · 예시 모델';
+    let model = '';
     return {
       on: (type: string, fn: (d: unknown) => void) => { (handlers[type] ??= []).push(fn); return () => { handlers[type] = (handlers[type] ?? []).filter(f => f !== fn); }; },
-      loadExample: () => emit('model', { name: '제어 박스 · 예시 모델', parts: PARTS.length }),
       loadFile: async (f: File) => { model = f.name; emit('model', { name: model, parts: PARTS.length }); },
-      loadSpec: async () => {},
       getState: () => ({ model, step: 1 }),
       getParts: () => PARTS,
       getLayers: () => LAYERS,
@@ -72,11 +57,10 @@ vi.mock('explode-studio', () => ({
 
 let guideInputs: AssemblyPartInput[][] = [];
 
-function renderPage() {
-  window.localStorage.setItem('onto-pdm-session', JSON.stringify({ userId: 2, adminMode: false }));
-  const api = createMockApi(() => JSON.parse(window.localStorage.getItem('onto-pdm-session')!));
-  const real = api.getAssemblyGuides.bind(api);
-  api.getAssemblyGuides = async parts => { guideInputs.push(parts); return real(parts); };       // 규칙 조회에 무엇을 넘기는지 본다
+async function renderPage() {
+  await seedCad();                                       // 스튜디오는 예시 모델 없이 시작한다: 등록해 둔 CAD 가 열린 상태로 시작
+  const base = studioTestApi();
+  const api = { ...base, getAssemblyGuides: async (parts: AssemblyPartInput[]) => { guideInputs.push(parts); return base.getAssemblyGuides(parts); } };       // 규칙 조회에 무엇을 넘기는지 본다
   return render(
     <SessionProvider api={api}>
       <MemoryRouter><StudioPage /></MemoryRouter>
@@ -91,12 +75,12 @@ async function openAttributes(user: ReturnType<typeof userEvent.setup>) {
   return steps;
 }
 
-beforeEach(() => { guideInputs = []; extract.specCalls.length = 0; });
+beforeEach(() => { guideInputs = []; });
 
 describe('속성 후보 패널', () => {
   it('부품을 고르면 CAD · 이름에서 뽑은 후보를 출처 · 신뢰도 · 추정 표시와 함께 보인다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await openAttributes(user);
     await user.click(within(steps).getByRole('button', { name: /^상부 커버/ }));
 
@@ -117,7 +101,7 @@ describe('속성 후보 패널', () => {
 
   it('부품을 고르지 않으면 부품별 후보 수를 보이고, 누르면 그 부품으로 간다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     await openAttributes(user);
     const over = await screen.findByRole('list', { name: '부품별 속성 후보' });
     expect(within(over).getByRole('button', { name: /상부 커버.*후보 2/ })).toBeInTheDocument();
@@ -128,7 +112,7 @@ describe('속성 후보 패널', () => {
 
   it('요약 칩은 후보와 확정 수를 센다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await openAttributes(user);
     expect(screen.getByRole('status', { name: '속성 후보 요약' })).toHaveTextContent('속성 후보 3개 · 확정 0개');
 
@@ -141,7 +125,7 @@ describe('속성 후보 패널', () => {
 
   it('확정한 속성과 분류가 조립 규칙 조회에 들어간다 (확정 전에는 속성이 없다)', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await openAttributes(user);
     const last = () => guideInputs[guideInputs.length - 1]!.find(p => p.name === '상부 커버')!;
     await waitFor(() => expect(last().className).toBe('커버'));                                     // 분류는 매칭 결과에서
@@ -158,7 +142,7 @@ describe('속성 후보 패널', () => {
 
   it('제외하면 후보에서 사라지고, 되돌릴 수 있다', async () => {
     const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await openAttributes(user);
     await user.click(within(steps).getByRole('button', { name: /^상부 커버/ }));
     await user.click(await screen.findByRole('button', { name: '체적 30240 mm³ 제외' }));
@@ -167,41 +151,9 @@ describe('속성 후보 패널', () => {
     expect(await screen.findByText('체적')).toBeInTheDocument();
   });
 
-  it('사양서(txt)를 올리면 후보가 더해지고, 출처가 다른 값은 충돌로 표시되며 하나만 확정된다', async () => {
+  it('다른 모델을 열면 결정을 비운다', async () => {
     const user = userEvent.setup();
-    renderPage();
-    const steps = await openAttributes(user);
-    const file = new File(['상부 커버 두께는 3.2 mm 로 한다.'], 'spec.txt', { type: 'text/plain' });
-    await user.upload(screen.getByLabelText('사양서 파일'), file);
-
-    expect(await screen.findByText(/spec\.txt: 속성 후보 1개를 찾았어요/)).toBeInTheDocument();
-    expect(extract.specCalls[0]).toMatchObject({ text: '상부 커버 두께는 3.2 mm 로 한다.', names: ['하우징', '기판 나사 M3', '상부 커버'] });
-    expect(screen.getByRole('status', { name: '속성 후보 요약' })).toHaveTextContent('속성 후보 4개');
-
-    await user.click(within(steps).getByRole('button', { name: /^상부 커버/ }));
-    const list = await screen.findByRole('list', { name: '상부 커버 속성 후보' });
-    expect(within(list).getAllByText('충돌')).toHaveLength(2);                                      // CAD 3 mm 와 사양서 3.2 mm
-    expect(within(list).getByText('사양서')).toBeInTheDocument();
-
-    await user.click(within(list).getByRole('button', { name: '두께 3 mm 확정' }));
-    await user.click(within(list).getByRole('button', { name: '두께 3.2 mm 확정' }));
-    expect(within(list).getByRole('button', { name: '두께 3 mm 확정' })).toBeInTheDocument();       // 앞의 확정은 풀린다
-    expect(within(list).getByRole('button', { name: '두께 확정 취소' })).toBeInTheDocument();
-    expect(screen.getByRole('status', { name: '속성 후보 요약' })).toHaveTextContent('확정 1개');
-  });
-
-  it('PDF 는 값 추출을 아직 지원하지 않는다고 알려 준다', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await openAttributes(user);
-    await user.upload(screen.getByLabelText('사양서 파일'), new File(['%PDF'], 'spec.pdf', { type: 'application/pdf' }));
-    expect(await screen.findByText(/PDF에서 속성 값을 뽑는 것은 아직 지원하지 않아요/)).toBeInTheDocument();
-    expect(extract.specCalls).toHaveLength(0);
-  });
-
-  it('다른 모델을 열면 결정과 사양서 후보를 비운다', async () => {
-    const user = userEvent.setup();
-    renderPage();
+    await renderPage();
     const steps = await openAttributes(user);
     await user.click(within(steps).getByRole('button', { name: /^상부 커버/ }));
     await user.click(await screen.findByRole('button', { name: '두께 3 mm 확정' }));

@@ -1,9 +1,8 @@
 // 앱 셸: OPMS(ernest_hemingway_OPMS/web/src/components/Layout.tsx)의 글래스 사이드바 · 머리 · 드로어를 따른다.
 // 사이드바 접기(Ctrl/⌘+B), 모바일 드로어. 폭과 상태는 styles.css 가 <html data-sidebar / data-drawer> 로 바꾼다.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import logoUrl from '../assets/onto-pdm-mark.svg';
-import { useSession } from '../session';
 
 interface NavItem { to: string; icon: string; label: string; end?: boolean }
 
@@ -13,6 +12,7 @@ const VIEW_NAV: NavItem[] = [
 ];
 const ASSEMBLY_NAV: NavItem[] = [{ to: '/rules', icon: 'rule', label: '조립 규칙' }];
 const MAKE_NAV: NavItem[] = [{ to: '/mes', icon: 'assignment', label: '작업 표준' }];
+const CHANGE_NAV: NavItem[] = [{ to: '/changes', icon: 'swap_horiz', label: '설계 변경' }];
 const ACTIVE = 'bg-primary-container text-on-primary-container font-body-md-bold';
 const INACTIVE = 'text-on-surface-variant hover:bg-white/60 hover:text-on-surface';
 const ITEM = 'sb-item flex items-center gap-space-sm min-w-0 px-space-md py-space-sm rounded-xl transition-colors';
@@ -45,23 +45,12 @@ function NavSection({ title, items }: { title: string; items: NavItem[] }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { users, user, adminMode, canUseAdminMode, setUserId, setAdminMode, api, bump } = useSession();
   const location = useLocation();
-  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(readSaved);
   const [drawer, setDrawer] = useState(false);
   const [mobile, setMobile] = useState(() => mobileQuery().matches);
   const sidebarRef = useRef<HTMLElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
-
-  const resetDemo = () => {
-    if (!api.reset) return;
-    if (window.confirm('목 데이터를 처음 상태로 되돌릴까요?')) {
-      api.reset();
-      bump();
-      navigate('/');
-    }
-  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -105,8 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [drawer]);
 
-  const pageLabel = [...VIEW_NAV, ...ASSEMBLY_NAV, ...MAKE_NAV].find(n => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))?.label ?? '작업 영역';
-  const roleLabel = user ? (user.role === 'admin' ? '관리자' : user.role === 'approver' ? '승인자' : '엔지니어') : '';
+  const pageLabel = [...VIEW_NAV, ...ASSEMBLY_NAV, ...MAKE_NAV, ...CHANGE_NAV].find(n => (n.end ? location.pathname === n.to : location.pathname.startsWith(n.to)))?.label ?? '작업 영역';
 
   return (
     <>
@@ -119,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <img src={logoUrl} alt="" width={28} height={28} className="shrink-0" />
               <div className="flex flex-col min-w-0">
                 <span className="font-headline-sm text-headline-sm text-on-surface leading-tight truncate">Onto PDM</span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant truncate">품목 · BOM · 문서</span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant truncate">CAD · 부품 분석</span>
               </div>
             </NavLink>
             <button type="button" onClick={toggle} aria-controls="app-sidebar" aria-expanded={!collapsed}
@@ -136,18 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavSection title="조회" items={VIEW_NAV} />
             <NavSection title="조립" items={ASSEMBLY_NAV} />
             <NavSection title="제조" items={MAKE_NAV} />
-          </div>
-        </div>
-        <div className="sb-pad p-space-md border-t border-on-surface/[0.07] flex flex-col gap-space-sm shrink-0">
-          {api.reset && (
-            <button type="button" className="sb-meta btn btn-ghost btn-sm" onClick={resetDemo}>데모 초기화</button>
-          )}
-          <div className="sb-user flex items-center gap-space-sm min-w-0" title={user ? `${user.name} · ${roleLabel}` : ''}>
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><Icon name="person" className="text-on-primary" /></div>
-            <div className="sb-label flex flex-col min-w-0">
-              <span className="font-body-md-bold text-body-md-bold text-on-surface truncate">{user?.name ?? '—'}</span>
-              <span className="font-label-sm text-label-sm text-on-surface-variant truncate">{roleLabel}</span>
-            </div>
+            <NavSection title="변경" items={CHANGE_NAV} />
           </div>
         </div>
       </aside>
@@ -166,19 +143,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex-1" />
-        <div className="flex items-center gap-space-md shrink-0">
-          <label className="switch" title={canUseAdminMode ? '' : '관리자 · 승인자 역할만 켤 수 있습니다'}>
-            <input type="checkbox" checked={adminMode} disabled={!canUseAdminMode} onChange={e => setAdminMode(e.target.checked)} />
-            <span className="track" aria-hidden />
-            관리자 모드
-          </label>
-          <select className="select !w-auto max-w-[10rem]" aria-label="사용자 (데모)"
-            value={user?.id ?? ''} onChange={e => setUserId(Number(e.target.value))}>
-            {users.map(u => (
-              <option key={u.id} value={u.id}>{u.name} · {u.role === 'admin' ? '관리자' : u.role === 'approver' ? '승인자' : '엔지니어'}</option>
-            ))}
-          </select>
-        </div>
       </header>
 
       <div className="shell-body">

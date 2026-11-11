@@ -1,0 +1,13 @@
+{
+  "change_kind": "attribute_edit",
+  "item_no": "BRK-TOP",
+  "from_revision": "R00",
+  "to_revision": "R01",
+  "before": {
+    "thickness": 8
+  },
+  "after": {
+    "thickness": 12
+  },
+  "note": "상판 두께 변경"
+}

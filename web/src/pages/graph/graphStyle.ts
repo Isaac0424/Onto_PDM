@@ -14,11 +14,15 @@ export interface Graph3DProps {
   onUnsupported?(): void;
 }
 
-/** 노드 종류 · 상태 색. 범례(.graph-legend)의 점 색(graph.css)과 같다. 빨강 계열은 쓰지 않는다 */
+/** 노드 종류 · 상태 색. 범례(.graph-legend)의 점 색(graph.css)과 같다. 빨강 계열은 쓰지 않는다(영향 그래프의 impact_blocked 만 예외: 오류 · 위험 전용) */
 export const KIND_COLOR: Record<NodeKind, string> = {
   product: '#0891b2', assembly: '#2563eb', part: '#059669', rule: '#7c3aed', operation: '#0ea5e9', class: '#a78bfa', tool: '#0d9488', caution: '#f59e0b',
+  change: '#4f46e5', workorder: '#0284c7', purchase: '#8b5cf6', stock: '#14b8a6', joint: '#64748b',
 };
-export const TONE_COLOR: Record<NodeTone, string> = { ok: '#059669', maybe: '#d97706', none: '#94a3b8' };
+export const TONE_COLOR: Record<NodeTone, string> = {
+  ok: '#059669', maybe: '#d97706', none: '#94a3b8',
+  impact_none: '#94a3b8', impact_review: '#d97706', impact_affected: '#ea580c', impact_blocked: '#dc2626',
+};
 
 /** 같은 그래프인지 (부모가 매 렌더마다 새 객체를 만들어도 장면을 다시 만들지 않기 위해) */
 export function graphKey(g: Graph): string {

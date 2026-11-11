@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Loaded } from '../components/ui';
+import { Loaded, NotConnected } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
 import { useSession } from '../session';
 
@@ -11,9 +11,10 @@ export function ProductListPage() {
       <div className="page-head">
         <div>
           <h1>제품</h1>
-          <p className="sub">제품마다 최상위 조립품 하나를 가리킵니다. 사양서 · 설명서 검색의 모델명 기준입니다.</p>
+          <p className="sub">제품마다 최상위 조립품 하나를 가리킵니다. 제품별로 쓰이는 부품의 연결을 볼 수 있습니다.</p>
         </div>
       </div>
+      {!api.connected ? <NotConnected title="제품 데이터가 없어요" hint="OPMS에 연결되면 제품과 최상위 조립품이 여기에 표시돼요." /> : (
       <Loaded state={products} empty={rows => rows.length === 0}>
         {rows => (
           <div className="grid-2">
@@ -38,6 +39,7 @@ export function ProductListPage() {
           </div>
         )}
       </Loaded>
+      )}
     </div>
   );
 }

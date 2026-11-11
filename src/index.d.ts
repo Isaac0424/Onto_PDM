@@ -55,6 +55,17 @@ export interface PartInfo {
   unit: string;
 }
 
+/** Read-only copy of one part's triangle mesh (see StudioApi.getPartGeometry). */
+export interface PartGeometry {
+  name: string;
+  /** unit of the coordinates: 'mm', 'cm', 'm', 'in' … or '단위' when the file has no unit (STL, OBJ) */
+  unit: string;
+  /** x y z per vertex */
+  positions: Float32Array;
+  /** triangle vertex numbers; absent when `positions` is already a plain triangle list (every 9 numbers = one triangle) */
+  indices?: Uint32Array;
+}
+
 export interface LayerInfo {
   index: number;
   /** pass to go() to show this layer (step 0 = assembled, 1 = exploded) */
@@ -88,6 +99,8 @@ export interface StudioApi {
   runAi(): Promise<void>;
   getState(): StudioState;
   getParts(): PartInfo[];
+  /** Triangle mesh of one part (by id or CAD name) for shape analysis; null if the part has no geometry. A copy: changing it does not touch the scene. */
+  getPartGeometry(nameOrId: string | number): PartGeometry | null;
   getLayers(): LayerInfo[];
   on(type: 'model', fn: (d: { name: string; parts: number }) => void): () => void;
   on(type: 'step', fn: (d: { step: number; layer: number }) => void): () => void;

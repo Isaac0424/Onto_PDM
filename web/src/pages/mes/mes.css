@@ -68,3 +68,43 @@
 /* 오른쪽 좁은 열의 문서 표: 기본 최소 너비(680px)를 풀고 열을 줄여, 종류 · 리비전 열이 잘리지 않게 한다 */
 .mes-side .table-wrap > table.table { min-width: 0; }
 .mes-side .table th, .mes-side .table td { padding-left: 10px; padding-right: 10px; font-size: 12px; }
+
+/* ---- 작업표준서(규칙집): 왼쪽 목록, 오른쪽 상세. 빨강은 쓰지 않는다 ---- */
+.ws-layout { display: grid; gap: 14px; }
+@media (min-width: 1000px) { .ws-layout { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } }
+.ws-layout > *, .ws-main { min-width: 0; }
+.ws-main { display: flex; flex-direction: column; gap: 14px; }
+.ws-item { width: 100%; text-align: left; cursor: pointer; font: inherit; }
+.ws-detail { min-height: 280px; }
+.ws-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ws-step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; }
+.ws-step-no { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font: 600 11px theme('fontFamily.label-md'); color: #fff; background: #0891b2; }
+.ws-step-text { margin: 0; line-height: 1.55; }
+.ws-step-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; }
+.ws-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ws-checks li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; line-height: 1.5; }
+.ws-checks .material-symbols-outlined { color: #0891b2; margin-top: 2px; }
+.ws-caption { caption-side: top; text-align: left; padding: 8px 12px; font-weight: 600; font-size: 13px; }
+.ws-gap-list { list-style: none; margin: 0; padding: 0 14px 14px; display: grid; gap: 12px; }
+.ws-gap-list li { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .55); border: 1px dashed rgba(100, 116, 139, .45); }
+.ws-gap-list p { margin: 0 0 6px; }
+.ws-print-only { display: none; }
+
+/* 인쇄: 상세만 흰 종이에 정돈해서 뽑는다 (메뉴 · 목록 · 배경 장식 · 링크 칩은 감춘다) */
+@media print {
+  .shell-aside, .shell-header, .sb-scrim, .holo-backdrop, .mes-head, .ws-print-hide { display: none !important; }
+  .shell-body, .shell-body > main { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
+  body { background: #fff !important; }
+  .mes-page, .ws-layout, .ws-main { display: block !important; max-width: none !important; }
+  .glass-panel { background: #fff !important; box-shadow: none !important; backdrop-filter: none !important; border: 0 !important; }
+  .ws-detail { min-height: 0; }
+  .rule-section { break-inside: avoid; }
+  .rule-table-scroll { overflow: visible; border: 1px solid #94a3b8; background: #fff; }
+  table.table { font-size: 11pt; }
+  table.table th, table.table td { border-bottom: 1px solid #cbd5e1; }
+  .badge, .rule-op, .rb-proposed { border: 1px solid #94a3b8; background: #fff !important; color: #111 !important; }
+  .rb-unconfirmed { color: #111; border-bottom: 2px dotted #444; }
+  .rb-empty { border: 1px dashed #444; background: #fff; color: #111; }
+  .ws-print-only { display: inline; }
+  a { color: inherit; text-decoration: none; }
+}

@@ -1,0 +1,90 @@
+/* 설계 변경 화면. OPMS 토큰 · 글래스 셸의 공용 클래스(.page .card .table .badge .banner …)를 쓰고, 여기서는 이 화면에만 필요한 배치만 더한다.
+   빨강(#dc2626)은 영향 그래프의 "막힘"(오류 · 위험)에만 쓴다. 모바일 폭에서는 표를 카드로 접어 가로 스크롤이 생기지 않게 한다. */
+
+.chg-page { gap: 14px; }
+.chg-head { align-items: flex-start; justify-content: space-between; }
+.chg-back { margin: 0 0 4px; font-size: 12px; }
+.chg-back a { display: inline-flex; align-items: center; gap: 2px; }
+.chg-badges { margin: 6px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 13px; }
+.chg-actions { justify-content: flex-end; }
+.chg-summary-card .card-body { padding-block: 12px; }
+.chg-props { grid-template-columns: 96px minmax(0, 1fr); gap: 6px 14px; font-size: 14px; }
+.chg-props dd { margin: 0; overflow-wrap: anywhere; }
+.chg-panel { min-width: 0; }
+.chg-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.chg-help { margin: 0; font-size: 13px; }
+.chg-note { margin: 0 0 4px; font-size: 12px; color: theme('colors.on-surface-variant'); }
+.chg-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* 영향 요약 · 배지 줄 */
+.chg-summary { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.chg-count { display: inline-flex; align-items: center; gap: 3px; }
+.chg-count b { font-size: 12px; font-variant-numeric: tabular-nums; }
+.chg-count-zero { opacity: .45; }
+.chg-sub { display: block; margin-top: 2px; font-size: 11px; color: theme('colors.outline'); overflow-wrap: anywhere; }
+.chg-qty { margin-top: 2px; font-size: 12px; }
+.chg-table td .badge + .badge { margin-left: 4px; }
+.chg-table td { vertical-align: top; }
+.chg-attrs { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 13px; }
+
+/* 안내 띠 */
+.chg-banners { display: flex; flex-direction: column; gap: 8px; }
+.chg-reasons { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+.chg-asof { margin: 0; font-size: 12px; }
+
+/* 목록 필터 */
+.chg-filters { gap: 10px 16px; }
+.chg-filter { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.chg-filter .select { width: auto; min-width: 7rem; }
+.chg-filter-q { flex: 1 1 14rem; max-width: 22rem; }
+.chg-filter-q .input { width: 100%; }
+
+/* 폼 */
+.chg-form-grid { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.chg-form-actions { display: flex; flex-direction: column; gap: 8px; padding-top: 0; }
+.chg-scope { margin: 0; padding: 12px; border: 1px dashed theme('colors.slate-line'); border-radius: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.chg-scope legend { padding: 0 6px; font-size: 12px; color: theme('colors.on-surface-variant'); }
+.chg-disp-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chg-disp-form .select { width: auto; min-width: 11rem; }
+.chg-disp-form .input { flex: 1 1 12rem; min-width: 0; }
+.chg-current { margin-top: 4px; font-size: 13px; }
+.chg-reject { flex: 1 1 14rem; min-width: 0; max-width: 24rem; }
+
+/* 검토 */
+.chg-reviewgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+.chg-reviews { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+
+/* 이력 */
+.chg-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.chg-timeline li { padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, .55); font-size: 13px; }
+.chg-time { margin-right: 8px; font-variant-numeric: tabular-nums; }
+
+/* 영향 */
+.chg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chg-stage { height: min(56vh, 520px); min-height: 320px; }
+.chg-selected { margin: 0; font-size: 13px; }
+.chg-details { margin-top: 4px; font-size: 12px; }
+.chg-details summary { cursor: pointer; color: theme('colors.on-surface-variant'); }
+.chg-details dl.props { grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; margin-top: 6px; }
+
+/* 범례 점: 영향 심각도(막힘만 빨강) */
+.dot-impact-blocked { background: #dc2626; box-shadow: 0 0 6px rgba(220, 38, 38, .55); border-radius: 2px; }
+.dot-impact-affected { background: #ea580c; box-shadow: 0 0 6px rgba(234, 88, 12, .55); border-radius: 2px; transform: rotate(45deg); }
+.dot-impact-review { background: #d97706; }
+.dot-impact-none { background: #94a3b8; }
+
+@media (max-width: 720px) {
+  .chg-props { grid-template-columns: 76px minmax(0, 1fr); }
+  .chg-stage { height: 50vh; min-height: 280px; }
+  .table-wrap > table.table.chg-table { min-width: 0; }
+  .chg-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .chg-table, .chg-table tbody, .chg-table tr, .chg-table td { display: block; width: 100%; }
+  .chg-table tr { padding: 8px 4px; border-bottom: 1px solid rgba(15, 23, 42, .08); }
+  .chg-table td { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 6px; border-bottom: 0; padding: 4px 12px; }
+  .chg-table td::before { content: attr(data-label); font-size: 11px; color: theme('colors.outline'); }
+  .chg-table td:not([data-label])::before { content: none; }
+  .chg-disp-form .select, .chg-disp-form .input { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chg-page * { animation: none !important; transition: none !important; }
+}

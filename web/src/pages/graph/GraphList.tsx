@@ -12,9 +12,16 @@ export interface GraphListProps {
 
 const KIND_LABEL: Record<NodeKind, string> = {
   product: '제품', assembly: '조립품', part: '부품', rule: '규칙', operation: '공정', class: '분류', tool: '공구', caution: '주의',
+  change: '변경', workorder: '작업지시', purchase: '발주', stock: '재고', joint: '체결부',
 };
-const TONE_TEXT: Record<NodeTone, string> = { ok: '정상', maybe: '확인', none: '비활성' };
-const TONE_CLASS: Record<NodeTone, string> = { ok: 'tone-success', maybe: 'tone-warning', none: 'tone-neutral' };
+const TONE_TEXT: Record<NodeTone, string> = {
+  ok: '정상', maybe: '확인', none: '비활성',
+  impact_none: '영향 없음', impact_review: '확인 필요', impact_affected: '처분 필요', impact_blocked: '막힘',
+};
+const TONE_CLASS: Record<NodeTone, string> = {
+  ok: 'tone-success', maybe: 'tone-warning', none: 'tone-neutral',
+  impact_none: 'tone-neutral', impact_review: 'tone-info', impact_affected: 'tone-warning', impact_blocked: 'tone-danger',
+};
 
 interface Entry {
   node: GraphNode;

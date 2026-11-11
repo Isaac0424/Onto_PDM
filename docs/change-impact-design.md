@@ -6,7 +6,7 @@
 | 상태 | **제안만 있다. 코드는 아직 한 줄도 없다.** 사용자 확인 전. 10장 "판단 필요" 항목이 정해지면 v0.2 |
 | 한 줄 요약 | `BRK-M8`(M8 볼트·너트·와셔로 체결하는 브래킷 모듈) 하나를 기준으로, **부품 개정·교체가 일어났을 때 어느 BOM · 작업지시 · 발주 · 재고에 영향이 가는지 찾고, 볼트·너트 체결이 아직 맞는지 다시 판정하고, 항목마다 사람이 처분(어떻게 할지)을 정해 승인하는 흐름**을 PDM에 더한다 |
 | 관련 문서 | [change-impact-prd.md](change-impact-prd.md)(요구 · 범위) · [change-impact-ontology.md](change-impact-ontology.md)(객체 · 관계 · 라벨) · [pdm-design.md](pdm-design.md) · [neo4j-lpg-design.md](neo4j-lpg-design.md) · [backend-plan.md](backend-plan.md) · [fit-check-plan.md](fit-check-plan.md) |
-| 기준 | OPMS `PDM` 브랜치 `7d1e484` (작업 트리에 미커밋 0.19.0 수정이 있다. `holeDepth`·`fit_check` 1개) · 이 저장소 `Isaac0424/change-impact-bolt-nut`(`6d6013c`에서 분기) |
+| 기준 | OPMS `PDM` 브랜치 `03331ba` (온톨로지 0.19.0 — `holeDepth`·`fit_check` 1개는 커밋 `58ffed2`. 처음 조사 때는 `7d1e484`였다) · 이 저장소 `Isaac0424/change-impact-bolt-nut`(`6d6013c`에서 분기) |
 
 표기: ✅ 있음 · 🟡 일부 · ⬜ 없음. 근거는 `파일:줄`이다. **읽어서 확인한 것**과 **추정**을 구분한다. 요구 ID(F-CHG-*)는 [PRD](change-impact-prd.md)와 같다.
 
@@ -475,7 +475,7 @@ Community 에디션은 DB 를 나눌 수 없어 쓰기 범위를 코드로 막�
 
 ### 5.5 OPMS 에 요청할 것 (요청서 후보 — 아직 보내지 않는다)
 
-OPMS 저장소는 읽기만 하고 수정 · 커밋하지 않는다. 요청서는 `docs/opms-request-*.md`로 정리해 사람이 전달한다. **기준 브랜치와 커밋(`PDM` `7d1e484`)을 요청서에 적는다.**
+OPMS 저장소는 읽기만 하고 수정 · 커밋하지 않는다. 요청서는 `docs/opms-request-*.md`로 정리해 사람이 전달한다. **기준 브랜치와 커밋(`PDM` `03331ba`)을 요청서에 적는다.**
 
 | # | 요청서(제안 이름) | 내용 | 없어도 막히나 |
 |---|---|---|---|
@@ -485,6 +485,8 @@ OPMS 저장소는 읽기만 하고 수정 · 커밋하지 않는다. 요청서�
 | ④ | `opms-request-service-read.md` | PDM 서버용 읽기 인증(서비스 계정 또는 읽기 전용 토큰). 지금은 Neo4j 직접 | 막히지 않는다 |
 | ⑤ | `opms-request-part-revision.md` | OPMS 의 부품 개정(`:PartRevision`, 설계만 있음) 계획과 PDM `ItemRevision`의 관계 합의 | 이 기능의 **중장기** 선결(PRD 중장기 확장) |
 | ⑥ | `opms-request-fabricated-part.md` | 판(가공품)처럼 `:Part`가 없는 PDM 품목의 처리(`record_origin`, 분류) | `item_one_part` 예외(10.3) |
+
+초안 전문(6건 통합, 전달 전): [opms-request-change-impact.md](opms-request-change-impact.md). 위 표의 ①~⑥ 순서와 같고, 파일 이름은 한 문서로 합쳤다. ③ 의 `nutHeight` 필수화는 ② 에, 온톨로지 변경 알림은 ④ 에 들어 있다.
 
 ## 6. API 계약
 

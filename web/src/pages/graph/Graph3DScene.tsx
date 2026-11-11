@@ -6,7 +6,7 @@ import { layout3D, neighbors, type Graph, type GraphNode, type NodeKind } from '
 import { KIND_COLOR, TONE_COLOR, graphKey, type Graph3DProps } from './graphStyle';
 import './graph.css';
 
-const RADIUS: Record<NodeKind, number> = { product: 5.8, assembly: 3.9, part: 2.8, rule: 4.6, operation: 3.8, class: 3.4, tool: 2.7, caution: 2.4 };
+const RADIUS: Record<NodeKind, number> = { product: 5.8, assembly: 3.9, part: 2.8, rule: 4.6, operation: 3.8, class: 3.4, tool: 2.7, caution: 2.4, change: 5.2, workorder: 3.6, purchase: 3.4, stock: 3.2, joint: 3.0 };
 const BADGE_COLOR = '#7c3aed';
 const EDGE_COLOR = 0x0891b2;
 

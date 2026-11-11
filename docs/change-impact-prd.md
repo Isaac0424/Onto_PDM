@@ -6,7 +6,7 @@
 | 상태 | 검토 대기. 11장의 열린 질문에 답이 정해지면 v0.2. 구현은 시작하지 않았다 |
 | 한 줄 요약 | 규격 · 재질 · 공차 · 도면 · 구성 부품이 바뀔 때, **바뀐 기준을 어디에 적용할지** 결정하는 과정을 OPMS 품번 위에서 돕는다. 첫 목표는 **볼트 · 너트 · 와셔로 체결하는 제품 1종(`BRK-M8`)** |
 | 관련 문서 | [PRD.md](PRD.md) F-REV-2(상위) · [change-impact-ontology.md](change-impact-ontology.md)(온톨로지 설계) · [change-impact-design.md](change-impact-design.md)(개발 설계) · [neo4j-lpg-design.md](neo4j-lpg-design.md) · [fit-check-plan.md](fit-check-plan.md) · [fastener-classification.md](fastener-classification.md) · [worker-view-proposal.md](worker-view-proposal.md) |
-| OPMS 기준 | OPMS 저장소 `PDM` 브랜치 `7d1e484`(온톨로지 0.18.0. 작업 트리에는 미커밋 0.19.0이 있다). 이 문서의 OPMS 사실은 모두 그 브랜치를 읽은 결과다 |
+| OPMS 기준 | OPMS 저장소 `PDM` 브랜치 `03331ba`(온톨로지 0.19.0 — `holeDepth` · `fit_check`는 커밋 `58ffed2`. 처음 조사 때는 `7d1e484`(0.18.0)였다). 이 문서의 OPMS 사실은 모두 그 브랜치를 읽은 결과다 |
 
 표기: ✅ 있음 · 🟡 일부 · ⬜ 없음. 우선순위: **P0** 첫 시연에 필수 · **P1** 이어서 · **P2** 나중. "판단 필요"는 사람이 정해야 하는 것.
 
@@ -217,7 +217,7 @@ OPMS 설계 문서에는 미구현 `:PartRevision` · `:BomLine` · `:Product`�
 
 ## 부록 B. 이번 조사에서 확인한 사실과 한계
 
-- 읽은 것: OPMS `PDM` 브랜치 `7d1e484`(온톨로지 0.18.0, 작업 트리 0.19.0 미커밋), 이 저장소 작업 트리. 실행하거나 시험하지는 않았다.
+- 읽은 것: OPMS `PDM` 브랜치 `03331ba`(온톨로지 0.19.0, 커밋 `58ffed2`), 이 저장소 작업 트리. 실행하거나 시험하지는 않았다.
 - OPMS에는 `HexBolt` · `HexNut` · `FlatWasher` 클래스와 M8 시드 부품(볼트 `P-…01`, 너트 `P-…22` · `…23` · `…24`, 와셔 `P-…25`)이 있다. `headType` · `strengthClass`는 현재 온톨로지에 없고 강도는 `strengthGrade`(글자)다.
 - 이 PC의 OPMS 개발 DB가 실제로 그 시드를 적재했는지는 **확인하지 못했다**. 적재 여부는 C0에서 확인한다.
 - "필요 길이 = 두께 + 너트 높이 + 여유" 공식은 이 저장소와 OPMS 어디에도 없다. 8장의 공식은 이 문서가 처음 제안하는 가정이다.

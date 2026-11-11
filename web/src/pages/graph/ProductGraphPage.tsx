@@ -7,7 +7,7 @@ import type {
 } from '../../api/types';
 import { Icon } from '../../components/AppShell';
 import { RevisionBadge } from '../../components/StatusBadges';
-import { Badge, Loaded } from '../../components/ui';
+import { Badge, Loaded, NotConnected } from '../../components/ui';
 import { useAsync } from '../../hooks/useAsync';
 import { DOC_TYPE, ITEM_TYPE, formatNumber } from '../../labels';
 import { useSession } from '../../session';
@@ -137,7 +137,16 @@ export function ProductGraphPage() {
   const { code = '' } = useParams();
   const { api } = useSession();
   const [rule, setRule] = useState<BomRule>('released');
-  const bundle = useAsync(() => loadBundle(api, code, rule), [api, code, rule]);
+  const bundle = useAsync(() => (api.connected ? loadBundle(api, code, rule) : Promise.resolve<Bundle>({ missing: true })), [api, code, rule]);
+
+  if (!api.connected) {
+    return (
+      <div className="pg-page">
+        <div className="holo-backdrop" aria-hidden />
+        <NotConnected title="제품 연결 그래프를 그릴 데이터가 없어요" hint="OPMS에 연결되면 제품 기준으로 쓰이는 부품 · 문서 · 조립 규칙이 3D 그래프로 연결돼 표시돼요." />
+      </div>
+    );
+  }
 
   return (
     <div className="pg-page">

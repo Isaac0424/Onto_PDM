@@ -1,0 +1,19 @@
+{
+  "code": "CR-2026-0001",
+  "title": "상판 두께 8 → 12 mm",
+  "status": "submitted",
+  "order_code": "CO-2026-0001",
+  "order_status": "in_review",
+  "product_code": "BRK-M8",
+  "origin": "design",
+  "requested_by": "kim",
+  "requested_at": "2026-11-12T09:00:00+09:00",
+  "run_summary": {
+    "blocked": 1,
+    "affected": 1,
+    "review": 0,
+    "none": 0,
+    "stale": false,
+    "partial": false
+  }
+}

@@ -48,12 +48,13 @@ CAD · BOM · 사양서를 올리면 원본은 DB가 아니라 **파일 보관�
 
 ```bash
 node server/files-server.mjs     # http://127.0.0.1:8788/api/files  (.env의 PDM_VAULT_DIR · FILES_PORT)
-node --test server/vault.test.mjs
+node --disable-warning=ExperimentalWarning --test server/vault.test.mjs server/cad-db.test.mjs
 ```
 
 - 웹 개발 서버는 `/api/files`를 이 서버로 넘겨요. CAD 스튜디오의 **CAD · 사양서 · BOM 올리기**가 화면에서 여는 것과 별개로 원본을 보관소에 저장해요.
 - 받는 형식: CAD `step stp iges igs stl obj glb gltf`, BOM `xlsx csv`, 사양서 `pdf txt md`. 기본 최대 200MB.
 - **OPMS와 공유**: 보관소는 두 저장소 밖의 폴더(`.env.example` 참고)라 OPMS가 같은 경로를 읽을 수 있어요. 쓰는 쪽은 PDM 하나, OPMS는 읽기만 해요. OPMS의 `SOURCE_STORE_DIR`(`data/uploads`)과는 섞지 않아요. OPMS의 `registry reconcile`이 자기 행에 없는 파일을 고아로 보고하기 때문이에요.
+- **CAD 파일 DB**: 같은 서버가 `/api/cads` 로 CAD 파일 자체를 SQLite(`PDM_DB_PATH`, 기본 `data/pdm.sqlite`)에 저장해요. DB 가 정본이고, 보관소는 OPMS 공유용 미러예요. 자세한 내용은 [docs/cad-storage.md](docs/cad-storage.md).
 
 ## 테스트
 
@@ -65,7 +66,7 @@ node --test server/vault.test.mjs
 | DB + 실제 서버 · 동시성 | `db/` | `PGTEST_URL=… pnpm test` | PostgreSQL 15 이상, 슈퍼유저 계정 |
 | 온톨로지 | 저장소 루트 | `python ontology/tests/check_ontology.py` | Python 패키지 설치 (아래) |
 | Neo4j 그래프 모델 | 저장소 루트 | `python neo4j/test/verify.py` | Docker (일회용 Neo4j 컨테이너를 띄웠다 지움) |
-| 파일 보관소 | 저장소 루트 | `node --test server/vault.test.mjs` | 없음 |
+| 파일 보관소 · CAD 파일 DB | 저장소 루트 | `node --disable-warning=ExperimentalWarning --test server/vault.test.mjs server/cad-db.test.mjs` | Node 22.13 이상 (`node:sqlite`) |
 
 **웹**: 단위 · 화면 테스트는 목 API의 권한 규칙과 주요 화면을 확인해요. E2E는 다음을 확인해요.
 
@@ -264,6 +265,7 @@ AI 연결 없이도 사양서에서 부품별 설명·조립 절차와 근거 �
 | `runAi()` | AI 이름·설명 한 번에 붙이기 (제품별 캐시) |
 | `getState()` | 현재 상태 |
 | `getParts()` / `getLayers()` | 모델의 부품(이름 · CAD 경로 · 층)과 조립 단계(층)를 읽는다 |
+| `getPartGeometry(이름 또는 id)` | 부품 하나의 삼각형 메시 복사본(`positions` · `indices` · `unit`)을 읽는다. 형상 분석용(예: 볼트 머리 모양 판단). 읽기 전용, 장면은 바뀌지 않는다 |
 | `on('model' \| 'step' \| 'select', fn)` | 이벤트 구독 (해제 함수 반환) |
 | `destroy()` | 정리 (렌더러·워커·이벤트 해제) |
 

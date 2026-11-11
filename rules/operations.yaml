@@ -1,0 +1,143 @@
+# 공정(작업) 어휘 트리. docs/assembly-rules-spec.md 4장의 Operation 분류(`Joining` → `Fastening`)를 따르되,
+# **사용설명서 · CAD에서 근거가 있는 것만** 넣었다. 근거가 없는 공정은 맨 아래 `not_covered`에 이유와 함께 적는다.
+# `opms_code`: OPMS PDM 브랜치 docs/changes/onto-pdm-merge/process_map.csv 의 개념 후보 코드와 같은 것(OPMS 소유, 읽기 전용). 없으면 PDM 전용이다.
+# 모든 항목: label(ko) · definition · source(sources.yaml 등급) · ref(문서 · 절 · 쪽)
+
+version: 1
+
+operations:
+  # ---- 설치 (사용설명서 3장) ----
+  Installation:
+    label: {ko: 설치, en: Installation}
+    definition: 로봇 암 · 컨트롤러 · 툴을 현장에 설치하고 연결하는 작업의 묶음 (사용설명서 3장 설치하기)
+    source: manual
+    ref: {doc: UG-KR, sec: "3", page: 47}
+  SiteCheck:
+    parent: Installation
+    label: {ko: 설치 장소 · 유형 확인, en: Site check}
+    definition: 설치 장소 조건과 설치 유형(바닥 · 벽 · 천장)을 확인한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.1, 3.2", page: [47, 48]}
+  Handling:
+    parent: Installation
+    label: {ko: 운반, en: Handling}
+    definition: 로봇 암과 컨트롤러를 옮긴다
+    source: manual
+    ref: {doc: UG-KR, sec: "2.6", page: 43}
+  BaseMounting:
+    parent: Installation
+    label: {ko: 로봇 암 고정, en: Robot base mounting}
+    definition: 로봇 암 베이스를 볼트 4개로 천장 · 벽 · 바닥에 고정한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  ToolMounting:
+    parent: Installation
+    label: {ko: 툴 장착, en: Tool mounting}
+    definition: 툴 플랜지에 툴을 고정한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.4", page: 50}
+  ControllerMounting:
+    parent: Installation
+    label: {ko: 컨트롤러 고정, en: Controller mounting}
+    definition: 로봇 컨트롤러를 하단 고정용 브라켓으로 지면에 고정한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.6", page: 55}
+  CoverFitting:
+    parent: Installation
+    label: {ko: 커버 덮기, en: Cover fitting}
+    definition: 로봇 고정 볼트 커버를 덮는다 (HCR-3A · HCR-5A)
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  Wiring:
+    parent: Installation
+    label: {ko: 케이블 · 배선 연결, en: Cable wiring}
+    definition: 티칭 펜던트 · 로봇 암 · 전원 · 툴 · I/O 케이블을 연결한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.4, 3.5, 3.7", page: [50, 52, 56]}
+  Configuration:
+    parent: Installation
+    label: {ko: 설치 후 설정 · 확인, en: Post-install configuration}
+    definition: 설치 각도 · TCP를 입력하고 안전 관련 값과 위험성 평가를 확인한다
+    source: manual
+    ref: {doc: UG-KR, sec: "7.1, 7.2, 2.12", page: [93, 96, 46]}
+
+  # ---- 결합 방법 (OPMS process_method 후보와 대응) ----
+  Joining:
+    label: {ko: 결합, en: Joining}
+    definition: 부품끼리 잇는 방법의 묶음
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  Fastening:
+    parent: Joining
+    label: {ko: 체결, en: Fastening}
+    definition: 나사 · 볼트로 조인다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  BoltFastening:
+    parent: Fastening
+    opms_code: BoltFastening
+    label: {ko: 볼트 체결, en: Bolt fastening}
+    definition: 볼트를 정해진 토크로 조인다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  PinLocating:
+    parent: Joining
+    label: {ko: 위치 결정 핀 정렬, en: Pin locating}
+    definition: 위치 결정 핀으로 로봇 암의 설치 위치를 정확히 맞춘다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.3", page: 49}
+  ConnectorMating:
+    parent: Joining
+    label: {ko: 커넥터 연결, en: Connector mating}
+    definition: 케이블 커넥터를 꽂고 걸쇠로 고정한다
+    source: manual
+    ref: {doc: UG-KR, sec: "3.5", page: [52, 53]}
+
+  # ---- 점검 (사용설명서 15장) ----
+  Inspection:
+    opms_code: Inspection
+    label: {ko: 점검, en: Inspection}
+    definition: 정기 점검과 사건 뒤 점검의 묶음
+    source: manual
+    ref: {doc: UG-KR, sec: "15", page: 229}
+  PeriodicInspection:
+    parent: Inspection
+    label: {ko: 정기 점검, en: Periodic inspection}
+    definition: 점검 항목과 주기에 따라 확인한다
+    source: manual
+    ref: {doc: UG-KR, sec: "15.1", page: 229}
+  Cleaning:
+    parent: Inspection
+    label: {ko: 청소, en: Cleaning}
+    definition: 로봇 암 · 컨트롤러 내부 · 필터의 먼지와 오염을 제거한다
+    source: manual
+    ref: {doc: UG-KR, sec: "15.2, 15.3", page: [230, 232]}
+  PostCollisionCheck:
+    parent: Inspection
+    label: {ko: 충돌 · 비상 정지 후 확인, en: Post-collision check}
+    definition: 빠른 속도에서 충돌이나 비상 정지가 있었던 뒤 관절 영점을 확인한다
+    source: manual
+    ref: {doc: UG-KR, sec: "2.7", page: 44}
+
+# 근거가 없어 작성하지 않은 공정. 값을 만들지 않는다.
+not_covered:
+  Welding:
+    label: {ko: 용접, en: Welding}
+    source: unknown
+    gap: G-014
+    reason: 사용설명서에서 '용접'은 사용 환경 주의(전자기 방출이 높은 곳에서 사용 금지, 2.3 p.40)뿐이고 STEP에도 용접 관련 부품이 없다. 조건표(두께 → 용접봉 지름)를 만들지 않는다.
+  PressFit:
+    label: {ko: 압입, en: Press fit}
+    source: unknown
+    gap: G-014
+    reason: 사용설명서 · STEP 어디에도 압입(끼워맞춤) 공정이나 공차 표가 없다.
+  ControllerAssembly:
+    label: {ko: 컨트롤러 내부 조립, en: Controller assembly}
+    source: unknown
+    gap: G-018
+    reason: 사용설명서는 컨트롤러 구성 요소의 이름(1.5 p.24)만 주고 내부 조립 절차 · 나사 사양이 없다. 컨트롤러 STEP 에는 볼트 부품도 없었다.
+  ZeroPointAdjustment:
+    label: {ko: 영점 설정(캘리브레이션), en: Zero-point adjustment}
+    source: unknown
+    gap: G-017
+    reason: 영점 설정 메뉴는 Super Admin만 쓸 수 있고 필요하면 구매처에 연락하라고만 한다(6.2 p.89, 2.7 p.44). 절차가 공개돼 있지 않다.

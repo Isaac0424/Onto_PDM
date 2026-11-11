@@ -93,11 +93,35 @@
 
 /* ── 제조 순서 ── */
 .match-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 16px 10px; }
+.match-note { margin: 0; padding: 0 16px 10px; font-size: 12px; color: theme('colors.on-surface-variant'); }
+
+/* OPMS 읽기 연결 상태 한 줄 (연결 안 됨은 오류가 아니라 상태: 빨강을 쓰지 않는다) */
+.opms-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 8px 14px; border-radius: 12px; font-size: 12px; border: 1px solid theme('colors.glass-edge'); background: rgba(255, 255, 255, .5); color: theme('colors.on-surface-variant'); }
+.opms-line .material-symbols-outlined { color: #0891b2; }
+.opms-line-ok { color: #047857; border-color: rgba(5, 150, 105, .3); }
+.opms-line-ok .material-symbols-outlined { color: #059669; }
+.opms-line-meta { color: theme('colors.on-surface-variant'); }
+.opms-line-off { border-style: dashed; border-color: rgba(217, 119, 6, .45); color: #92400e; }
+.opms-line-off .material-symbols-outlined { color: #b45309; }
+.opms-line-text { flex: 1 1 auto; min-width: 0; }
+
+/* 보유 품번 후보 목록 (OPMS 부품에는 이름이 없어 분류 · 규격으로 만든 이름) */
+.cand-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cand { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; border-radius: 12px; border: 1px solid theme('colors.glass-edge'); background: rgba(255, 255, 255, .55); }
+.cand-name { font-size: 13px; color: theme('colors.on-surface'); min-width: 0; overflow-wrap: anywhere; }
+.cand-score { grid-column: 1 / -1; font-size: 12px; color: theme('colors.on-surface-variant'); }
+.cand-why { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.cand-why li { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid theme('colors.slate-line'); color: theme('colors.on-surface-variant'); }
+.cand-why .why-hit { color: #047857; border-color: rgba(5, 150, 105, .4); background: rgba(5, 150, 105, .08); }
+.cand-why .why-miss { color: #b45309; border-color: rgba(217, 119, 6, .4); background: rgba(217, 119, 6, .08); }
+.cand-note { margin: 0; font-size: 12px; color: theme('colors.on-surface-variant'); }
+/* CAD 형상 추정 규격으로 찾았다는 안내: 확정이 아니라 후보라는 뜻의 호박색이 아니라 차분한 시안 안내 */
+.cand-estimate { margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; font-size: 12px; color: #0e7490; background: rgba(8, 145, 178, .08); border: 1px solid rgba(8, 145, 178, .25); }
 .step-list { list-style: none; margin: 0; padding: 0 10px 12px; max-height: 44vh; overflow-y: auto; scrollbar-width: thin; }
 .step-list::-webkit-scrollbar { display: block; width: 6px; }
 .step-list::-webkit-scrollbar-thumb { background: theme('colors.slate-line'); border-radius: 6px; }
 .step { margin-bottom: 6px; border-radius: 14px; border: 1px solid transparent; transition: background .15s, border-color .15s, box-shadow .15s; }
-.step-on { background: rgba(255, 255, 255, .55); border-color: rgba(34, 211, 238, .55); box-shadow: 0 0 18px rgba(34, 211, 238, .2); }
+.step-on > .step-head { background: rgba(255, 255, 255, .55); box-shadow: 0 0 0 1px rgba(34, 211, 238, .55), 0 0 14px rgba(34, 211, 238, .2); }   /* 단계 표시는 머리줄에만: 아래 부품 행은 고른 것만 진해진다 */
 .step-head { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; padding: 7px 8px; border: 0; background: transparent; cursor: pointer; text-align: left; border-radius: 14px; }
 .step-no { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: 600 11px theme('fontFamily.label-md'); color: #fff; background: theme('colors.primary-container'); }
 .step-on .step-no { background: #0891b2; box-shadow: 0 0 10px rgba(34, 211, 238, .8); }
@@ -106,7 +130,7 @@
 .step-parts { list-style: none; margin: 0; padding: 0 4px 6px 34px; }
 .part-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; width: 100%; padding: 4px 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; text-align: left; font-size: 12px; }
 .part-row:hover { background: rgba(255, 255, 255, .6); }
-.part-on { background: rgba(34, 211, 238, .16); box-shadow: inset 2px 0 0 #0891b2; }
+.part-on { background: rgba(34, 211, 238, .26); box-shadow: inset 3px 0 0 #0891b2; font-weight: 600; }
 .part-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .part-name small { margin-left: 6px; color: theme('colors.outline'); }
 .part-qty { font: 500 11px theme('fontFamily.label-md'); color: theme('colors.on-surface-variant'); }
@@ -173,6 +197,22 @@
 .hud-source { font-size: 10px; letter-spacing: .04em; color: theme('colors.outline'); border-top: 1px dashed rgba(8, 145, 178, .3); padding-top: 6px; }
 .hud-none { margin: 0; font-size: 12px; color: theme('colors.outline'); }
 .hud-card-min { width: auto; }
+/* 규칙집 기준 카드: 확정 기준 · CAD 추정 기준 · 확정하면 적용되는 규칙. 확정값이 아닌 값은 점선, 빈 값은 회색 '작성 필요' */
+.hud-basis { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin: 0; }
+.hud-basis .chip { font-size: 11px; }
+.hud-sub-h { margin: 0 0 4px; font-size: 11px; letter-spacing: .04em; color: #0e7490; text-transform: none; }
+.hud-rules, .hud-pending { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.hud-rule { display: grid; gap: 6px; padding-top: 8px; border-top: 1px dashed rgba(8, 145, 178, .3); }
+.hud-rule:first-child { border-top: 0; padding-top: 0; }
+.hud-rule-head { display: grid; gap: 1px; margin: 0; }
+.hud-rule-id { font-size: 10.5px; letter-spacing: .04em; color: #0e7490; }
+.hud-rule-name { font-size: 12.5px; font-weight: 600; line-height: 1.35; }
+.hud-pending li { font-size: 12px; line-height: 1.4; }
+.hud-hint { display: block; margin: 2px 0 0; font-size: 11px; color: theme('colors.on-surface-variant'); font-weight: 400; }
+.hud-ref { font-size: 10.5px; color: theme('colors.outline'); }
+.hud-roles { display: flex; flex-wrap: wrap; gap: 5px; }
+.hud-roles .rule-chip { height: auto; min-height: 26px; padding: 3px 10px; text-align: left; font-size: 11.5px; line-height: 1.3; white-space: normal; }
+.hud-params .rb-empty, .hud-params .rb-unconfirmed { font-size: 11.5px; }
 
 .hud-sub {
   position: absolute; z-index: 7; left: 12px; right: 12px; bottom: 12px; margin: 0; min-height: 32px; padding: 6px 14px;
@@ -244,3 +284,96 @@
 .attr-over-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .5); cursor: pointer; text-align: left; font-size: 12px; }
 .attr-over-row:hover { background: rgba(255, 255, 255, .8); }
 .attr-over-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* ── 형상으로 본 볼트 종류 (속성 패널 위쪽 블록) ── */
+.fast-block { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: rgba(34, 211, 238, .08); border: 1px solid rgba(8, 145, 178, .28); }
+.fast-block h3 { margin: 0; font-size: 12px; font-weight: 700; color: #0e7490; letter-spacing: .02em; }
+.fast-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 11.5px; line-height: 1.45; color: theme('colors.on-surface-variant'); }
+.fast-note .material-symbols-outlined { margin-top: 1px; color: #0891b2; }
+.fast-analyzing { color: theme('colors.outline'); }
+.fast-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.fast-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 8px 10px; border-radius: 12px;
+  background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .85);
+}
+.fast-row-ok { border-color: rgba(5, 150, 105, .5); box-shadow: 0 0 12px rgba(16, 185, 129, .18); }
+.fast-main { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.fast-name { font-weight: 600; font-size: 13px; }
+.fast-evidence { margin: 4px 0 0; padding: 6px 8px 6px 22px; border-left: 2px solid #0891b2; background: rgba(255, 255, 255, .6); border-radius: 0 8px 8px 0; line-height: 1.45; }
+.fast-row .attr-evidence { grid-column: 1 / -1; }
+.fast-draft { font-size: 11.5px; }
+.fast-draft summary { cursor: pointer; width: max-content; color: #b45309; }
+.fast-draft pre { margin: 6px 0; padding: 8px; max-height: 200px; overflow: auto; font: 11px/1.45 theme('fontFamily.mono'); white-space: pre-wrap; word-break: break-word; border-radius: 8px; background: rgba(255, 255, 255, .7); border: 1px solid rgba(217, 119, 6, .3); }
+
+
+/* ── OPMS 필수 속성 체크리스트 (속성 패널, 볼트 종류 블록 아래) ── */
+.req-block { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(8, 145, 178, .28); }
+.req-block h3 { margin: 0; font-size: 12px; font-weight: 700; color: #0e7490; letter-spacing: .02em; }
+.req-sub { margin: 0; font-size: 11px; line-height: 1.4; color: theme('colors.outline'); }
+.req-note { padding: 6px 10px; border-radius: 10px; background: rgba(100, 116, 139, .08); }
+.req-summary { display: flex; flex-direction: column; gap: 4px; }
+.req-summary-text { font-size: 11.5px; line-height: 1.4; color: theme('colors.on-surface-variant'); }
+.req-bar { position: relative; display: block; width: 100%; height: 6px; border-radius: 4px; background: rgba(100, 116, 139, .2); overflow: hidden; }
+.req-bar i { position: absolute; top: 0; bottom: 0; }
+.req-bar-solid { left: 0; background: linear-gradient(90deg, #22d3ee, #0891b2); }
+.req-bar-soft { background: rgba(217, 119, 6, .45); }
+.req-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.req-row { display: flex; flex-direction: column; gap: 2px; padding: 5px 8px; border-radius: 10px; background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .85); }
+.req-row-confirmed { border-color: rgba(5, 150, 105, .45); }
+.req-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.req-label { font-size: 12px; font-weight: 600; }
+.req-value { font-size: 12px; }
+.req-hint { margin: 0; font-size: 11px; line-height: 1.4; }
+.req-chip-conv { background: rgba(34, 211, 238, .14); color: #0e7490; border-color: rgba(8, 145, 178, .4); }
+.req-chip-empty { background: rgba(100, 116, 139, .12); color: #475569; border-color: rgba(100, 116, 139, .35); }
+.req-warn { white-space: normal; }
+
+/* ── 등록한 CAD 목록 ── */
+.cad-lib { padding-bottom: 10px; }
+.cad-lib-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px 6px; }
+.cad-lib-head h2 { font-size: 15px; }
+.cad-card-meta .chip-holo { margin-right: 6px; vertical-align: 1px; }
+.cad-lib-head h2 { margin: 0; min-width: 0; }
+.cad-lib-toggle { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 6px 2px 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.cad-lib-toggle:hover { color: #0891b2; }
+.cad-lib-now { margin-left: 8px; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; color: theme('colors.on-surface-variant'); }
+.cad-lib-count { margin-left: 6px; padding: 0 8px; border-radius: 999px; font: 600 11px/18px theme('fontFamily.label-md'); color: #0b4a66; background: rgba(34, 211, 238, .22); }
+.cad-lib-empty { margin: 4px 16px 6px; font-size: 13px; color: theme('colors.on-surface-variant'); }
+.cad-cards { list-style: none; margin: 0; padding: 4px 14px 4px; display: flex; gap: 10px; overflow-x: auto; scrollbar-width: thin; }
+.cad-card-wrap { position: relative; flex: 0 0 auto; }
+.cad-card {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 8px; row-gap: 2px; width: 262px; padding: 9px 30px 9px 11px; text-align: left; cursor: pointer;
+  border-radius: 14px; border: 1px solid rgba(255, 255, 255, .8); background: rgba(255, 255, 255, .55); color: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 2px 10px rgba(30, 58, 138, .08); transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.cad-card:hover { background: rgba(255, 255, 255, .78); }
+.cad-card:focus-visible { outline: none; box-shadow: 0 0 0 2px theme('colors.primary'); }
+.cad-card-on { border-color: rgba(8, 145, 178, .65); background: rgba(255, 255, 255, .85); box-shadow: 0 0 18px rgba(34, 211, 238, .3), inset 0 1px 0 #fff; }
+.cad-card .material-symbols-outlined { color: #0891b2; grid-row: span 3; }
+/* 저장 상태: 서버 DB 저장됨(초록) · 이 브라우저에만(호박색) · 캐시 만료(회색) */
+.cad-card-store { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 11px; color: theme('colors.on-surface-variant'); }
+.chip-store { display: inline-flex; align-items: center; gap: 3px; padding: 0 7px; border-radius: 999px; font: 600 10.5px/17px theme('fontFamily.label-md'); border: 1px solid transparent; white-space: nowrap; }
+.chip-store-ok { color: #166534; background: rgba(34, 197, 94, .16); border-color: rgba(22, 163, 74, .35); }
+.chip-store-warn { color: #92400e; background: rgba(245, 158, 11, .18); border-color: rgba(217, 119, 6, .45); }
+.chip-store-off { color: #475569; background: rgba(100, 116, 139, .14); border-color: rgba(100, 116, 139, .35); }
+.cad-lib-pending { margin: 2px 16px 4px; font-size: 12px; color: #92400e; }
+.cad-card-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cad-card-meta { grid-column: 2; display: block; line-height: 1.7; font-size: 11px; color: theme('colors.on-surface-variant'); }
+.cad-card-del { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: theme('colors.outline'); }
+.cad-card-del:hover { background: rgba(255, 255, 255, .9); color: theme('colors.on-surface'); }
+.cad-vault { margin: 6px 14px 2px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .55); border: 1px dashed rgba(8, 145, 178, .4); }
+.cad-vault ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cad-vault li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; font-size: 12px; }
+.cad-vault-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cad-vault-error { margin: 0; font-size: 12px; color: #b45309; }
+
+
+/* ── 열어 둔 CAD 가 없을 때의 안내 (예시 모델은 없다) ── */
+.holo-empty {
+  position: absolute; z-index: 7; inset: 44px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
+  color: theme('colors.on-surface-variant');
+}
+.holo-empty .material-symbols-outlined { color: #0891b2; filter: drop-shadow(0 0 10px rgba(34, 211, 238, .6)); }
+.holo-empty h3 { font-size: 16px; color: theme('colors.on-surface'); }
+.holo-empty p { margin: 0; max-width: 420px; font-size: 13px; line-height: 1.6; }

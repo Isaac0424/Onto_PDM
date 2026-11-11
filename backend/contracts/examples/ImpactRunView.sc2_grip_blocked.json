@@ -1,0 +1,77 @@
+{
+  "id": 1,
+  "order_code": "CO-2026-0001",
+  "computed_at": "2026-11-12T09:00:00+09:00",
+  "computed_by": "kim",
+  "input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "ontology_version": "0.19.0",
+  "temporary": true,
+  "partial": false,
+  "external_as_of": {
+    "stock_lot": "2026-11-12T08:00:00+09:00"
+  },
+  "stale": false,
+  "stale_reasons": [],
+  "warnings": [],
+  "summary": {
+    "blocked": 1,
+    "affected": 1,
+    "review": 0,
+    "none": 0,
+    "stale": false,
+    "partial": false
+  },
+  "findings": [
+    {
+      "id": 1,
+      "kind": "fit_grip",
+      "subject_type": "item",
+      "subject_ref": "P-00000000001",
+      "severity": "blocked",
+      "verdict": "no",
+      "reason_code": "shortfall",
+      "message": "필요 길이 32.5 mm, 볼트 30 mm — 2.5 mm 부족",
+      "basis": {
+        "ontology_version": "0.19.0",
+        "rule_id": "pdm:grip_length",
+        "as_of": "2026-11-12T09:00:00+09:00"
+      },
+      "temporary": true,
+      "approximate": false,
+      "inputs": {
+        "plates": [
+          8,
+          12
+        ],
+        "washers": "2x1.6",
+        "nutHeight": 6.8,
+        "pitch": 1.25,
+        "boltLength": 30
+      },
+      "required": 32.5,
+      "actual": 30.0,
+      "gap": 2.5
+    },
+    {
+      "id": 2,
+      "kind": "stock_lot",
+      "subject_type": "stock_lot",
+      "subject_ref": "LT-N-01",
+      "severity": "affected",
+      "reason_code": "stock_on_hand",
+      "message": "구 개정 너트 재고 300개",
+      "basis": {
+        "ontology_version": "0.19.0",
+        "as_of": "2026-11-12T09:00:00+09:00"
+      },
+      "temporary": false,
+      "approximate": false,
+      "inputs": {
+        "qty_on_hand": 300,
+        "source_system": "fixture"
+      },
+      "scope_class": "inside",
+      "suggested_disposition": "quarantine"
+    }
+  ]
+}

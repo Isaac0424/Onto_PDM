@@ -19,8 +19,14 @@ export const filtersActive = (f: GraphFilterState) => f.tones.size !== ALL_TONES
 
 export interface OperationOption { key: string; label: string; count: number }
 
-const TONE_LABEL: Record<NodeTone, string> = { ok: '승인', maybe: '작업중 · 검토중', none: '폐기' };
-const TONE_CLASS: Record<NodeTone, string> = { ok: 'chip-ok', maybe: 'chip-maybe', none: 'chip-none' };
+const TONE_LABEL: Record<NodeTone, string> = {
+  ok: '승인', maybe: '작업중 · 검토중', none: '폐기',
+  impact_none: '영향 없음', impact_review: '확인 필요', impact_affected: '처분 필요', impact_blocked: '막힘',
+};
+const TONE_CLASS: Record<NodeTone, string> = {
+  ok: 'chip-ok', maybe: 'chip-maybe', none: 'chip-none',
+  impact_none: 'chip-none', impact_review: 'chip-maybe', impact_affected: 'chip-maybe', impact_blocked: 'chip-none',
+};
 const RULE_LABEL = { all: '전체', with: '규칙 있음', without: '규칙 없음' } as const;
 
 /** 검색 비교용: 대소문자 · 공백 · - · _ · . 를 무시한다 (품번 P-00000000121 = p00000000121) */

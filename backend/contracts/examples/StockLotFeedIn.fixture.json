@@ -1,0 +1,15 @@
+{
+  "source_system": "fixture",
+  "rows": [
+    {
+      "lot_no": "LT-N-01",
+      "item_no": "P-00000000022",
+      "site": "PLANT-1",
+      "location": "WH-A",
+      "qty_on_hand": 300.0,
+      "qty_allocated": 0.0,
+      "status": "available",
+      "as_of": "2026-11-12T08:00:00+09:00"
+    }
+  ]
+}

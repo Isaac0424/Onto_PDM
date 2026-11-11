@@ -38,6 +38,11 @@ Thumbs.db
 # File vault default location (set PDM_VAULT_DIR to keep it elsewhere)
 data/vault/
 
+# CAD file DB (SQLite, set PDM_DB_PATH to keep it elsewhere)
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+
 # Backend (Python)
 backend/.venv/
 backend/.pytest_cache/

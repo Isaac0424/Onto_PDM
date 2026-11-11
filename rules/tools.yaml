@@ -1,0 +1,33 @@
+# 공구 목록. 사용설명서가 공구를 이름으로 지정하는 곳은 거의 없다 — 필요하다는 사실만 근거가 있고 규격(범위 · 크기)은 대부분 비어 있다.
+# spec 의 각 값도 source 를 가진다. 비어 있으면 source: unknown + gap.
+
+version: 1
+
+tools:
+  TL-TORQUE:
+    name: {ko: 토크 렌치(토크 관리 공구)}
+    need:
+      text: 정해진 토크로 볼트를 조이는 공구
+      source: manual
+      ref: {doc: UG-KR, sec: "3.3", page: 49}     # "적정량의 토크로 볼트를 조이는 것을 권장합니다"
+    spec:
+      torque_range: {value: null, unit: N·m, source: unknown, gap: G-007}
+      note: 매뉴얼은 공구 종류를 정하지 않는다(적정량의 토크라고만 한다). 로봇 고정 볼트는 30 · 45 · 140 N·m라 공구의 범위가 서로 달라야 한다(규칙 AR-FAS-001).
+  TL-HEXKEY:
+    name: {ko: 육각 렌치(육각 구멍 볼트용)}
+    need:
+      text: 소켓 헤드(윗면에 육각 구멍이 있는 머리) 볼트를 조이는 공구
+      source: cad
+      ref: {doc: FASTENER-CLS, note: "12A BOLT-M3·M4 계열 · 3A/5A 커버 볼트를 형상으로 소켓 헤드(HexSocket)로 판정"}
+      estimated: true
+    spec:
+      size: {value: null, unit: mm, source: unknown, gap: G-007}
+      note: 구멍 크기(socketSize)는 형상 분류기가 M3=2.5 · M4=3 mm로 추정하지만 확정값이 아니다.
+  TL-VACUUM:
+    name: {ko: 진공 청소기 · 공기 압축기}
+    need:
+      text: 컨트롤러 내부 먼지와 필터의 먼지를 제거한다
+      source: manual
+      ref: {doc: UG-KR, sec: "15.3", page: [230, 232]}   # 15.3 "진공 청소기 등을 이용", 필터 "진공 청소기나 공기 압축기 등"
+    spec:
+      model: {value: null, source: unknown, gap: G-007}

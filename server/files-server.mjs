@@ -3,7 +3,8 @@
 //   GET  /api/files                                     올린 기록 전체
 //   GET  /api/files/:sha256                             한 파일의 메타데이터
 //   GET  /api/files/:sha256/content                     파일 내려받기
-// 실행: node server/files-server.mjs   (.env 의 PDM_VAULT_DIR · FILES_PORT 를 읽는다)
+//   /api/cads ...                                       CAD 파일 DB(SQLite, server/cad-db.mjs): 목록 · 저장 · 내려받기 · 속성 갱신 · 삭제
+// 실행: node --disable-warning=ExperimentalWarning server/files-server.mjs   (.env 의 PDM_VAULT_DIR · PDM_DB_PATH · FILES_PORT 를 읽는다)
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,20 +13,24 @@ import { createVault, keyOf, VaultError } from './vault.mjs';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 try { process.loadEnvFile(path.join(repoRoot, '.env')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 
-export function createFilesServer(vault, { allowOrigin = '*' } = {}) {
+export function createFilesServer(vault, { allowOrigin = '*', cads } = {}) {
   const send = (res, status, body) => {
     res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' }).end(JSON.stringify(body));
   };
 
   return http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'content-type');
     if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
 
     try {
       const url = new URL(req.url, 'http://localhost');
       const parts = url.pathname.split('/').filter(Boolean);       // ['api', 'files', ...]
+      if (parts[0] === 'api' && parts[1] === 'cads') {
+        if (!cads) return send(res, 503, { error: 'CAD_DB_UNAVAILABLE', message: 'CAD 파일 DB 가 켜져 있지 않아요' });
+        return await cads.handle(req, res, url, parts, (status, body) => send(res, status, body));
+      }
       if (parts[0] !== 'api' || parts[1] !== 'files') return send(res, 404, { error: 'NOT_FOUND' });
 
       if (parts.length === 2 && req.method === 'POST') {
@@ -56,7 +61,13 @@ export function createFilesServer(vault, { allowOrigin = '*' } = {}) {
       }
       send(res, 404, { error: 'NOT_FOUND' });
     } catch (e) {
-      if (e instanceof VaultError) return send(res, e.status, { error: e.code, message: e.message });
+      if (e instanceof VaultError) {
+        if (e.status === 413) {                                       // 상한을 넘은 본문은 더 받지 않고 연결을 닫는다
+          res.setHeader('connection', 'close');
+          res.once('finish', () => req.destroy());
+        }
+        return send(res, e.status, { error: e.code, message: e.message });
+      }
       console.error(e);
       send(res, 500, { error: 'INTERNAL' });
     }
@@ -68,6 +79,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const port = Number(process.env.FILES_PORT || 8788);
   const maxBytes = Number(process.env.PDM_MAX_UPLOAD_MB || 200) * 1024 * 1024;
   const vault = createVault(root, { maxBytes });
-  createFilesServer(vault, { allowOrigin: process.env.ALLOW_ORIGIN || '*' })
-    .listen(port, '127.0.0.1', () => console.log(`PDM file vault ${root}\n  http://127.0.0.1:${port}/api/files`));
+  let cads;
+  try {
+    const { createCadDb } = await import('./cad-db.mjs');            // node:sqlite 가 없는 Node 면 /api/cads 만 꺼진다
+    cads = createCadDb(path.resolve(repoRoot, process.env.PDM_DB_PATH || 'data/pdm.sqlite'), { maxBytes, vault });
+  } catch (e) { console.error(`CAD 파일 DB 를 열지 못했어요 (/api/cads 꺼짐): ${e.message}`); }
+  createFilesServer(vault, { allowOrigin: process.env.ALLOW_ORIGIN || '*', cads })
+    .listen(port, '127.0.0.1', () => console.log(`PDM file vault ${root}\n  CAD DB ${cads?.path ?? '(꺼짐)'}\n  http://127.0.0.1:${port}/api/files  /api/cads`));
 }

@@ -3,8 +3,10 @@
 import { forceCollide, forceLink, forceManyBody, forceRadial, forceSimulation, type SimNode } from 'd3-force-3d';
 import type { AssemblyRuleDetail, BomNode, Product, RevisionStatus } from '../../api/types';
 
-export type NodeKind = 'product' | 'assembly' | 'part' | 'rule' | 'operation' | 'class' | 'tool' | 'caution';
-export type NodeTone = 'ok' | 'maybe' | 'none';
+export type NodeKind = 'product' | 'assembly' | 'part' | 'rule' | 'operation' | 'class' | 'tool' | 'caution'
+  | 'change' | 'workorder' | 'purchase' | 'stock' | 'joint';                  // 뒤의 다섯은 설계 변경 영향 그래프(pages/changes)
+export type NodeTone = 'ok' | 'maybe' | 'none'
+  | 'impact_none' | 'impact_review' | 'impact_affected' | 'impact_blocked';   // 뒤의 넷은 영향 심각도(none · review · affected · blocked)
 
 export interface GraphNode {
   id: string;
@@ -70,7 +72,10 @@ export function productGraph(product: Product, tree: BomNode[], rulesOf: (itemNo
 }
 
 /** 규칙 하나를 가운데 두고 공정 · 적용 대상 · 공구 · 주의사항 · 쓰이는 품목을 잇는다 */
-export function ruleGraph(rule: AssemblyRuleDetail): Graph {
+/** 규칙 그래프가 읽는 것만: 예전 규칙 상세(AssemblyRuleDetail)와 규칙집의 규칙(화면이 모양을 맞춘 것)이 모두 이 모양을 만족한다 */
+export type RuleGraphInput = Pick<AssemblyRuleDetail, 'id' | 'name' | 'operationLabel' | 'appliesTo' | 'tools' | 'cautions' | 'usedBy'> & { operation: string };
+
+export function ruleGraph(rule: RuleGraphInput): Graph {
   const id = `rule:${rule.id}`;
   const nodes: GraphNode[] = [{ id, label: rule.id, sub: rule.name, kind: 'rule', tone: 'ok', level: 0 }];
   const edges: GraphEdge[] = [];

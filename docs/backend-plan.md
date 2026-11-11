@@ -9,13 +9,16 @@
 - S2 저장소: `PdmStore` Protocol + `InMemoryPdmStore`(웹 목 시드에서 생성, 리비전 보임 규칙은 `mockApi.ts` 와 같다).
 - S3 API: `/api/v1/pdm` 라우터(품목 · BOM · 사용처 · 문서 · CAD/BOM 시트 매칭 · 조립 안내 · 규칙 · 등록 요청 임시저장/제출), 머리 `X-PDM-User` · `X-PDM-Admin-Mode`. 규칙 · 매칭은 웹 목 API 와 **같은 결과**여야 하며 `test_parity.py`(184건)가 세션 3종으로 비교한다.
 - S4 그래프: `onto-pdm graph init | publish`. 모델 B 를 MERGE 로 멱등 발행하고, 같은 트랜잭션에서 `neo4j/checks.cypher` 를 돌려 위반이면 롤백한다. `:Part` 는 만들지 않고 없으면 `part_missing`. 일회용 `neo4j:5.26.32-community` 컨테이너로 시험(멱등 · CURRENT 이동 · 가지치기 · 망가뜨린 입력의 롤백).
-- 시험: `pytest` 218개(Docker 없음), `pytest -m neo4j` 12개.
+- S5 OPMS 읽기(2026-11-12): `onto_pdm.opms`(읽기 어댑터 · 온톨로지 스냅샷 해석 · 임시 매칭) + `/api/v1/pdm/opms/*`. 읽기 전용을 코드로 강제(READ 세션 · `execute_read` · 쓰기 문장 거부).
+- S6 조립 규칙 · 작업표준 읽기(2026-11-12): `onto_pdm.rulebook` + `/api/v1/pdm/rulebook/*`. 저장소 루트 `rules/`(출처 등급이 붙은 YAML — 규칙 23 · 작업표준 10 · 공백 19)를 **읽기만** 하고(쓰기 경로 없음), 읽을 때마다 `tools/check_rules.py` 로 검증해 오류면 503 `RULEBOOK_INVALID`, 파일이 바뀌면 다음 요청에서 다시 읽는다. `unknown`(근거 없음)은 `null` + 공백 번호로 그대로 나가고 `confirmed` 는 사용설명서 근거일 때만 true. `POST /rulebook/select` 가 확정한 분류 · 속성 · 역할 · 모델로 적용 규칙을 고른다(값이 없으면 `unknown`, 단정하지 않음). 규칙 · 작업표준은 PDM 소유이고 분류 · 속성은 OPMS 소유(읽기)다. 웹 연결은 아직이다(규칙 목록 · 작업표준 화면 · 스튜디오 HUD). 기존 인메모리 `/rules` 는 그대로 두었다(웹이 옮겨 가면 지울 수 있다).
+- 시험: `pytest` 303개(Docker 없음, OPMS 읽기 37 · 조립 규칙 47 포함), `pytest -m neo4j` 12개, `pytest -m opms_live` 4개(실제 OPMS 읽기).
 
 **하지 않은 것 (다음 과제)**
 - PostgreSQL `pdm` 스키마 적용 러너(`onto-pdm migrate`) · Alembic · `PgPdmStore` · `uid`(ULID) 열 (결정 4 · 9). 
 - 실제 OPMS 호출(검토 경로 클라이언트 A-01~A-03 · A-09/A-10, 매칭 `POST /parts/match`) — 계획은 아래 "연동 결정" 절. OPMS 쪽 수정은 필요 없다(`record_origin='pdm'` 입구는 요청하지 않기로 했다).
 - 인증(`X-PDM-User` 를 믿는다), MES 패키지 라우트(계약만 있음), 발행 outbox · `--loop`.
-- 웹 HTTP 클라이언트(`web/src/api/http.ts`) — 웹은 아직 목 API.
+- ~~웹 HTTP 클라이언트~~ → **OPMS 읽기만 연결했다(2026-11-12)**: 웹 `httpApi.ts` → 이 백엔드 `/api/v1/pdm/opms/*` → OPMS Neo4j(**읽기 전용**, 직접). 분류 · 부품 · 확정한 규격 매칭(임시 판정) · 연결 상태. 제품 · BOM · 규칙 · MES 는 OPMS 에 없는 데이터라 웹에서도 계속 비어 있다. 사용법과 이유는 [backend/README.md](../backend/README.md) "OPMS 읽기".
+- OPMS API 로 읽기(로그인 필요 · 서비스 계정 불가) · OPMS `POST /parts/match`(보류) — 열리면 `OpmsReader` 구현과 `opms/matching.py` 만 바꾼다.
 - 결정 1 의 "OPMS `create_app()` 감싸기"는 하지 않았다 (이 패키지는 OPMS 를 import 하지 않는 독립 앱). 의존 버전만 OPMS 와 같게 고정해 같은 환경에 합칠 수 있다.
 
 작성: 2026-11-11. OPMS 저장소(`ernest_hemingway_OPMS`, HEAD 7c19ff9, 계약 버전 "5", Alembic HEAD `0003_doc_plan`)를 **읽고** 정리한 계획이다. 실행해서 확인한 것은 없다. 확인하지 못한 것은 "미확인"으로 적었다.

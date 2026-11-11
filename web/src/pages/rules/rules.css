@@ -105,3 +105,39 @@
   .check-item { grid-template-columns: auto minmax(0, 1fr); }
   .check-code, .check-rule { grid-column: 2; }
 }
+
+/* ---- 규칙집(조립 규칙 · 작업표준) 출처 표시: 확정값 = 초록 배지, CAD 추정 · 표준 참고 = 호박색 점선, 근거 없음 = 회색 점선. 빨강은 쓰지 않는다 ---- */
+.rb-status {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 12px; padding: 8px 14px; border-radius: 12px; font-size: 13px;
+  background: rgba(255, 255, 255, .55); border: 1px solid rgba(8, 145, 178, .25); color: theme('colors.on-surface-variant');
+}
+.rb-status strong { color: #047857; }
+.rb-status .material-symbols-outlined { color: #0891b2; }
+.rb-selects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.rb-selects .select { width: 100%; min-width: 0; }
+.rb-grades { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.rb-grade { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 11px; border: 1px solid transparent; font-variant-numeric: tabular-nums; }
+.rb-grade-manual { color: #047857; background: rgba(5, 150, 105, .1); border-color: rgba(5, 150, 105, .35); }
+.rb-grade-cad, .rb-grade-standard { color: #92400e; background: rgba(245, 158, 11, .13); border: 1px dashed rgba(217, 119, 6, .55); }
+.rb-grade-unknown { color: theme('colors.on-surface-variant'); background: rgba(100, 116, 139, .1); border: 1px dashed rgba(100, 116, 139, .5); }
+.rb-unconf-count { color: #92400e; }
+.rb-proposed { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; color: #92400e; background: rgba(245, 158, 11, .16); border: 1px solid rgba(245, 158, 11, .45); white-space: nowrap; }
+.rb-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.rb-unconfirmed { font-weight: 600; font-style: italic; color: #92400e; border-bottom: 2px dotted rgba(217, 119, 6, .7); font-variant-numeric: tabular-nums; }
+.rb-empty { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; color: theme('colors.on-surface-variant'); background: rgba(100, 116, 139, .08); border: 1px dashed rgba(100, 116, 139, .55); }
+.rb-note { display: block; margin-top: 2px; font-size: 11.5px; color: theme('colors.on-surface-variant'); font-weight: 400; }
+.rb-dl { display: grid; gap: 6px; margin: 0; }
+.rb-dl > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.rb-dl dt { color: theme('colors.on-surface-variant'); font-size: 12px; }
+.rb-dl dd { margin: 0; }
+.rb-cautions li { grid-template-columns: 14px minmax(0, 1fr); }
+.rb-gaps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rb-gaps li { line-height: 1.45; }
+.rule-table-scroll th[scope='col'] { white-space: nowrap; }
+.rule-table-scroll td, .rule-table-scroll th { vertical-align: top; }
+.rb-notice { margin: 8px 0; }
+.rb-notice-warn .material-symbols-outlined { color: #d97706; }
+.rb-errors { width: 100%; max-width: 640px; text-align: left; font-size: 12.5px; }
+.rb-errors summary { cursor: pointer; font-weight: 600; color: #92400e; }
+.rb-errors ul { margin: 6px 0 0; padding: 8px 12px 8px 26px; border-radius: 10px; background: rgba(245, 158, 11, .13); line-height: 1.5; }
+@media (max-width: 720px) { .rb-selects { grid-template-columns: minmax(0, 1fr); } .rb-dl > div { grid-template-columns: 56px minmax(0, 1fr); } }

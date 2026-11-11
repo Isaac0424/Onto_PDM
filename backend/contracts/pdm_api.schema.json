@@ -10,6 +10,33 @@
     "AssemblyGuidesRequest": {
       "$ref": "#/$defs/AssemblyGuidesRequest"
     },
+    "ChangeCreateRequest": {
+      "$ref": "#/$defs/ChangeCreateRequest"
+    },
+    "ChangeTargetIn": {
+      "$ref": "#/$defs/ChangeTargetIn"
+    },
+    "ChangeScopesIn": {
+      "$ref": "#/$defs/ChangeScopesIn"
+    },
+    "DispositionIn": {
+      "$ref": "#/$defs/DispositionIn"
+    },
+    "ChangeReviewIn": {
+      "$ref": "#/$defs/ChangeReviewIn"
+    },
+    "ChangeRejectIn": {
+      "$ref": "#/$defs/ChangeRejectIn"
+    },
+    "WorkOrderFeedIn": {
+      "$ref": "#/$defs/WorkOrderFeedIn"
+    },
+    "PurchaseOrderLineFeedIn": {
+      "$ref": "#/$defs/PurchaseOrderLineFeedIn"
+    },
+    "StockLotFeedIn": {
+      "$ref": "#/$defs/StockLotFeedIn"
+    },
     "Health": {
       "$ref": "#/$defs/Health"
     },
@@ -63,6 +90,45 @@
     },
     "MesPackage": {
       "$ref": "#/$defs/MesPackage"
+    },
+    "ChangeSummary": {
+      "$ref": "#/$defs/ChangeSummary"
+    },
+    "ChangePage": {
+      "$ref": "#/$defs/ChangePage"
+    },
+    "ChangeDetail": {
+      "$ref": "#/$defs/ChangeDetail"
+    },
+    "ChangeTargetView": {
+      "$ref": "#/$defs/ChangeTargetView"
+    },
+    "ChangeScopeView": {
+      "$ref": "#/$defs/ChangeScopeView"
+    },
+    "ImpactRunView": {
+      "$ref": "#/$defs/ImpactRunView"
+    },
+    "ImpactFindingView": {
+      "$ref": "#/$defs/ImpactFindingView"
+    },
+    "DispositionView": {
+      "$ref": "#/$defs/DispositionView"
+    },
+    "ChangeReviewView": {
+      "$ref": "#/$defs/ChangeReviewView"
+    },
+    "ChangeExport": {
+      "$ref": "#/$defs/ChangeExport"
+    },
+    "ImpactGraphView": {
+      "$ref": "#/$defs/ImpactGraphView"
+    },
+    "OntologyImpactView": {
+      "$ref": "#/$defs/OntologyImpactView"
+    },
+    "FeedResult": {
+      "$ref": "#/$defs/FeedResult"
     }
   },
   "additionalProperties": false,
@@ -617,6 +683,1115 @@
       "title": "CadPartMatch",
       "type": "object"
     },
+    "ChangeCreateRequest": {
+      "additionalProperties": false,
+      "description": "POST /changes.",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "origin": {
+          "default": "design",
+          "enum": [
+            "design",
+            "quality",
+            "supplier",
+            "ontology_impact",
+            "other"
+          ],
+          "type": "string"
+        },
+        "before_summary": {
+          "default": "",
+          "type": "string"
+        },
+        "after_summary": {
+          "default": "",
+          "type": "string"
+        },
+        "product_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ontology_impact_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "title",
+        "reason"
+      ],
+      "title": "ChangeCreateRequest",
+      "type": "object"
+    },
+    "ChangeDetail": {
+      "additionalProperties": false,
+      "description": "GET /changes/{id}: 요청 · 지시 · 대상 · 범위 · 최신 분석 · 처분 · 검토.",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "design",
+            "quality",
+            "supplier",
+            "ontology_impact",
+            "other"
+          ],
+          "type": "string"
+        },
+        "before_summary": {
+          "type": "string"
+        },
+        "after_summary": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "submitted",
+            "accepted",
+            "rejected",
+            "withdrawn"
+          ],
+          "type": "string"
+        },
+        "product_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChangeOrderView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ChangeTargetView"
+          },
+          "type": "array"
+        },
+        "latest_run": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImpactRunView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "dispositions": {
+          "items": {
+            "$ref": "#/$defs/DispositionView"
+          },
+          "type": "array"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/ChangeReviewView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "title",
+        "reason",
+        "origin",
+        "before_summary",
+        "after_summary",
+        "status",
+        "product_code",
+        "requested_by",
+        "requested_at",
+        "order",
+        "targets",
+        "latest_run",
+        "dispositions",
+        "reviews"
+      ],
+      "title": "ChangeDetail",
+      "type": "object"
+    },
+    "ChangeExport": {
+      "additionalProperties": false,
+      "description": "GET /changes/{id}/export: 승인된 지시의 내보내기. ERP · MES 에 쓰지 않는다(F-CHG-8). 판단 당시의 근거를 같이 싣는다.",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "order_code": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "approved_by": {
+          "type": "string"
+        },
+        "approved_at": {
+          "type": "string"
+        },
+        "ontology_version": {
+          "type": "string"
+        },
+        "temporary": {
+          "type": "boolean"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ChangeTargetView"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ImpactFindingView"
+          },
+          "type": "array"
+        },
+        "dispositions": {
+          "items": {
+            "$ref": "#/$defs/DispositionView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "code",
+        "order_code",
+        "title",
+        "approved_by",
+        "approved_at",
+        "ontology_version",
+        "temporary",
+        "targets",
+        "findings",
+        "dispositions"
+      ],
+      "title": "ChangeExport",
+      "type": "object"
+    },
+    "ChangeOrderView": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "in_review",
+            "approved",
+            "rejected",
+            "implemented",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "product_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "approved_run_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "status",
+        "product_code",
+        "approved_by",
+        "approved_at",
+        "approved_run_id"
+      ],
+      "title": "ChangeOrderView",
+      "type": "object"
+    },
+    "ChangePage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChangeSummary"
+          },
+          "type": "array"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "size": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "page",
+        "size"
+      ],
+      "title": "ChangePage",
+      "type": "object"
+    },
+    "ChangeRejectIn": {
+      "additionalProperties": false,
+      "description": "POST /changes/{id}/reject. 사유는 필수.",
+      "properties": {
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "ChangeRejectIn",
+      "type": "object"
+    },
+    "ChangeReviewIn": {
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "enum": [
+            "design",
+            "purchasing",
+            "production"
+          ],
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "approve",
+            "reject",
+            "comment"
+          ],
+          "type": "string"
+        },
+        "comment": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "function",
+        "verdict"
+      ],
+      "title": "ChangeReviewIn",
+      "type": "object"
+    },
+    "ChangeReviewView": {
+      "additionalProperties": false,
+      "properties": {
+        "function": {
+          "enum": [
+            "design",
+            "purchasing",
+            "production"
+          ],
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "approve",
+            "reject",
+            "comment"
+          ],
+          "type": "string"
+        },
+        "comment": {
+          "default": "",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "integer"
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "reviewed_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "function",
+        "verdict",
+        "comment",
+        "id",
+        "run_id",
+        "reviewer",
+        "reviewed_at"
+      ],
+      "title": "ChangeReviewView",
+      "type": "object"
+    },
+    "ChangeRunSummary": {
+      "additionalProperties": false,
+      "description": "목록의 영향 요약. 심각도별 개수와 낡음 표시.",
+      "properties": {
+        "blocked": {
+          "type": "integer"
+        },
+        "affected": {
+          "type": "integer"
+        },
+        "review": {
+          "type": "integer"
+        },
+        "none": {
+          "type": "integer"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "partial": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "blocked",
+        "affected",
+        "review",
+        "none",
+        "stale",
+        "partial"
+      ],
+      "title": "ChangeRunSummary",
+      "type": "object"
+    },
+    "ChangeScopeIn": {
+      "additionalProperties": false,
+      "properties": {
+        "effective_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effective_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lot_nos": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_from": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_to": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "applies": {
+          "default": "new",
+          "enum": [
+            "new",
+            "old"
+          ],
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "ChangeScopeIn",
+      "type": "object"
+    },
+    "ChangeScopeView": {
+      "additionalProperties": false,
+      "properties": {
+        "effective_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effective_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "lot_nos": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_from": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_to": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "applies": {
+          "default": "new",
+          "enum": [
+            "new",
+            "old"
+          ],
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "effective_from",
+        "effective_to",
+        "site",
+        "lot_nos",
+        "serial_from",
+        "serial_to",
+        "applies",
+        "note",
+        "id"
+      ],
+      "title": "ChangeScopeView",
+      "type": "object"
+    },
+    "ChangeScopesIn": {
+      "additionalProperties": false,
+      "description": "PUT /changes/{id}/targets/{tid}/scope.",
+      "properties": {
+        "scopes": {
+          "items": {
+            "$ref": "#/$defs/ChangeScopeIn"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "scopes"
+      ],
+      "title": "ChangeScopesIn",
+      "type": "object"
+    },
+    "ChangeSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "submitted",
+            "accepted",
+            "rejected",
+            "withdrawn"
+          ],
+          "type": "string"
+        },
+        "order_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "order_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "draft",
+                "in_review",
+                "approved",
+                "rejected",
+                "implemented",
+                "cancelled"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "product_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "origin": {
+          "enum": [
+            "design",
+            "quality",
+            "supplier",
+            "ontology_impact",
+            "other"
+          ],
+          "type": "string"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string"
+        },
+        "run_summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChangeRunSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "code",
+        "title",
+        "status",
+        "order_code",
+        "order_status",
+        "product_code",
+        "origin",
+        "requested_by",
+        "requested_at",
+        "run_summary"
+      ],
+      "title": "ChangeSummary",
+      "type": "object"
+    },
+    "ChangeTargetIn": {
+      "additionalProperties": false,
+      "description": "POST /changes/{id}/targets. 종류별 필수 값은 ChangeTarget 도메인 모델이 검사한다.",
+      "properties": {
+        "change_kind": {
+          "enum": [
+            "replace",
+            "revise",
+            "bom_edit",
+            "attribute_edit"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "from_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "to_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "replacement_item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "before": {
+          "additionalProperties": true,
+          "default": {},
+          "type": "object"
+        },
+        "after": {
+          "additionalProperties": true,
+          "default": {},
+          "type": "object"
+        },
+        "note": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "change_kind",
+        "item_no"
+      ],
+      "title": "ChangeTargetIn",
+      "type": "object"
+    },
+    "ChangeTargetView": {
+      "additionalProperties": false,
+      "properties": {
+        "change_kind": {
+          "enum": [
+            "replace",
+            "revise",
+            "bom_edit",
+            "attribute_edit"
+          ],
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "from_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "to_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "replacement_item_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parent_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "before": {
+          "additionalProperties": true,
+          "default": {},
+          "type": "object"
+        },
+        "after": {
+          "additionalProperties": true,
+          "default": {},
+          "type": "object"
+        },
+        "note": {
+          "default": "",
+          "type": "string"
+        },
+        "id": {
+          "type": "integer"
+        },
+        "scopes": {
+          "items": {
+            "$ref": "#/$defs/ChangeScopeView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "change_kind",
+        "item_no",
+        "from_revision",
+        "to_revision",
+        "replacement_item_no",
+        "parent_revision",
+        "before",
+        "after",
+        "note",
+        "id",
+        "scopes"
+      ],
+      "title": "ChangeTargetView",
+      "type": "object"
+    },
+    "DispositionIn": {
+      "additionalProperties": false,
+      "description": "PUT /changes/{id}/dispositions/{finding_id}.",
+      "properties": {
+        "action": {
+          "enum": [
+            "continue_old",
+            "change_in_progress",
+            "cancel_reissue",
+            "use_as_is",
+            "apply_new",
+            "receive_and_use",
+            "amend",
+            "cancel",
+            "use_up",
+            "quarantine",
+            "return",
+            "scrap",
+            "block_change",
+            "choose_substitute",
+            "review_with_design",
+            "accept_risk",
+            "acknowledge",
+            "no_action_needed"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "scope_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "action",
+        "reason"
+      ],
+      "title": "DispositionIn",
+      "type": "object"
+    },
+    "DispositionView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "finding_id": {
+          "type": "integer"
+        },
+        "finding_kind": {
+          "enum": [
+            "bom_usage",
+            "product",
+            "work_order",
+            "purchase_order_line",
+            "stock_lot",
+            "fit_pair",
+            "fit_grip",
+            "strength_grade",
+            "substitute"
+          ],
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "continue_old",
+            "change_in_progress",
+            "cancel_reissue",
+            "use_as_is",
+            "apply_new",
+            "receive_and_use",
+            "amend",
+            "cancel",
+            "use_up",
+            "quarantine",
+            "return",
+            "scrap",
+            "block_change",
+            "choose_substitute",
+            "review_with_design",
+            "accept_risk",
+            "acknowledge",
+            "no_action_needed"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "scope_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decided_by": {
+          "type": "string"
+        },
+        "decided_at": {
+          "type": "string"
+        },
+        "superseded_by": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "finding_id",
+        "finding_kind",
+        "action",
+        "reason",
+        "scope_id",
+        "decided_by",
+        "decided_at",
+        "superseded_by"
+      ],
+      "title": "DispositionView",
+      "type": "object"
+    },
     "DocumentLink": {
       "additionalProperties": false,
       "properties": {
@@ -756,6 +1931,77 @@
       "title": "ErrorBody",
       "type": "object"
     },
+    "FeedRejectedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "row": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "row",
+        "code"
+      ],
+      "title": "FeedRejectedRow",
+      "type": "object"
+    },
+    "FeedResult": {
+      "additionalProperties": false,
+      "description": "일부 행만 실패해도 나머지는 적용한다. 늦은 as_of 는 무시(ignored_stale), 모르는 품번은 rejected.",
+      "properties": {
+        "applied": {
+          "type": "integer"
+        },
+        "ignored_stale": {
+          "type": "integer"
+        },
+        "rejected": {
+          "items": {
+            "$ref": "#/$defs/FeedRejectedRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "applied",
+        "ignored_stale",
+        "rejected"
+      ],
+      "title": "FeedResult",
+      "type": "object"
+    },
+    "FindingBasisView": {
+      "additionalProperties": false,
+      "properties": {
+        "ontology_version": {
+          "type": "string"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "as_of": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ontology_version",
+        "rule_id",
+        "as_of"
+      ],
+      "title": "FindingBasisView",
+      "type": "object"
+    },
     "GuideParam": {
       "additionalProperties": false,
       "properties": {
@@ -830,6 +2076,362 @@
         "value"
       ],
       "title": "Identifier",
+      "type": "object"
+    },
+    "ImpactFindingView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "bom_usage",
+            "product",
+            "work_order",
+            "purchase_order_line",
+            "stock_lot",
+            "fit_pair",
+            "fit_grip",
+            "strength_grade",
+            "substitute"
+          ],
+          "type": "string"
+        },
+        "subject_type": {
+          "type": "string"
+        },
+        "subject_ref": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "none",
+            "review",
+            "affected",
+            "blocked"
+          ],
+          "type": "string"
+        },
+        "verdict": {
+          "anyOf": [
+            {
+              "enum": [
+                "ok",
+                "conditional",
+                "no",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "basis": {
+          "$ref": "#/$defs/FindingBasisView"
+        },
+        "temporary": {
+          "type": "boolean"
+        },
+        "approximate": {
+          "type": "boolean"
+        },
+        "inputs": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "required": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "actual": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "scope_class": {
+          "anyOf": [
+            {
+              "enum": [
+                "inside",
+                "outside",
+                "partial",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "suggested_disposition": {
+          "anyOf": [
+            {
+              "enum": [
+                "continue_old",
+                "change_in_progress",
+                "cancel_reissue",
+                "use_as_is",
+                "apply_new",
+                "receive_and_use",
+                "amend",
+                "cancel",
+                "use_up",
+                "quarantine",
+                "return",
+                "scrap",
+                "block_change",
+                "choose_substitute",
+                "review_with_design",
+                "accept_risk",
+                "acknowledge",
+                "no_action_needed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "subject_type",
+        "subject_ref",
+        "severity",
+        "verdict",
+        "reason_code",
+        "message",
+        "basis",
+        "temporary",
+        "approximate",
+        "inputs",
+        "required",
+        "actual",
+        "gap",
+        "scope_class",
+        "suggested_disposition"
+      ],
+      "title": "ImpactFindingView",
+      "type": "object"
+    },
+    "ImpactGraphEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "changes",
+            "replaces",
+            "contains",
+            "uses_bom",
+            "orders",
+            "stock_of",
+            "affects"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "kind"
+      ],
+      "title": "ImpactGraphEdge",
+      "type": "object"
+    },
+    "ImpactGraphNode": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "change",
+            "item",
+            "revision",
+            "product",
+            "work_order",
+            "purchase_order_line",
+            "stock_lot",
+            "joint"
+          ],
+          "type": "string"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "review",
+                "affected",
+                "blocked"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "kind",
+        "severity"
+      ],
+      "title": "ImpactGraphNode",
+      "type": "object"
+    },
+    "ImpactGraphView": {
+      "additionalProperties": false,
+      "description": "GET /changes/{id}/impact/graph. 3D 영향 그래프와 목록 대안의 입력.",
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/ImpactGraphNode"
+          },
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "$ref": "#/$defs/ImpactGraphEdge"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "title": "ImpactGraphView",
+      "type": "object"
+    },
+    "ImpactRunView": {
+      "additionalProperties": false,
+      "description": "POST/GET /changes/{id}/impact. OPMS 를 못 읽으면 200 + partial=true 로 알린다(문제 없음으로 읽히면 안 된다).",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "order_code": {
+          "type": "string"
+        },
+        "computed_at": {
+          "type": "string"
+        },
+        "computed_by": {
+          "type": "string"
+        },
+        "input_hash": {
+          "type": "string"
+        },
+        "ontology_version": {
+          "type": "string"
+        },
+        "temporary": {
+          "type": "boolean"
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "external_as_of": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "stale_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "$ref": "#/$defs/ChangeRunSummary"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ImpactFindingView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "order_code",
+        "computed_at",
+        "computed_by",
+        "input_hash",
+        "ontology_version",
+        "temporary",
+        "partial",
+        "external_as_of",
+        "stale",
+        "stale_reasons",
+        "warnings",
+        "summary",
+        "findings"
+      ],
+      "title": "ImpactRunView",
       "type": "object"
     },
     "InventoryRow": {
@@ -1512,6 +3114,54 @@
       "title": "MesWorkStep",
       "type": "object"
     },
+    "OntologyImpactView": {
+      "additionalProperties": false,
+      "description": "GET /changes/ontology-impact. 읽기 보고다. 부품 개정이나 변경 지시를 만들지 않는다(F-CHG-10).",
+      "properties": {
+        "from_version": {
+          "type": "string"
+        },
+        "to_version": {
+          "type": "string"
+        },
+        "computed_at": {
+          "type": "string"
+        },
+        "rules_changed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "parts_flagged": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "change_request_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "from_version",
+        "to_version",
+        "computed_at",
+        "rules_changed",
+        "parts_flagged",
+        "change_request_code"
+      ],
+      "title": "OntologyImpactView",
+      "type": "object"
+    },
     "Product": {
       "additionalProperties": false,
       "properties": {
@@ -1592,6 +3242,118 @@
         "nodes"
       ],
       "title": "ProductBom",
+      "type": "object"
+    },
+    "PurchaseOrderLineFeedIn": {
+      "additionalProperties": false,
+      "description": "POST /feeds/purchase-order-lines.",
+      "properties": {
+        "source_system": {
+          "enum": [
+            "ERP",
+            "MES",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PurchaseOrderLineFeedRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_system",
+        "rows"
+      ],
+      "title": "PurchaseOrderLineFeedIn",
+      "type": "object"
+    },
+    "PurchaseOrderLineFeedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "po_no": {
+          "type": "string"
+        },
+        "line_no": {
+          "type": "integer"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_rev": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "qty_ordered": {
+          "type": "number"
+        },
+        "qty_received": {
+          "default": 0,
+          "type": "number"
+        },
+        "due_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "supplier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "default": "open",
+          "enum": [
+            "open",
+            "partial",
+            "closed"
+          ],
+          "type": "string"
+        },
+        "as_of": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "po_no",
+        "line_no",
+        "item_no",
+        "qty_ordered",
+        "as_of"
+      ],
+      "title": "PurchaseOrderLineFeedRow",
       "type": "object"
     },
     "Revision": {
@@ -1708,6 +3470,103 @@
       "title": "RuleUsedBy",
       "type": "object"
     },
+    "StockLotFeedIn": {
+      "additionalProperties": false,
+      "description": "POST /feeds/stock-lots.",
+      "properties": {
+        "source_system": {
+          "enum": [
+            "ERP",
+            "MES",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/StockLotFeedRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_system",
+        "rows"
+      ],
+      "title": "StockLotFeedIn",
+      "type": "object"
+    },
+    "StockLotFeedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "lot_no": {
+          "type": "string"
+        },
+        "item_no": {
+          "type": "string"
+        },
+        "item_rev": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "qty_on_hand": {
+          "type": "number"
+        },
+        "qty_allocated": {
+          "default": 0,
+          "type": "number"
+        },
+        "status": {
+          "default": "available",
+          "enum": [
+            "available",
+            "quarantine",
+            "hold"
+          ],
+          "type": "string"
+        },
+        "as_of": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "lot_no",
+        "item_no",
+        "qty_on_hand",
+        "as_of"
+      ],
+      "title": "StockLotFeedRow",
+      "type": "object"
+    },
     "TaxonomyClass": {
       "additionalProperties": false,
       "properties": {
@@ -1815,6 +3674,200 @@
         "quantity"
       ],
       "title": "WhereUsedRow",
+      "type": "object"
+    },
+    "WorkOrderBomRefIn": {
+      "additionalProperties": false,
+      "properties": {
+        "item_no": {
+          "type": "string"
+        },
+        "rev": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "qty_required": {
+          "type": "number"
+        },
+        "qty_issued": {
+          "default": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "item_no",
+        "qty_required"
+      ],
+      "title": "WorkOrderBomRefIn",
+      "type": "object"
+    },
+    "WorkOrderFeedIn": {
+      "additionalProperties": false,
+      "description": "POST /feeds/work-orders.",
+      "properties": {
+        "source_system": {
+          "enum": [
+            "ERP",
+            "MES",
+            "fixture"
+          ],
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/WorkOrderFeedRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_system",
+        "rows"
+      ],
+      "title": "WorkOrderFeedIn",
+      "type": "object"
+    },
+    "WorkOrderFeedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "wo_no": {
+          "type": "string"
+        },
+        "site": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "product_item_no": {
+          "type": "string"
+        },
+        "bom_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "process_rev": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "released",
+            "in_progress",
+            "completed",
+            "closed",
+            "cancelled"
+          ],
+          "type": "string"
+        },
+        "qty_planned": {
+          "type": "number"
+        },
+        "qty_done": {
+          "default": 0,
+          "type": "number"
+        },
+        "lot_no": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_from": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "serial_to": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "start_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "due_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "bom_refs": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/WorkOrderBomRefIn"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "wo_no",
+        "product_item_no",
+        "status",
+        "qty_planned",
+        "as_of"
+      ],
+      "title": "WorkOrderFeedRow",
       "type": "object"
     }
   }

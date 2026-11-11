@@ -1,0 +1,61 @@
+# 출처 등록부: 규칙 · 작업표준의 모든 값은 아래 문서 중 하나(또는 '근거 없음')로 거슬러 올라가야 한다.
+# 검증: node 없이 `python tools/check_rules.py` (docs/work-standards.md 4장)
+
+version: 1
+
+# 출처 등급 (모든 값에 `source` 필드로 붙는다)
+grades:
+  manual:
+    ko: 제조사 사용설명서
+    rule: 사용설명서의 수치 · 문구 그대로. `ref`에 문서 · 절 · 쪽 번호가 있어야 한다. 값은 확정이다.
+  standard:
+    ko: 공개 표준 · 관례(참고)
+    rule: ISO · KS · VDI 같은 공개 표준이나 관례를 참고한 값. 표준 번호를 `ref.standard`에 적고 '설계 승인 전 사용 금지'를 뜻한다. 이번 작성에는 쓰지 않았다(확인할 수 있는 표준 원문이 없어 숫자를 만들지 않는다).
+  cad:
+    ko: CAD에서 도출
+    rule: "STEP 구조(부품 이름 · 수량 · 조립 계층)나 형상 분류기가 만든 값. 추정이 섞이면 `estimated: true`."
+  unknown:
+    ko: 근거 없음
+    rule: "값을 비워 둔다(`value: null`). `gap` 필드로 gaps.yaml의 작성 필요 항목을 가리킨다. 지어낸 값을 쓰지 않는다."
+
+documents:
+  UG-KR:
+    title: HCR-2G(HCR-A Series) 사용설명서 한국어 V2.2
+    publisher: 한화로보틱스
+    kind: manual
+    file: HCR_2G_UserGuide_KR_V2.2.pdf        # 저장소에 넣지 않았다(제조사 자료). 쪽 번호는 PDF 쪽 번호이며 인쇄된 쪽 번호와 같다(276쪽)
+    pages: 276
+  UG-EN:
+    title: HCR-2G(HCR-A Series) User Guide English V2.2
+    publisher: 한화로보틱스
+    kind: manual
+    file: HCR_2G_UserGuide_EN_V2.2.pdf        # 체결 토크표(3.3)는 KR과 같은 값임을 확인했다. 쪽 번호는 KR 기준으로만 적는다
+    pages: 254
+  CAD-12A:
+    title: HCR-12A 본체 STEP
+    kind: cad
+    file: "HCR_2G_12A_3D CAD Models/Body HCR12A R00 3D.stp"
+  CAD-5A:
+    title: HCR-5A 본체 STEP
+    kind: cad
+    file: "HCR_2G_5A_3D CAD Models/Body HCR5A R00 3D.stp"
+  CAD-3A:
+    title: HCR-3A 본체 STEP
+    kind: cad
+    file: "HCR_2G_3A_3D CAD Models/Body HCR3A R00 3D.stp"
+  CAD-CTRL:
+    title: HCR 컨트롤러 HCP2 STEP
+    kind: cad
+    file: "HCR_2G_Controller_3D CAD Models/Controller HCP2 R00 3D(A Seires).stp"
+  CAD-BOM:
+    title: STEP에서 뽑은 CAD 조립 구조 · 수량 표 (PDM이 만든 파생 자료)
+    kind: derived
+    file: 부품사양서_csv/robot_cad_bom.csv, OPMS PDM 브랜치 data/samples/robot/R03_hcr12a_cad_bom.csv
+  FASTENER-CLS:
+    title: PDM 볼트 형상 분류기 결과 (web/src/extract/fastener*.ts, docs/fastener-classification.md 11장)
+    kind: derived
+    file: 형상만 입력하고 부품 이름은 채점에만 썼다. 실제 STEP 4개로 검증
+  OPMS-ONTOLOGY:
+    title: OPMS 온톨로지 classes.yaml (PDM 브랜치, 0.15.0)
+    kind: opms
+    file: D:/ernest_hemingway_OPMS/ontology/classes.yaml

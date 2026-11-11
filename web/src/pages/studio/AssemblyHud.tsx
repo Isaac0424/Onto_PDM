@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { AssemblyGuide, AssemblyOperation } from '../../api/types';
 import { Icon } from '../../components/AppShell';
+import { RuleCardBody, ruleCaption } from './RuleHudCard';
+import type { RuleHudView } from './useRuleSelection';
 
 const OPERATION_ICON: Record<AssemblyOperation, string> = {
   fasten: 'construction', weld: 'local_fire_department', press_fit: 'compress', mount: 'memory', insert: 'login', cover: 'check_box_outline_blank',
@@ -27,7 +29,7 @@ export function useTypewriter(text: string): string {
  * 뷰어의 무대(.stage) 안으로 포털을 열어 3D 화면과 같은 자리에 겹친다.
  */
 export function AssemblyHud({
-  stage, guide, partName, stepNo, total,
+  stage, guide, partName, stepNo, total, connected = true, rulesMissing = false, rules, toolName, onPickRole,
 }: {
   stage: HTMLElement | null;
   guide?: AssemblyGuide;
@@ -35,9 +37,24 @@ export function AssemblyHud({
   partName?: string;
   stepNo: number;
   total: number;
+  /** 조립 규칙을 읽어 올 곳(OPMS)에 연결돼 있는가. 아니면 규칙이 없는 것이 아니라 아직 읽을 수 없다고 말한다 */
+  connected?: boolean;
+  /** OPMS 는 읽고 있지만(분류 · 부품) 조립 규칙 데이터는 OPMS 에 아직 없다: "연결되면"이 아니라 "아직 데이터가 없다"고 말한다 */
+  rulesMissing?: boolean;
+  /** 규칙집(rules/)을 읽는 길이 있을 때: 고른 부품에 적용되는 규칙(확정 기준 · CAD 추정 기준 · 확정하면 적용되는 규칙)을 카드에 보인다. 있으면 guide 는 쓰지 않는다 */
+  rules?: RuleHudView;
+  toolName?(id: string): string;
+  /** 규칙이 이 볼트의 역할을 알아야 정해질 때 사람이 역할을 고른다 */
+  onPickRole?(role: string | undefined): void;
 }) {
   const [open, setOpen] = useState(true);
-  const caption = guide ? guide.caption : partName ? `${partName}: 이 부품에 연결된 사내 조립 규칙이 아직 없습니다.` : '단계나 부품을 고르면 조립 규칙이 이 위에 뜹니다. 부품을 더블클릭하면 그 부품으로 시점이 맞춰져요.';
+  const caption = rules ? (partName ? (ruleCaption(rules, partName) ?? `${partName}: 조립 규칙을 찾는 중…`) : '단계나 부품을 고르면 이 부품에 적용되는 조립 규칙이 이 위에 뜹니다. 부품을 더블클릭하면 그 부품으로 시점이 맞춰져요.')
+    : guide ? guide.caption
+    : partName ? (connected ? `${partName}: 이 부품에 연결된 사내 조립 규칙이 아직 없습니다.`
+      : rulesMissing ? `${partName}: 조립 규칙 데이터는 아직 OPMS에 없어요.` : `${partName}: 조립 규칙은 OPMS에 연결되면 이 위에 표시돼요.`)
+    : connected ? '단계나 부품을 고르면 조립 규칙이 이 위에 뜹니다. 부품을 더블클릭하면 그 부품으로 시점이 맞춰져요.'
+    : rulesMissing ? '부품을 더블클릭하면 그 부품으로 시점이 맞춰져요. 조립 규칙 데이터는 아직 OPMS에 없어요.'
+    : '부품을 더블클릭하면 그 부품으로 시점이 맞춰져요. 조립 규칙은 OPMS에 연결되면 이 위에 표시돼요.';
   const typed = useTypewriter(caption);
   if (!stage) return null;
 
@@ -53,7 +70,8 @@ export function AssemblyHud({
               <Icon name={open ? 'remove' : 'add'} size={16} />
             </button>
           </header>
-          {open && (guide ? (
+          {open && rules && partName && <RuleCardBody view={rules} partName={partName} toolName={toolName ?? (id => id)} {...(onPickRole ? { onPickRole } : {})} />}
+          {open && !rules && (guide ? (
             <div className="hud-card-body">
               <h3 className="hud-title">{guide.title}</h3>
               <dl className="hud-params">
@@ -73,7 +91,7 @@ export function AssemblyHud({
               <footer className="hud-source mono" title={guide.source}>{guide.ruleId} · {guide.ruleName}</footer>
             </div>
           ) : (
-            <div className="hud-card-body"><h3 className="hud-title">{partName}</h3><p className="hud-none">연결된 규칙 없음</p></div>
+            <div className="hud-card-body"><h3 className="hud-title">{partName}</h3><p className="hud-none">{connected ? '연결된 규칙 없음' : rulesMissing ? '조립 규칙 데이터가 아직 없어요' : 'OPMS에 연결되면 표시돼요'}</p></div>
           ))}
         </aside>
       )}

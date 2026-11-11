@@ -1,0 +1,401 @@
+# 조립 규칙 (PDM 소유). 형식: docs/assembly-rules-spec.md 4장(AssemblyRule · Condition · Parameter · Caution · Tool)을 따른다.
+# 이전의 가짜 규칙(온토전자)은 모두 지웠다. 이 파일의 값은 전부 **출처가 있는 것**이다: HCR-2G 사용설명서(쪽 번호까지) 또는 CAD.
+# 근거가 없는 값은 `value: null` + `source: unknown` + `gap` 으로 비워 두었다(gaps.yaml). 규칙은 모두 status: unreviewed(사람이 아직 검토하지 않음)이다.
+#
+# 항목 모양
+#   applies_to.classes        OPMS 분류 이름(OPMS PDM 브랜치 ontology/classes.yaml 에 있는 것). 부모 분류는 자손에도 걸린다.
+#   applies_to.proposed_classes  OPMS 에 아직 없는 분류(제안). 이번 파일에는 쓰지 않았다.
+#   applies_to.context        OPMS 속성이 아닌 PDM 문맥: role(이 부품이 하는 일) · model(로봇 모델). 같은 M6 볼트라도 role 이 다르면 값이 다르다(예: 로봇 고정 M6 = 30 N·m, 툴 고정 M6 = 값 없음).
+#   parameters / lookup 의 모든 값: source(manual · cad · unknown) + ref(문서 · 절 · 쪽) 또는 gap
+#   cautions[].text           사용설명서 문구를 그대로 옮겼다(공백만 정리). level 은 사용설명서의 안전 표시(위험 · 경고 · 주의 · 참고).
+
+version: 1
+
+# 부품이 하는 일(문맥). applies_to.context.role 은 여기 있는 것만 쓴다.
+roles:
+  robot_base_mount: 로봇 암 베이스를 설치면에 고정하는 볼트 4개 (사용설명서 3.3)
+  ground_line: 정전기 방지 접지 라인을 연결하는 M4×10 볼트 (3.3)
+  tool_mount: 툴을 툴 플랜지에 고정하는 M6 볼트 4개 (3.4)
+  controller_mount: 로봇 컨트롤러를 하단 브라켓으로 고정하는 볼트 (3.6)
+  arm_assembly_bolt: 로봇 암 본체 조립에 쓰인 M3 · M4 소켓 헤드 볼트 (CAD 구조에서 도출. 사용설명서에는 없다)
+
+assembly_rules:
+  # ===================== 체결 =====================
+  AR-FAS-001:
+    name: 로봇 암 베이스 고정 볼트 체결
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [Bolt]                       # 매뉴얼이 볼트 머리 모양을 말하지 않아 리프 분류(HexBolt 등)로 좁히지 않는다
+      context: {role: robot_base_mount, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.3", page: 49}
+    parameters:
+      quantity: {value: 4, unit: 개, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}   # "볼트 4 개를 이용하여 천장, 벽면, 바닥에 설치"
+      torque_policy: {value: 모델별 표의 토크로 조인다, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    lookup:                                 # 로봇 종류 → 볼트 · 토크 · 위치 결정 핀 (사용설명서 3.3 표, EN V2.2 도 같은 값)
+      key: model
+      table:
+        HCR-3A:  {threadSize: M6,  length_mm: 15, torque_nm: 30,  pin_diameter_mm: 5, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+        HCR-5A:  {threadSize: M8,  length_mm: 15, torque_nm: 45,  pin_diameter_mm: 8, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+        HCR-12A: {threadSize: M12, length_mm: 25, torque_nm: 140, pin_diameter_mm: 5, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    tools: [TL-TORQUE]
+    cautions:
+      - {level: 경고, text: "로봇을 고정할 때에는 볼트가 풀리지 않도록 단단히 고정하세요.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {level: 경고, text: "로봇의 무게와 로봇이 작동할 때 발생하는 하중을 견딜 수 있는 견고한 면에 설치하세요.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {level: 경고, text: "로봇 암의 설치면이 로봇 암의 베이스면과 완전히 밀착되었는지 확인하세요.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      - {level: 참고, text: "기본 고정 볼트는 제품 패키지에 포함되어 있지 않습니다.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 50}}
+      - {level: 참고, text: "로봇 베이스의 사양에 대한 자세한 내용은 Appendix C 로봇 설치면 치수를 참조하십시오.", source: manual, ref: {doc: UG-KR, sec: "3.3, App. C", page: [50, 257]}}
+    note: 설치면의 평면도 · 강성이 로봇 암을 지지하기에 부족하면 고정 베이스를 이용한다(3.3 p.49). 볼트 머리 모양 · 강도 등급 · 재질은 매뉴얼에 없다(gap G-008).
+
+  AR-FAS-002:
+    name: 접지 라인 볼트(M4×10) 체결
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [Bolt]
+      context: {role: ground_line, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.3", page: 49}
+    parameters:
+      threadSize: {value: M4, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      length_mm: {value: 10, unit: mm, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+      torque_nm: {value: null, unit: N·m, source: unknown, gap: G-003}
+    tools: [TL-TORQUE]
+    cautions:
+      - {level: 안내, text: "정전기 방지를 위하여 M4*10mm 볼트를 이용해 접지 라인을 연결해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+
+  AR-FAS-003:
+    name: 로봇 고정 볼트 커버 덮기 (HCR-3A · HCR-5A)
+    operation: CoverFitting
+    status: unreviewed
+    applies_to:
+      context: {role: robot_base_mount, model: [HCR-3A, HCR-5A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "1.2, 3.3", page: [15, 49]}
+    parameters:
+      quantity: {value: 4, unit: 개, source: manual, ref: {doc: UG-KR, sec: "1.2 시스템 구성품", page: 15}}   # 구성품 표: 로봇 고정 볼트 커버 — HCR-3A O, HCR-5A O, HCR-12A 없음 · 4개
+    cautions:
+      - {level: 안내, text: "HCR-3A, HCR-5A 로봇은 베이스 고정 시 동봉된 로봇 고정 볼트 커버(4 개)를 덮어주세요.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    note: CAD 의 HCR3A_BASE_COVER_BOLT_1(4개)가 이 커버로 보이지만 이름만으로 추정한 것이다(source cad, inferred). HCR-5A STEP 에는 같은 부품이 없다(gap G-009).
+    cad_inference:
+      part: HCR3A_BASE_COVER_BOLT_1
+      quantity: 4
+      source: cad
+      inferred: true
+      ref: {doc: CAD-3A, node: HCR3A_BASE_COVER_BOLT_1}
+
+  AR-FAS-004:
+    name: 툴 고정 볼트(M6) 체결
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [Bolt]
+      context: {role: tool_mount, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.4", page: 50}
+    parameters:
+      threadSize: {value: M6, source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      quantity: {value: 4, unit: 개, source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      length_mm: {value: null, unit: mm, source: unknown, gap: G-002}
+      torque_nm: {value: null, unit: N·m, source: unknown, gap: G-002}
+      flange_standard: {value: ISO 9409-1-50-4-M6, source: manual, ref: {doc: UG-KR, sec: "App. D", page: 260}}
+    tools: [TL-TORQUE]
+    cautions:
+      - {level: 참고, text: "툴과 고정용 M6 볼트는 제품에 포함되지 않습니다.", source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      - {level: 참고, text: "툴을 결합하는 방법은 툴마다 다를 수 있습니다. 자세한 방법은 툴 제조사에서 제공하는 사용설명서를 참조하세요.", source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      - {level: 참고, text: "툴 플랜지의 자세한 사양은 Appendix D 툴 플랜지 단면도를 참조하세요.", source: manual, ref: {doc: UG-KR, sec: "3.4, App. D", page: [50, 260]}}
+
+  AR-FAS-005:
+    name: 로봇 컨트롤러 고정 볼트(M14)와 평와셔
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [Bolt, FlatWasher]           # 볼트 + 평와셔 조합
+      context: {role: controller_mount}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.6", page: 55}
+    parameters:
+      threadSize: {value: M14, source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}
+      length_min_mm: {value: 45, unit: mm, source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}   # "M14 45mm 이상"
+      washer: {value: 평와셔와 함께 조합, source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}
+      torque_nm: {value: null, unit: N·m, source: unknown, gap: G-004}
+    tools: [TL-TORQUE]
+    cautions:
+      - {level: 안내, text: "로봇 컨트롤러는 하단의 고정용 브라켓을 이용해 지면에 고정할 수 있습니다. M14 45mm 이상의 볼트를 평 와셔와 함께 조합하여 고정하세요.", source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}
+      - {level: 참고, text: "로봇 컨트롤러를 고정하는 볼트나 나사는 제품에 포함되지 않습니다.", source: manual, ref: {doc: UG-KR, sec: "3.6", page: 55}}
+
+  AR-FAS-006:
+    name: 로봇 암 본체 소켓 헤드 볼트(M3 · M4) 체결
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [SocketHeadBolt]
+      where: {threadSize: [M3, M4]}
+      context: {role: arm_assembly_bolt, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: cad
+      ref: {doc: FASTENER-CLS, note: "12A BOLT-M3·M4 계열과 3A/5A 커버 볼트를 형상으로 소켓 헤드로 판정(docs/fastener-classification.md 11장). STEP 문자열이 소켓 헤드를 명시한 것은 12A BOLT-M4X15(18개)와 3A·5A 커버 볼트(42개)이고, 12A 의 M3X8·M3X15·M4X25·M4(59개)는 OPMS 시연 README 의 가정(같은 부품 라이브러리)과 ISO 4762 머리 치수 일치에 기댄다"}
+      estimated: true
+    parameters:
+      torque_nm: {value: null, unit: N·m, source: unknown, gap: G-001}
+      sequence: {value: null, source: unknown, gap: G-005}
+    tools: [TL-HEXKEY, TL-TORQUE]
+    cautions: []
+    note: 사용설명서는 로봇 암 본체 조립(커버 볼트)을 설명하지 않는다. 대상과 수량은 CAD 에서, 값은 비어 있다.
+
+  AR-SAF-001:
+    name: 로봇에 조립되어 있는 볼트는 분해하지 않는다
+    operation: BoltFastening
+    status: unreviewed
+    applies_to:
+      classes: [Bolt]
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.3", page: 50}
+    cautions:
+      - {level: 경고, text: "로봇에 조립되어 있는 볼트는 절대 임의로 분해하지 마세요. 로봇 암을 작동하기 전에 모든 볼트가 잘 고정되어 있는지 확인하세요. 볼트가 분해된 상태에서 사용하거나 볼트 조립부를 이용하여 브라켓 등을 설치할 경우 제품이 파손되거나 안전에 심각한 영향을 미칠 수 있습니다.", level_note: "p.49의 경고 상자가 p.50으로 이어진 문구로 읽었다(텍스트 추출 기준, 원본 서식으로 확인 필요)", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 50}}
+
+  AR-LOC-001:
+    name: 위치 결정 핀 2개로 설치 위치 맞추기 (선택)
+    operation: PinLocating
+    status: unreviewed
+    applies_to:
+      context: {role: robot_base_mount, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.3", page: 49}
+    parameters:
+      quantity: {value: 2, unit: 개, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    lookup:
+      key: model
+      table:
+        HCR-3A:  {pin_diameter_mm: 5, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+        HCR-5A:  {pin_diameter_mm: 8, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+        HCR-12A: {pin_diameter_mm: 5, source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    cautions:
+      - {level: 안내, text: "로봇 암을 정확한 위치에 설치하고자 할 경우, 위치 결정 핀 2 개를 이용해 위치를 결정 할 수 있습니다.", source: manual, ref: {doc: UG-KR, sec: "3.3", page: 49}}
+    note: 핀의 길이 · 공차 · 재질은 매뉴얼에 없다(gap G-011).
+
+  # ===================== 연결 =====================
+  AR-CON-001:
+    name: 티칭 펜던트 · 로봇 암 케이블을 컨트롤러에 연결하고 걸쇠를 건다
+    operation: ConnectorMating
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.5", page: [52, 53]}
+    cautions:
+      - {level: 안내, text: "티칭 펜던트 케이블을 로봇 컨트롤러에 연결한 다음 고정용 걸쇠를 걸어 케이블이 빠지지 않도록 합니다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 52}}
+      - {level: 안내, text: "로봇 암의 케이블을 로봇 컨트롤러에 연결한 다음 고정용 걸쇠를 걸어 케이블이 빠지지 않도록 합니다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 53}}
+    note: HCR-12A 는 로봇 통신 및 전원 케이블이 따로 있다(1.2 p.15 구성품 표). 컨트롤러 종류(3A·5A 용 / 12A 용)에 따라 커넥터 위치가 다르다(3.5 p.53).
+
+  AR-CON-002:
+    name: 컨트롤러 전원 연결
+    operation: ConnectorMating
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.5", page: 54}
+    parameters:
+      input_voltage_vac: {value: "100 ~ 240", unit: VAC, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      external_fuse_a: {value: "8 ~ 16", unit: A, condition: 100 ~ 240 V, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      input_frequency_hz: {value: "50 ~ 60", unit: Hz, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      plug: {value: 표준 IEC 플러그, source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+    cautions:
+      - {level: 안내, text: "전원 공급의 최소 요구조건은 접지, 메인 퓨즈, 누전 차단기이며, 구매자나 로봇을 설치하는 사람이 준비해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      - {level: 주의, text: "로봇이 켜져 있는 상태에서는 로봇 커넥터, 전원 커넥터, 티칭 펜던트 커넥터 등을 뽑지 마세요.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+      - {level: 주의, text: "로봇 컨트롤러에 티칭 펜던트 연결 시 커넥터의 Pin 에 주의하십시오.", source: manual, ref: {doc: UG-KR, sec: "3.5", page: 54}}
+
+  AR-CON-003:
+    name: I/O 배선은 컨트롤러 전원을 끈 뒤에 한다
+    operation: ConnectorMating
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.7", page: 56}
+    cautions:
+      - {level: 주의, text: "I/O 배선 체결 시 제어기 전원을 끈 후 I/O 커넥터에 사전 배선하여 작업을 하도록 합니다. 사용자 부주의(오배선 및 24V 전원 쇼트 등)으로 인한 제품 손상은 하자보증에서 제외됩니다.", source: manual, ref: {doc: UG-KR, sec: "3.7", page: 56}}
+
+  AR-CON-004:
+    name: 툴 고정 후 툴 I/O 또는 EtherCAT 케이블 연결
+    operation: ConnectorMating
+    status: unreviewed
+    applies_to:
+      context: {role: tool_mount, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.4", page: [50, 51]}
+    cautions:
+      - {level: 안내, text: "툴을 고정한 후 툴 I/O 또는 EtherCAT 포트에 필요한 케이블을 연결하세요.", source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      - {level: 안내, text: "툴 I/O 는 아날로그 입력(전류(4 – 20 mA), 전압(0 – 10 V)), 디지털 입력, 디지털 출력(0, 24Vdc)을 선택할 수 있습니다.", source: manual, ref: {doc: UG-KR, sec: "3.4", page: 50}}
+      - {level: 참고, text: "툴 I/O 와 EtherCAT 포트의 핀 맵에 대한 자세한 사양은 Appendix E 포트 핀 맵을 참조하세요.", source: manual, ref: {doc: UG-KR, sec: "3.4, App. E", page: [51, 263]}}
+
+  # ===================== 설치 조건 =====================
+  AR-SIT-001:
+    name: 설치 장소 권장 조건
+    operation: SiteCheck
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.1", page: 47}
+    parameters:
+      conditions:
+        value: [내진 설계가 되어 있는 건물, 누수가 전혀 없는 곳, 인화성 및 폭발 물질이 없는 곳, 온도와 습도가 일정하게 유지될 수 있는 곳, 먼지 유입이 많지 않은 곳]
+        source: manual
+        ref: {doc: UG-KR, sec: "3.1", page: 47}
+    cautions:
+      - {level: 주의, text: "권장하는 장소에 시스템을 설치하지 않을 경우 로봇의 성능 및 수명이 감소될 수 있습니다.", source: manual, ref: {doc: UG-KR, sec: "3.1", page: 47}}
+
+  AR-SIT-002:
+    name: 설치 유형(바닥 · 벽면 · 천장 · 대차)
+    operation: SiteCheck
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "3.2", page: 48}
+    lookup:
+      key: model
+      table:
+        HCR-3A:  {allowed_mounting: [바닥, 벽면, 천장], source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+        HCR-5A:  {allowed_mounting: [바닥, 벽면, 천장], source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+        HCR-12A: {allowed_mounting: [바닥, 천장], source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+    cautions:
+      - {level: 경고, text: "로봇을 대차에 설치했을 경우 로봇을 작동할 때에는 반드시 대차를 지면에 고정해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+      - {level: 참고, text: "대차 및 고정 포스트는 제품에 포함되어 있지 않습니다.", source: manual, ref: {doc: UG-KR, sec: "3.2", page: 48}}
+
+  AR-SIT-003:
+    name: 로봇 암 · 컨트롤러 운반
+    operation: Handling
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "2.6", page: 43}
+    lookup:
+      key: model
+      table:
+        HCR-3A:  {arm_weight_kg: 13,   controller_weight_kg: 17.6, source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+        HCR-5A:  {arm_weight_kg: 20.8, controller_weight_kg: 17.6, source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+        HCR-12A: {arm_weight_kg: 52.5, controller_weight_kg: 19.8, source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+    cautions:
+      - {level: 안내, text: "로봇 컨트롤러는 상단의 손잡이를 이용해 운반하세요.", source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+      - {level: 경고, text: "운송 및 운반 중 제품이 떨어져 파손되지 않도록 주의하십시오. 운송 및 운반 중에 제품이 파손될 경우 품질 보증에서 제외됩니다.", source: manual, ref: {doc: UG-KR, sec: "2.6", page: 43}}
+
+  # ===================== 설치 후 설정 · 확인 =====================
+  AR-CFG-001:
+    name: 로봇 설치 각도 설정
+    operation: Configuration
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "7.1", page: [93, 95]}
+    lookup:
+      key: mounting
+      table:
+        바닥: {angle_deg: 0,   source: manual, ref: {doc: UG-KR, sec: "7.1", page: 94}}
+        벽면: {angle_deg: 90,  note: HCR-12A 는 지원하지 않는다, source: manual, ref: {doc: UG-KR, sec: "7.1", page: 94}}
+        천장: {angle_deg: 180, source: manual, ref: {doc: UG-KR, sec: "7.1", page: 94}}
+    parameters:
+      hcr12a_tilt_limit_deg: {value: 30, unit: deg, condition: "HCR-12A, X · Y 축 방향 ±30° 이내", source: manual, ref: {doc: UG-KR, sec: "7.1", page: 95}}
+    cautions:
+      - {level: 경고, text: "로봇 암의 베이스가 설치된 바닥면의 기울기와 작업 공간을 시스템이 자동으로 인식하지 못하므로 로봇을 가동하기 전에 설치 유형에 따라 각 항목마다 정확한 값을 입력해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "7.1", page: 93}}
+      - {level: 안내, text: "HCR-12 는 Floor(0°)와 Ceiling(180°) 설정만 지원 가능하며, X 축과 Y 축방향으로는 ±30° 이내에서 설정이 가능합니다.", source: manual, ref: {doc: UG-KR, sec: "7.1", page: 95}}
+
+  AR-CFG-002:
+    name: 툴 장착 후 TCP 설정
+    operation: Configuration
+    status: unreviewed
+    applies_to:
+      context: {role: tool_mount, model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "7.2", page: [96, 97]}
+    cautions:
+      - {level: 안내, text: "로봇 암에 툴을 처음 장착하면 TCP(Tool Center Point)를 설정해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "7.2", page: 96}}
+      - {level: 경고, text: "TCP 프로파일을 잘못 입력하면 로봇 구동 중에 충돌 및 협착 등이 발생할 수 있으며, 직접교시 기능 사용 중 잘못된 동작을 할 수 있습니다. 또한, TCP 에 따라 로봇 암의 특이점이 변화할 수 있으므로, 미리 작성된 프로그램이 동작하지 않거나 다른 경로로 구동될 수 있습니다. 로봇을 가동하기 전에 TCP 의 유형에 따라 반드시 정확한 값을 입력해야 합니다.", source: manual, ref: {doc: UG-KR, sec: "7.2", page: 96}}
+
+  AR-CFG-003:
+    name: HCR-12A 제어기와 로봇바디의 시리얼 번호 일치 확인
+    operation: Configuration
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "1.1", page: 14}
+    cautions:
+      - {level: 주의, text: "HCR-12A 모델은 제어기와 로봇바디의 시리얼 번호가 일치되어야 합니다. 일치되지 않을 경우 아래와 같은 에러 메시지가 나타나며, 관리자 또는 판매 대리점을 통해 일치여부 확인 후 구동하십시오.", source: manual, ref: {doc: UG-KR, sec: "1.1", page: 14}}
+      - {level: 참고, text: "에러 메시지: [CODE 2043001] 제어기와 로봇바디의 Calibration 데이터가 일치하지 않습니다. 관리자를 통해 데이터 일치 여부를 확인하시기 바랍니다. 시스템은 종료됩니다.", source: manual, ref: {doc: UG-KR, sec: "1.1", page: 14}}
+
+  AR-CFG-004:
+    name: 설치 직후 값 확인과 위험성 평가
+    operation: Configuration
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "2.2, 2.12", page: [38, 46]}
+    parameters:
+      reference_standards: {value: [ISO 12100, ISO 10218-2, ISO/TS 15066], source: manual, ref: {doc: UG-KR, sec: "2.12", page: 46}}
+    cautions:
+      - {level: 경고, text: "로봇 설치 각도, 툴 설정, 안전 설정 등의 값이 올바르게 입력되었는지 확인하십시오.", source: manual, ref: {doc: UG-KR, sec: "2.2", page: 38}}
+      - {level: 안내, text: "위험성 평가는 반드시 로봇을 설치한 직후에 수행해야 하며, 주변 환경 및 로봇 설정에 적합한 안전 구성 설정, 추가 비상 정지 버튼 및 보호 수단의 필요성을 알아내는 것이 위험 평가의 주된 내용입니다.", source: manual, ref: {doc: UG-KR, sec: "2.12", page: 46}}
+
+  # ===================== 점검 =====================
+  AR-MNT-001:
+    name: 점검 항목과 주기
+    operation: PeriodicInspection
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "15.1", page: 229}
+    parameters:
+      items_ref: {value: WS-HCR-MNT-01 의 inspection_items 8건, source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+    cautions:
+      - {level: 안내, text: "점검 담당자가 점검 계획을 작성하여 실시합니다.", source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+      - {level: 안내, text: "점검 중 자체적으로 해결할 수 없는 문제를 발견했을 때는 제조사에 문의하세요.", source: manual, ref: {doc: UG-KR, sec: "15.1", page: 229}}
+
+  AR-MNT-002:
+    name: 로봇 암 확인 및 청소
+    operation: Cleaning
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "15.2", page: 230}
+    parameters:
+      min_cycle_months: {value: 6, unit: 개월, note: "최소 6 개월마다 검사한다. 점검 부위마다 필요한 점검 주기는 다를 수 있다", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}}
+    cautions:
+      - {level: 안내, text: "로봇 암의 자세를 초기(Home) 위치로 전환하세요.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}}
+      - {level: 안내, text: "로봇 컨트롤러의 전원을 끄세요.", source: manual, ref: {doc: UG-KR, sec: "15.2", page: 230}}
+
+  AR-MNT-003:
+    name: 로봇 컨트롤러 확인 · 먼지 제거 · 필터 청소
+    operation: Cleaning
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "15.3", page: [230, 232]}
+    parameters:
+      min_cycle_months: {value: 6, unit: 개월, note: "검사 주기는 제품이 설치된 장소의 환경에 따라 달라질 수 있다", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}}
+    tools: [TL-VACUUM]
+    cautions:
+      - {level: 안내, text: "로봇 컨트롤러 내부에 먼지가 쌓일 경우 정전기 및 과열로 인해 제품이 오작동할 수 있습니다.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 230}}
+      - {level: 안내, text: "로봇컨트롤러에서 필터를 분리하고 진공 청소기나 공기 압축기 등을 이용하여 먼지를 제거하세요.", source: manual, ref: {doc: UG-KR, sec: "15.3", page: 232}}
+
+  AR-MNT-004:
+    name: 빠른 속도의 충돌 · 비상 정지 뒤 영점 확인
+    operation: PostCollisionCheck
+    status: unreviewed
+    applies_to:
+      context: {model: [HCR-3A, HCR-5A, HCR-12A]}
+      source: manual
+      ref: {doc: UG-KR, sec: "2.7", page: 44}
+    parameters:
+      speed_threshold_deg_s: {value: 120, unit: deg/s, condition: 이 속도 이상으로 구동 중 충돌 또는 비상정지, source: manual, ref: {doc: UG-KR, sec: "2.7", page: 44}}
+    cautions:
+      - {level: 주의, text: "120°/sec 이상의 속도로 구동 중 충돌 또는 비상정지가 발생하였을 경우 로봇 관절의 영점을 확인하여 영점에 이상이 있으면 영점을 조절한 후 작업 중인 프로그램에서 설정한 툴의 이동 경로가 정확한지 확인하시길 바랍니다. 영점 조절이 필요한 경우 구매처에 문의하시길 바랍니다.", source: manual, ref: {doc: UG-KR, sec: "2.7", page: 44}}

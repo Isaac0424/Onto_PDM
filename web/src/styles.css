@@ -57,14 +57,12 @@ html.no-transition * { transition: none !important; }
   .sb-mobile-only { display: none !important; }
 
   html[data-sidebar="collapsed"] .sb-label,
-  html[data-sidebar="collapsed"] .sb-meta,
   html[data-sidebar="collapsed"] .sb-brand-logo { display: none !important; }
 
   html[data-sidebar="collapsed"] .sb-item {
     justify-content: center; padding-left: 0; padding-right: 0; position: relative;
   }
-  html[data-sidebar="collapsed"] .sb-brand,
-  html[data-sidebar="collapsed"] .sb-user { justify-content: center; padding-left: 0; padding-right: 0; }
+  html[data-sidebar="collapsed"] .sb-brand { justify-content: center; padding-left: 0; padding-right: 0; }
   html[data-sidebar="collapsed"] .sb-pad  { padding-left: .5rem; padding-right: .5rem; }
 }
 
@@ -126,6 +124,13 @@ html.no-transition * { transition: none !important; }
   .stat strong { @apply font-headline-lg text-headline-lg tnum; }
   .stat span { @apply font-body-sm text-body-sm text-outline; }
   .empty { @apply px-space-lg text-center text-outline; padding-block: 2rem; }
+  /* 백엔드 · OPMS 가 아직 연결되지 않아 보여 줄 데이터가 없는 화면. 오류가 아니라 안내이므로 빨강을 쓰지 않는다 */
+  .not-connected { @apply flex flex-col items-center gap-space-sm text-center px-space-lg py-10 rounded-panel border border-glass-edge bg-glass backdrop-blur-xl text-on-surface-variant; }
+  .not-connected h3 { @apply font-headline-sm text-headline-sm text-on-surface; }
+  .not-connected p { @apply m-0 max-w-md font-body-md text-body-md; }
+  .not-connected .material-symbols-outlined { color: #0891b2; }
+  .not-connected-compact { @apply py-4 gap-space-xs; }
+  .not-connected .not-connected-note { @apply text-[12px] opacity-80; }
   .viewer-host { @apply rounded-panel overflow-hidden bg-surface-container-lowest border border-glass-edge shadow-glass; height: min(72vh, 760px); min-height: 480px; }
 
   .banner { @apply flex items-start gap-space-sm px-space-md py-space-sm rounded-xl font-body-md text-body-md; }
@@ -160,14 +165,6 @@ html.no-transition * { transition: none !important; }
   .btn-ghost { @apply border-transparent bg-transparent shadow-none hover:bg-white/60; }
   .btn-sm { @apply h-7 px-space-sm font-body-sm text-body-sm; }
 
-  .switch { @apply inline-flex items-center gap-space-sm cursor-pointer select-none font-body-sm text-body-sm text-on-surface-variant; }
-  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-  .switch span.track { @apply relative w-[34px] h-5 rounded-full bg-slate-line transition-colors; }
-  .switch span.track::after { content: ''; @apply absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform; }
-  .switch input:checked + span.track { @apply bg-primary-container; }
-  .switch input:checked + span.track::after { transform: translateX(14px); }
-  .switch input:disabled + span.track { @apply opacity-40; }
-  .switch input:focus-visible + span.track { @apply ring-2 ring-primary; }
 
   /* 상태 배지 (OPMS StatusChip) */
   .badge { @apply inline-flex items-center gap-1 px-space-xs py-0.5 rounded-lg font-label-sm text-label-sm font-semibold whitespace-nowrap; }

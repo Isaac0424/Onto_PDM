@@ -1,0 +1,11 @@
+{
+  "error": {
+    "code": "DISPOSITION_REQUIRED",
+    "message": "처분이 필요한 영향이 있습니다",
+    "details": {
+      "finding_ids": [
+        2
+      ]
+    }
+  }
+}

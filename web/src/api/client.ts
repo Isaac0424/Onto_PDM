@@ -1,22 +1,13 @@
 // 화면은 이 파일의 createApi() 로만 API를 얻는다.
-// 지금은 목 API뿐이다. 백엔드가 생기면 같은 PdmApi 를 fetch 로 구현해 VITE_API_MODE=http 로 바꾼다.
+// VITE_API_MODE: 'http' = PDM 백엔드가 OPMS(Neo4j)를 읽어 준다 · 'empty' = 데이터를 읽어 올 곳이 없다(가짜 데이터는 없다).
+// 정하지 않으면 개발 서버(pnpm dev)는 http, 빌드와 시험은 empty 다. 시험은 SessionProvider 에 API 를 직접 넣는다.
 import type { PdmApi } from './types';
-import { createMockApi, type Session } from './mock/mockApi';
+import { createEmptyApi } from './emptyApi';
+import { createHttpApi } from './httpApi';
 
-export type { Session };
-
-function browserStorage(): Storage | null {
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-export function createApi(getSession: () => Session): PdmApi & { reset?: () => void } {
-  const mode = import.meta.env.VITE_API_MODE ?? 'mock';
-  if (mode !== 'mock') {
-    throw new Error(`VITE_API_MODE=${mode} 는 아직 없습니다. 백엔드 API가 생기면 HTTP 구현을 추가하세요.`);
-  }
-  return createMockApi(getSession, { latencyMs: 120, storage: browserStorage() });
+export function createApi(): PdmApi {
+  const mode = import.meta.env.VITE_API_MODE ?? (import.meta.env.MODE === 'development' ? 'http' : 'empty');
+  if (mode === 'http') return createHttpApi();
+  if (mode === 'empty') return createEmptyApi();
+  throw new Error(`VITE_API_MODE=${mode} 는 없는 값입니다. http 또는 empty 를 쓰세요.`);
 }

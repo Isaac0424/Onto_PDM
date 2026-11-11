@@ -1,5 +1,5 @@
 import type {
-  DocType, DocumentLink, DuplicateCandidate, Identifier, ItemType, LinkStatus, Passage, ProposalStatus, RequestStatus, RevisionStatus,
+  CadPartMatch, DocType, DocumentLink, Identifier, ItemType, LinkStatus, Passage, RevisionStatus,
 } from './api/types';
 
 export const ITEM_TYPE: Record<ItemType, string> = {
@@ -7,12 +7,6 @@ export const ITEM_TYPE: Record<ItemType, string> = {
 };
 export const REVISION_STATUS: Record<RevisionStatus, string> = {
   wip: '작업중', in_review: '검토중', released: '승인', obsolete: '폐기',
-};
-export const REQUEST_STATUS: Record<RequestStatus, string> = {
-  draft: '임시저장', submitted: '제출됨', approved: '승인', rejected: '반려', cancelled: '취소',
-};
-export const PROPOSAL_STATUS: Record<ProposalStatus, string> = {
-  proposed: '검토 대기', approved: '승인', rejected: '거절', merged: '기존 분류에 합침',
 };
 export const LINK_STATUS: Record<LinkStatus, string> = {
   suggested: '제안', confirmed: '확정', rejected: '거절',
@@ -27,7 +21,7 @@ export const ID_SCHEME: Record<Identifier['scheme'], string> = {
   legacy: '레거시 품번', erp: 'ERP 코드', mes: 'MES 코드', supplier: '공급사 품번', customer: '고객 품번', drawing: '도면 번호',
   cad_name: 'CAD 이름',
 };
-export const DUPLICATE_METHOD: Record<DuplicateCandidate['method'], string> = {
+export const DUPLICATE_METHOD: Record<NonNullable<CadPartMatch['method']>, string> = {
   exact: '정확 일치', alias: '별칭 일치', cad_name: 'CAD 이름', normalized: '정규화 일치', fuzzy: '유사도',
 };
 export const PASSAGE_PURPOSE: Record<Passage['purpose'], string> = {
@@ -38,12 +32,6 @@ export const PASSAGE_PURPOSE: Record<Passage['purpose'], string> = {
 export type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent';
 export const REVISION_TONE: Record<RevisionStatus, Tone> = {
   wip: 'warning', in_review: 'info', released: 'success', obsolete: 'neutral',
-};
-export const REQUEST_TONE: Record<RequestStatus, Tone> = {
-  draft: 'neutral', submitted: 'info', approved: 'success', rejected: 'danger', cancelled: 'neutral',
-};
-export const PROPOSAL_TONE: Record<ProposalStatus, Tone> = {
-  proposed: 'info', approved: 'success', rejected: 'danger', merged: 'neutral',
 };
 export const LINK_TONE: Record<LinkStatus, Tone> = {
   suggested: 'warning', confirmed: 'success', rejected: 'neutral',

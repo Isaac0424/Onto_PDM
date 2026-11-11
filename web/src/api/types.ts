@@ -143,41 +143,6 @@ export interface Passage {
   productScope: string[];         // 비어 있으면 공통 구절
 }
 
-export type RequestStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'cancelled';
-
-export interface PartRequestPayload {
-  name?: string;
-  nameKo?: string;
-  itemType?: ItemType;
-  unit?: string;
-  classIri?: string;
-  materialIri?: string;
-  aliases?: Identifier[];
-  note?: string;
-}
-
-export interface DuplicateCandidate {
-  itemNo: string;
-  name: string;
-  method: 'exact' | 'alias' | 'cad_name' | 'normalized' | 'fuzzy';
-  score: number;
-}
-
-export interface PartRequest {
-  id: number;
-  sourceSystem: 'PDM' | 'PLM' | 'AGENT';
-  status: RequestStatus;
-  payload: PartRequestPayload;
-  classProposalId?: number;
-  duplicateCheck?: DuplicateCandidate[];
-  issuedItemNo?: string;
-  requestedBy: number;
-  reviewedBy?: number;
-  reviewNote?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /**
  * CAD 부품 이름 → 우리 회사가 보유한 품번 매칭 (docs/pdm-design.md 6장).
  * matched: 정확 일치 · 별칭 일치(자동 확정), suggested: CAD 이름 별칭 · 정규화 · 유사도(사람이 확정), none: 보유 품번 없음.
@@ -188,7 +153,7 @@ export interface CadPartMatch {
   status: 'matched' | 'suggested' | 'none';
   itemNo?: string;
   itemName?: string;
-  method?: DuplicateCandidate['method'];
+  method?: 'exact' | 'alias' | 'cad_name' | 'normalized' | 'fuzzy';
   score?: number;
   classIri?: string;
   classLabel?: string;
@@ -257,15 +222,6 @@ export interface AssemblyRuleDetail extends AssemblyRuleSummary {
   usedBy: { itemNo: string; name: string }[];
 }
 
-/** 조립 규칙 검증 결과 (PRD F-RUL-6) */
-export interface RuleIssue {
-  severity: 'error' | 'warning';
-  /** 어느 규칙의 문제인가. 규칙 사이의 문제면 첫 규칙 */
-  ruleId?: string;
-  code: 'overlap' | 'missing_value' | 'no_source' | 'empty_table' | 'no_scope' | 'no_caution' | 'unused';
-  message: string;
-}
-
 // ---- MES 발행: 제조 BOM + 작업표준 묶음 (PRD 6.6) ----
 export interface MesBomLine {
   seq: number;
@@ -308,71 +264,6 @@ export interface MesPackage {
   warnings: string[];
 }
 
-export interface MesPublication {
-  id: number;
-  productCode: string;
-  revision: string;
-  rule: BomRule;
-  status: 'pending' | 'sent' | 'failed';
-  createdAt: string;
-  sentAt?: string;
-  error?: string;
-  bomLines: number;
-  steps: number;
-}
-
-// ---- BOM 시트(csv) 가져오기 ----
-export interface BomSheetRowInput {
-  /** 시트의 줄 번호(머리줄 제외, 1부터) */
-  line: number;
-  itemNo?: string;
-  name?: string;
-  quantity: number;
-  findNo?: number;
-}
-
-export interface BomSheetMatch {
-  line: number;
-  /** matched: 품번이 정확히 일치(자동 확정), suggested: 이름으로 찾은 후보, none: 보유 품번 없음 */
-  status: 'matched' | 'suggested' | 'none';
-  itemNo?: string;
-  itemName?: string;
-  /** 왜 이렇게 판단했나 (사람이 읽는 한 줄) */
-  reason: string;
-}
-
-export type ProposalStatus = 'proposed' | 'approved' | 'rejected' | 'merged';
-
-export interface ClassProposal {
-  id: number;
-  status: ProposalStatus;
-  parentClassIri: string;
-  labelKo: string;
-  labelEn?: string;
-  definition: string;
-  properties: { label: string; quantityKind?: string; unit?: string; required: boolean; reused: boolean }[];
-  standardMatch?: { standard: 'ECLASS' | 'IEC_CDD'; note: string }[];
-  evidence: { docNo: string; quote: string }[];
-  validation: { severity: 'violation' | 'warning'; message: string }[];
-  approvedIri?: string;
-  mergedIntoIri?: string;
-  agentRunId: string;
-  model: string;
-  createdAt: string;
-  reviewNote?: string;
-}
-
-export interface OutboxRow {
-  id: number;
-  aggregate: 'item' | 'item_revision' | 'class';
-  target: string;                 // 사람이 읽는 대상 (품번·리비전·분류)
-  event: string;
-  createdAt: string;
-  publishedAt?: string;
-  attempts: number;
-  lastError?: string;
-}
-
 export interface ItemQuery {
   q?: string;
   itemType?: ItemType | '';
@@ -399,29 +290,9 @@ export interface PdmApi {
   getAssemblyGuides(parts: AssemblyPartInput[]): Promise<AssemblyGuide[]>;
   listAssemblyRules(): Promise<AssemblyRuleSummary[]>;
   getAssemblyRule(id: string): Promise<AssemblyRuleDetail>;
-  validateAssemblyRules(): Promise<RuleIssue[]>;
 
-  /** 제품의 제조 BOM + 작업표준 묶음을 만든다 (발행 전 미리보기) */
+  /** 제품의 제조 BOM + 작업 표준 묶음을 만든다 (미리보기). MES 로 내보내거나 발행하지 않는다 (삭제됨, 사용자 지시) */
   buildMesPackage(productCode: string, rule: BomRule): Promise<MesPackage>;
-  listMesPublications(): Promise<MesPublication[]>;
-  /** 묶음을 만들어 MES 로 내보낸다(목: 발행 기록만 남긴다) */
-  publishMes(productCode: string, rule: BomRule): Promise<MesPublication>;
-
-  matchBomSheet(rows: BomSheetRowInput[]): Promise<BomSheetMatch[]>;
-
-  listPartRequests(scope: 'mine' | 'all'): Promise<PartRequest[]>;
-  getPartRequest(id: number): Promise<PartRequest>;
-  savePartRequest(id: number | null, payload: PartRequestPayload): Promise<PartRequest>;   // 임시저장
-  submitPartRequest(id: number): Promise<PartRequest>;
-  approvePartRequest(id: number, note?: string): Promise<PartRequest>;                    // 관리자 모드: 품번 발급
-  rejectPartRequest(id: number, note: string): Promise<PartRequest>;
-
-  listClassProposals(): Promise<ClassProposal[]>;
-  approveClassProposal(id: number, note?: string): Promise<ClassProposal>;
-  rejectClassProposal(id: number, note: string): Promise<ClassProposal>;
-  mergeClassProposal(id: number, intoIri: string, note?: string): Promise<ClassProposal>;
-
-  listOutbox(): Promise<OutboxRow[]>;
 }
 
 export class ApiError extends Error {

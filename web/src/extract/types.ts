@@ -33,18 +33,3 @@ export interface CadPartInput {
   /** volume 이 열린 메시 등에서 추정한 값이면 true */
   volumeEstimated?: boolean;
 }
-
-export interface BomSheetColumns {
-  itemNo?: number;
-  name?: number;
-  quantity?: number;
-  findNo?: number;
-}
-
-export interface BomSheet {
-  rows: { line: number; itemNo?: string; name?: string; quantity: number; findNo?: number }[];
-  /** 감지한 열 위치(0부터) */
-  columns: BomSheetColumns;
-  /** 읽지 못한 줄 · 이상한 값 */
-  warnings: string[];
-}

@@ -1,16 +1,14 @@
 // 목 API — 서버가 생기기 전까지 화면을 돌리는 메모리 구현.
 // 공개 범위 · 권한 규칙은 db/schema.sql · db/roles.sql 과 같게 흉내 낸다:
 //   작업중 · 검토중 리비전과 임시저장은 작성자와 관리자 모드(admin · approver)만 본다.
-//   품번 발급(등록 요청 승인)과 분류 제안 검토는 관리자 모드만 한다.
 import {
   ApiError,
-  type AssemblyPartInput, type BomNode, type BomRule, type BomSheetRowInput, type CadPartMatch, type DocumentLink, type DuplicateCandidate, type Item, type ItemDetail,
-  type ItemQuery, type ItemSummary, type PartRequest, type PartRequestPayload, type Passage, type PdmApi, type Revision,
+  type AssemblyPartInput, type BomNode, type BomRule, type CadPartMatch, type DocumentLink, type Item, type ItemDetail,
+  type ItemQuery, type ItemSummary, type Passage, type PdmApi, type Revision,
   type WhereUsedRow,
 } from '../types';
-import { describeRule, guideFor, ruleMatches, summarizeRules, validateRules } from './assemblyRules';
-import { matchBomSheet } from './bomSheetApi';
-import { createMesStore } from './mesApi';
+import { describeRule, guideFor, ruleMatches, summarizeRules } from './assemblyRules';
+import { buildPackage } from './mesApi';
 import { createSeed, type MockDb } from './seed';
 
 export interface Session {
@@ -27,7 +25,6 @@ export interface MockOptions {
 export const MOCK_STORAGE_KEY = 'onto-pdm-mock-v1';
 
 const clone = <T,>(v: T): T => structuredClone(v);
-const now = () => new Date().toISOString();
 
 /** 이름 비교 키: 대문자, 공백 · _ · - · . 제거 (DB norm_key 와 같다) */
 export const normKey = (s: string) => s.toUpperCase().replace(/[\s_.\-]+/g, '');
@@ -60,9 +57,6 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
     } catch { /* 저장소를 못 쓰면 기본 데이터로 */ }
     return createSeed();
   }
-  function persist() {
-    try { storage?.setItem(MOCK_STORAGE_KEY, JSON.stringify(db)); } catch { /* 무시 */ }
-  }
   const wait = <T,>(v: T): Promise<T> =>
     latencyMs ? new Promise(res => setTimeout(() => res(clone(v)), latencyMs)) : Promise.resolve(clone(v));
 
@@ -73,9 +67,6 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
     return u;
   };
   const isAdmin = () => getSession().adminMode && ['admin', 'approver'].includes(me().role);
-  const requireAdmin = () => {
-    if (!isAdmin()) throw new ApiError('관리자 모드에서만 할 수 있습니다', 403);
-  };
   const canSeeRevision = (r: Revision) =>
     r.status === 'released' || r.status === 'obsolete' || isAdmin() || r.createdBy === me().id;
 
@@ -144,57 +135,6 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
     return out;
   }
 
-  // ---------- 중복 후보 (match_item_candidates 근사) ----------
-  function duplicateCandidates(name: string, aliasValues: string[] = []): DuplicateCandidate[] {
-    const found = new Map<string, DuplicateCandidate>();
-    const put = (c: DuplicateCandidate) => {
-      const prev = found.get(c.itemNo);
-      if (!prev || prev.score < c.score) found.set(c.itemNo, c);
-    };
-    for (const it of db.items) {
-      if (it.itemNo === name || it.name === name) put({ itemNo: it.itemNo, name: it.name, method: 'exact', score: 1 });
-      else if (normKey(it.itemNo) === normKey(name) || normKey(it.name) === normKey(name))
-        put({ itemNo: it.itemNo, name: it.name, method: 'normalized', score: 0.95 });
-      else {
-        const s = Math.max(similarity(it.name, name), it.nameKo ? similarity(it.nameKo, name) : 0);
-        if (s >= 0.3) put({ itemNo: it.itemNo, name: it.name, method: 'fuzzy', score: Math.round(s * 100) / 100 });
-      }
-    }
-    // 이름과 요청에 적은 별칭 값 모두로 기존 별칭을 찾는다
-    for (const term of [name, ...aliasValues]) {
-      for (const x of db.identifiers) {
-        if (x.value === term || normKey(x.value) === normKey(term)) {
-          const it = itemById(x.itemId);
-          put({ itemNo: it.itemNo, name: it.name, method: x.scheme === 'cad_name' ? 'cad_name' : 'alias',
-                score: x.value !== term ? 0.95 : x.scheme === 'cad_name' ? 0.97 : 1 });
-        }
-      }
-    }
-    return [...found.values()].sort((a, b) => b.score - a.score).slice(0, 5);
-  }
-
-  // ---------- 등록 요청 ----------
-  const findRequest = (id: number) => {
-    const r = db.partRequests.find(x => x.id === id);
-    if (!r || (r.requestedBy !== me().id && !isAdmin())) throw new ApiError('등록 요청을 찾을 수 없습니다', 404);
-    return r;
-  };
-
-  const findProposal = (id: number) => {
-    requireAdmin();
-    const p = db.classProposals.find(x => x.id === id);
-    if (!p) throw new ApiError('분류 제안을 찾을 수 없습니다', 404);
-    if (p.status !== 'proposed') throw new ApiError('검토 대기 중인 제안만 처리할 수 있습니다', 409);
-    return p;
-  };
-  /** 제안을 기다리던 등록 요청에 확정된 분류를 넣는다 */
-  const resolveWaitingRequests = (proposalId: number, classIri: string) => {
-    db.partRequests
-      .filter(r => r.classProposalId === proposalId && ['draft', 'submitted'].includes(r.status))
-      .forEach(r => { r.payload.classIri = classIri; r.updatedAt = now(); });
-  };
-
-  const mes = createMesStore();
   const api: PdmApi & { reset(): void } = {
     reset() {
       db = createSeed();
@@ -311,13 +251,7 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
 
     async listAssemblyRules() { return wait(summarizeRules()); },
 
-    async validateAssemblyRules() { return wait(validateRules()); },
-
-    async buildMesPackage(productCode: string, rule: BomRule) { return mes.buildPackage(api, productCode, rule); },
-    async listMesPublications() { return wait(await mes.list()); },
-    async publishMes(productCode: string, rule: BomRule) { return mes.publish(api, productCode, rule); },
-
-    async matchBomSheet(rows: BomSheetRowInput[]) { return wait(await matchBomSheet(api, rows)); },
+    async buildMesPackage(productCode: string, rule: BomRule) { return buildPackage(api, productCode, rule); },
 
     async getAssemblyRule(id: string) {
       const rule = describeRule(id);
@@ -363,129 +297,6 @@ export function createMockApi(getSession: () => Session, options: MockOptions = 
         };
       });
       return wait(rows);
-    },
-
-    async listPartRequests(scope) {
-      if (scope === 'all') requireAdmin();
-      const rows = db.partRequests
-        .filter(r => scope === 'all' || r.requestedBy === me().id)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-      return wait(rows);
-    },
-
-    getPartRequest: async (id: number) => wait(findRequest(id)),
-
-    async savePartRequest(id: number | null, payload: PartRequestPayload) {
-      if (id === null) {
-        const r: PartRequest = {
-          id: Math.max(0, ...db.partRequests.map(x => x.id)) + 1, sourceSystem: 'PDM', status: 'draft', payload: clone(payload),
-          requestedBy: me().id, createdAt: now(), updatedAt: now(),
-        };
-        db.partRequests.push(r);
-        persist();
-        return wait(r);
-      }
-      const r = findRequest(id);
-      if (r.requestedBy !== me().id) throw new ApiError('다른 사람의 요청은 고칠 수 없습니다', 403);
-      if (r.status !== 'draft') throw new ApiError('임시저장 상태에서만 고칠 수 있습니다', 409);
-      r.payload = clone(payload);
-      r.updatedAt = now();
-      persist();
-      return wait(r);
-    },
-
-    async submitPartRequest(id: number) {
-      const r = findRequest(id);
-      if (r.requestedBy !== me().id) throw new ApiError('다른 사람의 요청은 제출할 수 없습니다', 403);
-      if (r.status !== 'draft') throw new ApiError('임시저장 상태에서만 제출할 수 있습니다', 409);
-      if (!r.payload.name?.trim()) throw new ApiError('제출하려면 이름이 필요합니다', 400);
-      r.status = 'submitted';
-      r.duplicateCheck = duplicateCandidates(r.payload.name, (r.payload.aliases ?? []).map(a => a.value));
-      r.updatedAt = now();
-      persist();
-      return wait(r);
-    },
-
-    async approvePartRequest(id: number, note?: string) {
-      requireAdmin();
-      const r = findRequest(id);
-      if (r.status !== 'submitted') throw new ApiError('제출된 요청만 승인할 수 있습니다', 409);
-      if (!r.payload.classIri) throw new ApiError('분류가 정해지지 않았습니다. 새 분류 제안이면 먼저 승인하세요', 400);
-      const clash = (r.payload.aliases ?? []).find(a =>
-        a.scheme !== 'cad_name' && db.identifiers.some(x => x.scheme === a.scheme && x.value === a.value));
-      if (clash) throw new ApiError(`별칭 ${clash.value}(${clash.scheme})이(가) 이미 다른 품목에 있습니다`, 409);
-
-      const itemNo = `P-${String(db.nextItemNo).padStart(11, '0')}`;
-      db.nextItemNo += 1;
-      const itemId = Math.max(...db.items.map(i => i.id)) + 1;
-      db.items.push({
-        id: itemId, itemNo, name: r.payload.name!, nameKo: r.payload.nameKo, itemType: r.payload.itemType ?? 'part',
-        unit: r.payload.unit ?? 'EA', classIri: r.payload.classIri, materialIri: r.payload.materialIri, attributes: {},
-        createdBy: r.requestedBy,
-      });
-      (r.payload.aliases ?? []).forEach(a => db.identifiers.push({ itemId, ...a }));
-      db.revisions.push({
-        id: Math.max(...db.revisions.map(x => x.id)) + 1, itemId, rev: 'R00', revSeq: 0, status: 'wip',
-        createdBy: r.requestedBy, createdAt: now(), changeNote: '신규 등록',
-      });
-      Object.assign(r, { status: 'approved', issuedItemNo: itemNo, reviewedBy: me().id, reviewNote: note, updatedAt: now() });
-      persist();
-      return wait(r);
-    },
-
-    async rejectPartRequest(id: number, note: string) {
-      requireAdmin();
-      const r = findRequest(id);
-      if (r.status !== 'submitted') throw new ApiError('제출된 요청만 반려할 수 있습니다', 409);
-      if (!note.trim()) throw new ApiError('반려 사유가 필요합니다', 400);
-      Object.assign(r, { status: 'rejected', reviewedBy: me().id, reviewNote: note, updatedAt: now() });
-      persist();
-      return wait(r);
-    },
-
-    async listClassProposals() {
-      requireAdmin();
-      return wait([...db.classProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-    },
-
-    async approveClassProposal(id: number, note?: string) {
-      const p = findProposal(id);
-      if (p.validation.some(v => v.severity === 'violation')) throw new ApiError('검사 위반이 있는 제안은 승인할 수 없습니다', 400);
-      const parent = db.classes.find(c => c.iri === p.parentClassIri);
-      if (!parent) throw new ApiError('상위 분류가 없습니다', 400);
-      const prefix = parent.code.slice(0, 3);
-      const used = db.classes.filter(c => c.code.startsWith(prefix)).map(c => Number(c.code.slice(3)));
-      const code = `${prefix}${String(Math.max(...used) + 1).padStart(2, '0')}`;
-      const iri = `cls:${code}`;
-      db.classes.push({ iri, code, labelKo: p.labelKo, labelEn: p.labelEn, parentIri: parent.iri, kind: 'part' });
-      Object.assign(p, { status: 'approved', approvedIri: iri, reviewNote: note });
-      resolveWaitingRequests(p.id, iri);
-      db.outbox.push({ id: Math.max(...db.outbox.map(o => o.id)) + 1, aggregate: 'class', target: `${iri} ${p.labelKo}`,
-                       event: 'approved', createdAt: now(), attempts: 0 });
-      persist();
-      return wait(p);
-    },
-
-    async rejectClassProposal(id: number, note: string) {
-      const p = findProposal(id);
-      if (!note.trim()) throw new ApiError('거절 사유가 필요합니다', 400);
-      Object.assign(p, { status: 'rejected', reviewNote: note });
-      persist();
-      return wait(p);
-    },
-
-    async mergeClassProposal(id: number, intoIri: string, note?: string) {
-      const p = findProposal(id);
-      if (!db.classes.some(c => c.iri === intoIri)) throw new ApiError('합칠 분류가 없습니다', 400);
-      Object.assign(p, { status: 'merged', mergedIntoIri: intoIri, reviewNote: note });
-      resolveWaitingRequests(p.id, intoIri);
-      persist();
-      return wait(p);
-    },
-
-    async listOutbox() {
-      requireAdmin();
-      return wait([...db.outbox].sort((a, b) => b.id - a.id));
     },
   };
   return api;

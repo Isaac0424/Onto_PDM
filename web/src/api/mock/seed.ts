@@ -1,6 +1,6 @@
 // 목 데이터 — 설명용 협동로봇(HCR3A · HCR5A) 예시. 실제 품번 · 공급사 · 문서가 아니다.
 import type {
-  ClassProposal, Identifier, InventoryRow, Item, Material, OutboxRow, PartRequest,
+  Identifier, InventoryRow, Item, Material,
   Product, Revision, RevisionStatus, TaxonomyClass, User, DocType,
 } from '../types';
 
@@ -59,10 +59,6 @@ export interface MockDb {
   documents: MockDocument[];
   docLinks: MockDocLink[];
   passages: MockPassage[];
-  partRequests: PartRequest[];
-  classProposals: ClassProposal[];
-  outbox: OutboxRow[];
-  nextItemNo: number;
 }
 
 const T0 = '2026-09-01T09:00:00+09:00';
@@ -224,57 +220,6 @@ export function createSeed(): MockDb {
       text: 'J1 관절 모듈은 베이스 위에서 로봇 전체를 수직축으로 회전시키며, 감속기 · 서보 모터 · 엔코더 · 하우징으로 이루어진다.' },
   ];
 
-  const partRequests: PartRequest[] = [
-    { id: 1, sourceSystem: 'PDM', status: 'draft', requestedBy: 2, createdAt: '2026-10-22T16:10:00+09:00', updatedAt: '2026-10-22T16:40:00+09:00',
-      payload: { name: 'J2 brake', nameKo: 'J2 브레이크', itemType: 'purchased', unit: 'EA', note: '공급사 사양 확인 후 분류 지정 예정' } },
-    { id: 2, sourceSystem: 'PLM', status: 'submitted', requestedBy: 2, createdAt: '2026-10-21T10:00:00+09:00', updatedAt: '2026-10-21T10:05:00+09:00',
-      payload: { name: 'Cable clamp', nameKo: '케이블 클램프', itemType: 'purchased', unit: 'EA', classIri: 'cls:C0100',
-                 aliases: [{ scheme: 'supplier', value: 'SUP-C:CC-12' }] },
-      duplicateCheck: [{ itemNo: 'P-00000000140', name: 'Cable harness', method: 'fuzzy', score: 0.42 }] },
-    { id: 3, sourceSystem: 'AGENT', status: 'draft', requestedBy: 1, classProposalId: 1, createdAt: '2026-10-22T02:13:00+09:00', updatedAt: '2026-10-22T02:13:00+09:00',
-      payload: { name: 'Self tapping screw M3x6', nameKo: '셀프태핑 나사 M3x6', itemType: 'standard', unit: 'EA', materialIri: 'mat:M000001',
-                 aliases: [{ scheme: 'cad_name', value: 'ST_M3x6' }], note: '분류 에이전트가 HCR3A 설명서 34쪽에서 찾은 부품' } },
-    { id: 4, sourceSystem: 'PDM', status: 'approved', requestedBy: 2, reviewedBy: 1, issuedItemNo: 'P-00000000150',
-      createdAt: '2026-10-19T09:00:00+09:00', updatedAt: '2026-10-19T09:30:00+09:00',
-      payload: { name: 'J1 brake', nameKo: 'J1 브레이크', itemType: 'purchased', unit: 'EA', classIri: 'cls:C0604' } },
-    { id: 5, sourceSystem: 'PDM', status: 'rejected', requestedBy: 2, reviewedBy: 1, reviewNote: 'P0000001과 같은 부품입니다. 기존 품번을 쓰세요.',
-      createdAt: '2026-10-15T13:00:00+09:00', updatedAt: '2026-10-15T15:00:00+09:00',
-      payload: { name: 'Hex socket bolt M3 8mm', nameKo: '육각 홈붙이 볼트 M3 8', itemType: 'standard', unit: 'EA', classIri: 'cls:C0101' },
-      duplicateCheck: [{ itemNo: 'P-00000000001', name: 'Bolt M3x8', method: 'fuzzy', score: 0.61 }] },
-  ];
-
-  const classProposals: ClassProposal[] = [
-    { id: 1, status: 'proposed', parentClassIri: 'cls:C0100', labelKo: '셀프태핑 나사', labelEn: 'Self-tapping screw',
-      definition: '스스로 나사산을 내며 얇은 판이나 수지 부품에 체결되는 나사',
-      properties: [
-        { label: '호칭 지름', quantityKind: 'Length', unit: 'mm', required: true, reused: true },
-        { label: '길이', quantityKind: 'Length', unit: 'mm', required: true, reused: true },
-        { label: '나사 끝 형상', required: false, reused: false },
-      ],
-      standardMatch: [{ standard: 'ECLASS', note: 'ECLASS 파일을 받은 뒤 대응 후보 확인' }],
-      evidence: [{ docNo: 'D-MAN-HCR3A', quote: '베이스 커버는 셀프태핑 나사 M3×6 네 개로 베이스 하우징에 고정한다.' }],
-      validation: [], agentRunId: 'run-7f3c2a', model: 'claude-opus-5-5', createdAt: '2026-10-22T02:13:00+09:00' },
-    { id: 2, status: 'proposed', parentClassIri: 'cls:C0101', labelKo: '볼트 M5x12', labelEn: 'Bolt M5x12',
-      definition: 'M5 길이 12 mm 볼트',
-      properties: [{ label: '호칭 지름', quantityKind: 'Length', unit: 'mm', required: true, reused: true }],
-      evidence: [{ docNo: 'D-SPEC-HCR', quote: '툴 플랜지는 M5×12 볼트 네 개로 고정한다.' }],
-      validation: [{ severity: 'warning', message: '분류 이름에 규격 값이 들어 있다 (볼트 M5x12). 규격은 분류가 아니라 속성으로 둔다' }],
-      agentRunId: 'run-7f3c2a', model: 'claude-opus-5-5', createdAt: '2026-10-22T02:14:00+09:00' },
-    { id: 3, status: 'merged', parentClassIri: 'cls:C0100', labelKo: '육각 홈붙이 볼트', labelEn: 'Hex socket bolt',
-      definition: '육각 홈이 있는 머리를 가진 볼트', properties: [],
-      evidence: [{ docNo: 'D-SPEC-HCR', quote: 'M3×8 육각 홈붙이 볼트(SUS304)는 관절 하우징과 감속기 체결에 쓴다.' }],
-      validation: [], mergedIntoIri: 'cls:C0101', reviewNote: '볼트(C0101)와 같은 분류. 머리 형상은 속성으로 둔다.',
-      agentRunId: 'run-51ad90', model: 'claude-opus-5-5', createdAt: '2026-10-16T02:10:00+09:00' },
-  ];
-
-  const outbox: OutboxRow[] = [
-    { id: 1, aggregate: 'item_revision', target: 'P-00000000100 R01', event: 'released', createdAt: '2026-09-28T11:00:00+09:00', publishedAt: '2026-09-28T11:00:02+09:00', attempts: 1 },
-    { id: 2, aggregate: 'item', target: 'P-00000000001', event: 'updated', createdAt: '2026-10-02T09:12:00+09:00', publishedAt: '2026-10-02T09:12:01+09:00', attempts: 1 },
-    { id: 3, aggregate: 'class', target: 'cls:C0604 브레이크', event: 'approved', createdAt: '2026-10-18T17:20:00+09:00', publishedAt: '2026-10-18T17:20:03+09:00', attempts: 1 },
-    { id: 4, aggregate: 'item_revision', target: 'P-00000000220 R00', event: 'released', createdAt: '2026-10-22T18:40:00+09:00', attempts: 3, lastError: 'GraphDB 503 Service Unavailable' },
-    { id: 5, aggregate: 'item', target: 'P-00000000122', event: 'updated', createdAt: '2026-10-23T08:55:00+09:00', attempts: 0 },
-  ];
-
   const products: Product[] = [
     { id: 1, code: 'HCR3A', name: '협동로봇 3 kg', description: '가반하중 3 kg, 작업 반경 630 mm', rootItemNo: 'P-00000000100' },
     { id: 2, code: 'HCR5A', name: '협동로봇 5 kg', description: '가반하중 5 kg, 작업 반경 915 mm', rootItemNo: 'P-00000000200' },
@@ -282,6 +227,6 @@ export function createSeed(): MockDb {
 
   return {
     version: 1, users, products, classes, materials, items, revisions, bomLines, identifiers, inventory,
-    documents, docLinks, passages, partRequests, classProposals, outbox, nextItemNo: 300,
+    documents, docLinks, passages,
   };
 }

@@ -1,6 +1,6 @@
 // 가상 회사 "온토전자"의 조립 규칙 모음 (목업). 실제 회사의 규칙이 아니고, 여기 숫자는 화면 시연용이다.
 // 구조와 설명은 docs/assembly-rules-spec.md 에 있다. 실제로는 OPMS 방식(ontology/*.yaml → Neo4j)으로 컴파일된 규칙을 읽는다.
-import type { AssemblyGuide, AssemblyOperation, AssemblyPartInput, AssemblyRuleDetail, AssemblyRuleSummary, RuleIssue } from '../types';
+import type { AssemblyGuide, AssemblyOperation, AssemblyPartInput, AssemblyRuleDetail, AssemblyRuleSummary } from '../types';
 
 export const COMPANY = '온토전자 (가상 회사)';
 
@@ -258,54 +258,6 @@ export function describeRule(id: string): Omit<AssemblyRuleDetail, 'usedBy'> | u
     parameters: g.params.map(({ label, value }) => ({ label, value })), ...(r.table ? { table: r.table } : {}),
     cautions: g.cautions, tools: g.tools,
   };
-}
-
-/**
- * 규칙 정의를 점검한다 (PRD F-RUL-6). 정의 배열을 받아서 잘못된 정의를 시험에 넣어 볼 수 있다.
- *  error: 쓸 수 없는 규칙(값이 비었음 · 출처 없음 · 조건표가 깨짐 · 적용 대상 없음)
- *  warning: 쓸 수는 있지만 확인할 것(주의사항 없음 · 다른 규칙과 겹침 · 검토 전 · 대표 부품에도 안 걸림)
- */
-export function validateRuleDefs(defs: RuleDef[]): RuleIssue[] {
-  const issues: RuleIssue[] = [];
-  const add = (severity: RuleIssue['severity'], r: RuleDef, code: RuleIssue['code'], message: string) => issues.push({ severity, ruleId: r.id, code, message });
-  const blank = (v: unknown) => typeof v !== 'string' || v.trim() === '';
-
-  defs.forEach(r => {
-    if (r.appliesTo.filter(a => !blank(a)).length === 0) add('error', r, 'no_scope', '적용 대상(분류 · 부품 종류)이 비어 있습니다.');
-    if (r.conditions.filter(c => !blank(c)).length === 0) add('error', r, 'missing_value', '적용 조건이 비어 있어 언제 걸리는지 알 수 없습니다.');
-    if (blank(r.source ?? sourceOf(r.id))) add('error', r, 'no_source', '출처 문서가 없습니다. 어느 표준에서 온 규칙인지 적어야 합니다.');
-
-    const g = r.build(r.sample);
-    const emptyParam = g.params.find(p => blank(p.label) || blank(p.value));
-    if (g.params.length === 0) add('error', r, 'missing_value', '값이 하나도 없습니다.');
-    else if (emptyParam) add('error', r, 'missing_value', `값이 비어 있습니다: ${blank(emptyParam.label) ? '(이름 없음)' : emptyParam.label}`);
-    if (g.cautions.length === 0) add('warning', r, 'no_caution', '주의사항이 없습니다. 작업자가 확인할 것이 정말 없는지 검토하세요.');
-
-    if (r.table) {
-      const { columns, rows } = r.table;
-      if (rows.length === 0) add('error', r, 'empty_table', `조건표 "${r.table.title}"에 행이 없습니다.`);
-      else if (rows.some(row => row.length !== columns.length)) add('error', r, 'empty_table', `조건표 "${r.table.title}"의 열 수가 맞지 않는 행이 있습니다.`);
-      else if (rows.some(row => row.some(blank))) add('error', r, 'missing_value', `조건표 "${r.table.title}"에 빈 칸이 있습니다.`);
-    }
-
-    if (r.status === 'draft') add('warning', r, 'no_source', '검토 전 규칙(가상 값)입니다. 승인된 출처 문서가 없어 실제 작업에 쓰면 안 됩니다.');
-    if (!ruleApplies(r, r.sample)) add('warning', r, 'unused', `대표 부품 "${r.sample.name}"에도 걸리지 않습니다. 분류 · 이름 조건을 확인하세요.`);
-  });
-
-  // 겹침: 한 규칙의 대표 부품에 다른 규칙도 걸리면 어느 쪽이 쓰일지 순서에 달려 있다
-  for (let i = 0; i < defs.length; i++) {
-    for (let j = i + 1; j < defs.length; j++) {
-      const a = defs[i]!, b = defs[j]!;
-      if (ruleApplies(b, a.sample)) add('warning', a, 'overlap', `${a.id}의 대표 부품 "${a.sample.name}"에 ${b.id}도 걸립니다. 순서가 앞선 ${a.id}가 쓰입니다.`);
-      else if (ruleApplies(a, b.sample)) add('warning', b, 'overlap', `${b.id}의 대표 부품 "${b.sample.name}"에 ${a.id}도 걸립니다. 순서가 앞선 ${a.id}가 쓰입니다.`);
-    }
-  }
-  return issues;
-}
-
-/** 지금 정의된 규칙 전체의 검증 결과 */
-export function validateRules(): RuleIssue[] {
-  return validateRuleDefs(RULES);
 }
 
 /** 이 규칙이 적용되는 부품 이름인가 (이름만으로. 분류와 속성까지 보려면 ruleApplies) */

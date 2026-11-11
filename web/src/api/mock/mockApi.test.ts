@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ApiError, type BomNode } from '../types';
+import type { BomNode } from '../types';
 import { createMockApi, type Session } from './mockApi';
 
 function setup(initial: Session = { userId: 1, adminMode: true }) {
@@ -60,50 +60,6 @@ describe('BOM', () => {
     expect([...new Set(used.map(w => w.parent.itemNo))].sort()).toEqual(['P-00000000100', 'P-00000000200']);
     expect(used.filter(w => w.parent.itemNo === 'P-00000000100').map(w => w.parentRevision.rev).sort()).toEqual(['R01', 'R02']);
     expect(base.products.map(p => p.code).sort()).toEqual(['HCR3A', 'HCR5A']);
-  });
-});
-
-describe('등록 요청', () => {
-  it('임시저장은 빈 칸 허용, 제출은 이름 필요, 승인은 관리자 모드만', async () => {
-    const { api, session } = setup({ userId: 2, adminMode: false });
-    const draft = await api.savePartRequest(null, {});
-    expect(draft.status).toBe('draft');
-    await expect(api.submitPartRequest(draft.id)).rejects.toMatchObject({ status: 400 });
-
-    await api.savePartRequest(draft.id, { name: 'Spacer 3mm', nameKo: '스페이서 3mm', classIri: 'cls:C0100' });
-    const submitted = await api.submitPartRequest(draft.id);
-    expect(submitted.status).toBe('submitted');
-    await expect(api.approvePartRequest(draft.id)).rejects.toBeInstanceOf(ApiError);
-
-    session.userId = 1; session.adminMode = true;
-    const approved = await api.approvePartRequest(draft.id);
-    expect(approved.issuedItemNo).toMatch(/^P-\d{11}$/);
-    const item = await api.getItem(approved.issuedItemNo!);
-    expect(item.revisions.map(r => `${r.rev}:${r.status}`)).toEqual(['R00:wip']);
-  });
-
-  it('남의 임시저장은 관리자 모드에서만 보인다', async () => {
-    const { api, session } = setup({ userId: 2, adminMode: false });
-    await expect(api.listPartRequests('all')).rejects.toMatchObject({ status: 403 });
-    session.userId = 1; session.adminMode = true;
-    expect((await api.listPartRequests('all')).some(r => r.requestedBy === 2 && r.status === 'draft')).toBe(true);
-  });
-
-  it('분류가 없으면 승인할 수 없고, 분류 제안을 승인하면 기다리던 요청에 분류가 들어간다', async () => {
-    const { api } = setup();
-    await expect(api.approvePartRequest(1)).rejects.toMatchObject({ status: 409 });   // 1번은 임시저장
-    const p = await api.approveClassProposal(1);
-    expect(p.approvedIri).toBe('cls:C0102');
-    expect((await api.getPartRequest(3)).payload.classIri).toBe('cls:C0102');
-    expect((await api.listOutbox()).some(o => o.aggregate === 'class' && o.target.startsWith('cls:C0102'))).toBe(true);
-  });
-
-  it('기존 별칭과 겹치면 승인이 거부된다', async () => {
-    const { api } = setup();
-    const r = await api.savePartRequest(null, { name: 'Bolt again', classIri: 'cls:C0101', aliases: [{ scheme: 'legacy', value: 'BLT-0038' }] });
-    const s = await api.submitPartRequest(r.id);
-    expect(s.duplicateCheck?.[0]).toMatchObject({ itemNo: 'P-00000000001' });
-    await expect(api.approvePartRequest(r.id)).rejects.toMatchObject({ status: 409 });
   });
 });
 
@@ -245,11 +201,4 @@ describe('조립 규칙: 분류 · 속성으로 걸기와 검증 (API)', () => {
     expect(guides).toEqual([]);
   });
 
-  it('validateAssemblyRules: 오류 없음, 경고는 검토 전 규칙 둘(용접 · 압입)', async () => {
-    const { api } = setup();
-    const issues = await api.validateAssemblyRules();
-    expect(issues.filter(i => i.severity === 'error')).toEqual([]);
-    expect(issues.map(i => i.ruleId).sort()).toEqual(['SP-PRS-01', 'SP-WLD-01']);
-    expect(issues.every(i => i.message.includes('검토 전'))).toBe(true);
-  });
 });

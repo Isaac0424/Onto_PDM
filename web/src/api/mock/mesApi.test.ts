@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMesStore } from './mesApi';
+import { buildPackage } from './mesApi';
 import { createMockApi, type Session } from './mockApi';
 
 function setup(initial: Session = { userId: 1, adminMode: true }) {
@@ -7,7 +7,7 @@ function setup(initial: Session = { userId: 1, adminMode: true }) {
   return { api: createMockApi(() => session), session };
 }
 
-describe('MES 묶음 만들기 (승인본 기준)', () => {
+describe('작업 표준 묶음 만들기 (승인본 기준)', () => {
   it('최상위 조립품이 level 0 으로 앞에 오고, 아래는 깊이 우선 순서로 줄이 이어진다', async () => {
     const { api } = setup();
     const pkg = await api.buildMesPackage('HCR3A', 'released');
@@ -116,44 +116,22 @@ describe('오류', () => {
     const { api } = setup();
     // 목 데이터에는 승인본 없는 제품이 없어서, 최상위 조립품이 작업중뿐인 품목(P-00000000150)을 가진 제품을 끼워 넣는다
     const source = { ...api, listProducts: async () => [{ id: 99, code: 'NEW', name: '신규 제품', rootItemNo: 'P-00000000150' }] };
-    const store = createMesStore();
-    await expect(store.buildPackage(source, 'NEW', 'released')).rejects.toMatchObject({ status: 409, message: '승인된 리비전이 없습니다' });
-    const latest = await store.buildPackage(source, 'NEW', 'latest');
+    await expect(buildPackage(source, 'NEW', 'released')).rejects.toMatchObject({ status: 409, message: '승인된 리비전이 없습니다' });
+    const latest = await buildPackage(source, 'NEW', 'latest');
     expect(latest.revision).toBe('R00');
     expect(latest.bom).toHaveLength(1);
     expect(latest.steps).toEqual([]);                                                        // 자식이 없으면 작업 단계도 없다
   });
 });
 
-describe('MES 발행', () => {
-  it('발행하면 이력이 남고 최신이 앞에 온다', async () => {
+describe('MES 발행은 삭제됨 (사용자 지시)', () => {
+  it('발행 · 이력 API가 없다', () => {
     const { api } = setup();
-    expect(await api.listMesPublications()).toEqual([]);
-    const a = await api.publishMes('HCR3A', 'released');
-    expect(a).toMatchObject({ id: 1, productCode: 'HCR3A', revision: 'R01', rule: 'released', status: 'sent', bomLines: 18, steps: 4 });
-    expect(a.sentAt).toBe(a.createdAt);
-    const b = await api.publishMes('HCR5A', 'released');
-    expect(b).toMatchObject({ id: 2, productCode: 'HCR5A', revision: 'R00' });
-    expect((await api.listMesPublications()).map(p => p.id)).toEqual([2, 1]);
-  });
-
-  it('같은 리비전을 같은 기준으로 다시 발행하면 409', async () => {
-    const { api } = setup();
-    await api.publishMes('HCR3A', 'released');
-    await expect(api.publishMes('HCR3A', 'released')).rejects.toMatchObject({ status: 409, message: '이미 발행한 리비전입니다' });
-    expect(await api.listMesPublications()).toHaveLength(1);
-  });
-
-  it('승인되지 않은 리비전이 들어 있으면 발행하지 않는다 (승인본만 발행)', async () => {
-    const { api } = setup();
-    await expect(api.publishMes('HCR3A', 'latest')).rejects.toMatchObject({ status: 409 });
-    await expect(api.publishMes('HCR3A', 'latest')).rejects.toThrow('승인된 리비전만 MES로 발행할 수 있습니다');
-    expect(await api.listMesPublications()).toEqual([]);
-  });
-
-  it('발행 이력은 mock 마다 따로다', async () => {
-    const one = setup().api, two = setup().api;
-    await one.publishMes('HCR3A', 'released');
-    expect(await two.listMesPublications()).toEqual([]);
+    expect('publishMes' in api).toBe(false);
+    expect('listMesPublications' in api).toBe(false);
+    expect('matchBomSheet' in api).toBe(false);
+    expect('validateAssemblyRules' in api).toBe(false);
+    expect('savePartRequest' in api).toBe(false);
+    expect('listOutbox' in api).toBe(false);
   });
 });

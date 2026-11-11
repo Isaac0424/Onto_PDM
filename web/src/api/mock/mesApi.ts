@@ -1,9 +1,9 @@
-// MES 발행 목 구현: 제품의 제조 BOM + 작업표준 묶음을 만들고, 발행 기록을 남긴다 (docs/mes-handoff.md).
+// 작업 표준 목 구현: 제품의 제조 BOM + 작업 단계 묶음을 만든다 (미리보기). MES 발행 · 내보내기는 삭제했다 (사용자 지시, docs/mes-handoff.md).
 // 공개 API(MesSource)로만 데이터를 읽는다. 공개 범위(남의 작업중 리비전은 보이지 않음)는 getItem · getBom 이 이미 따르므로 여기서 따로 검사하지 않는다.
 import {
   ApiError,
   type AssemblyGuide, type BomNode, type BomRule, type DocumentLink, type ItemDetail, type MesBomLine, type MesPackage,
-  type MesPublication, type MesWorkStep, type PdmApi, type Revision,
+  type MesWorkStep, type PdmApi, type Revision,
 } from '../types';
 
 export type MesSource = Pick<PdmApi, 'listProducts' | 'getItem' | 'getBom' | 'getAssemblyGuides' | 'getDocuments'>;
@@ -112,33 +112,5 @@ export async function buildPackage(api: MesSource, productCode: string, rule: Bo
   return {
     productCode: product.code, productName: product.name, rootItemNo: root.itemNo, revision: revision.rev, rule,
     generatedAt: new Date().toISOString(), bom, steps, documents, warnings,
-  };
-}
-
-export function createMesStore() {
-  const publications: MesPublication[] = [];
-  let seq = 0;
-  return {
-    buildPackage,
-
-    async list(): Promise<MesPublication[]> { return [...publications].sort((a, b) => b.id - a.id); },
-
-    /** 묶음을 만들어 발행 기록을 남긴다. 실제 전송은 없다(목). 승인본만 · 같은 리비전은 한 번만 */
-    async publish(api: MesSource, productCode: string, rule: BomRule): Promise<MesPublication> {
-      const pkg = await buildPackage(api, productCode, rule);
-      // 승인되지 않은 리비전이 하나라도 있으면 발행하지 않는다 (경고의 첫 줄이 이유다)
-      const pending = pkg.warnings.find(w => w.startsWith('승인되지 않은 품목'));
-      if (pending) throw new ApiError(`${pending}. 승인된 리비전만 MES로 발행할 수 있습니다.`, 409);
-      if (publications.some(p => p.productCode === productCode && p.revision === pkg.revision && p.rule === rule && p.status === 'sent')) {
-        throw new ApiError('이미 발행한 리비전입니다', 409);
-      }
-      const now = new Date().toISOString();
-      const pub: MesPublication = {
-        id: ++seq, productCode, revision: pkg.revision, rule, status: 'sent', createdAt: now, sentAt: now,
-        bomLines: pkg.bom.length, steps: pkg.steps.length,
-      };
-      publications.push(pub);
-      return pub;
-    },
   };
 }

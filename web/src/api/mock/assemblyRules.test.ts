@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guideFor, ruleApplies, ruleMatches, summarizeRules, validateRuleDefs, validateRules, type RuleDef } from './assemblyRules';
+import { guideFor, ruleApplies, ruleMatches, summarizeRules, type RuleDef } from './assemblyRules';
 
 const value = (g: ReturnType<typeof guideFor>, label: string) => g?.params.find(p => p.label === label)?.value;
 
@@ -74,7 +74,7 @@ describe('규칙은 분류와 속성에 건다', () => {
   });
 });
 
-/** 시험용으로 만드는 규칙 정의: 기본은 아무 문제 없는 규칙이고, 필요한 칸만 바꿔 깨뜨린다 */
+/** 시험용으로 만드는 규칙 정의: 기본은 아무 문제 없는 규칙이고, 필요한 칸만 바꿔 쓴다 */
 function def(over: Partial<RuleDef> = {}): RuleDef {
   return {
     id: 'SP-T-01', name: '시험 규칙', operation: 'mount', appliesTo: ['시험 부품'], description: '시험용', conditions: ['부품 이름에 시험이 있다'],
@@ -83,69 +83,3 @@ function def(over: Partial<RuleDef> = {}): RuleDef {
     ...over,
   };
 }
-const codes = (defs: RuleDef[]) => validateRuleDefs(defs).map(i => `${i.severity}:${i.code}`);
-
-describe('규칙 검증 (F-RUL-6)', () => {
-  it('문제 없는 규칙은 아무것도 내지 않는다', () => {
-    expect(validateRuleDefs([def()])).toEqual([]);
-  });
-
-  it('적용 대상이 없으면 no_scope 오류', () => {
-    expect(codes([def({ appliesTo: [] })])).toEqual(['error:no_scope']);
-    expect(codes([def({ appliesTo: ['  '] })])).toEqual(['error:no_scope']);
-  });
-
-  it('조건이 없거나 값이 비면 missing_value 오류', () => {
-    expect(codes([def({ conditions: [] })])).toEqual(['error:missing_value']);
-    expect(codes([def({ build: () => ({ title: 't', caption: 'c', params: [{ label: '토크', value: '' }], cautions: ['조심'], tools: [] }) })])).toEqual(['error:missing_value']);
-    expect(codes([def({ build: () => ({ title: 't', caption: 'c', params: [], cautions: ['조심'], tools: [] }) })])).toEqual(['error:missing_value']);
-  });
-
-  it('출처가 비어 있으면 no_source 오류', () => {
-    expect(codes([def({ source: '   ' })])).toEqual(['error:no_source']);
-    expect(codes([def({ source: '온토전자 조립 표준 X' })])).toEqual([]);
-  });
-
-  it('조건표 행이 없거나 열 수가 안 맞으면 empty_table, 빈 칸이면 missing_value 오류', () => {
-    const table = (rows: string[][]) => ({ title: '표', columns: ['두께', '값'], rows });
-    expect(codes([def({ table: table([]) })])).toEqual(['error:empty_table']);
-    expect(codes([def({ table: table([['1 mm']]) })])).toEqual(['error:empty_table']);
-    expect(codes([def({ table: table([['1 mm', ''], ['2 mm', 'A']]) })])).toEqual(['error:missing_value']);
-    expect(codes([def({ table: table([['1 mm', 'A']]) })])).toEqual([]);
-  });
-
-  it('주의사항이 없으면 no_caution 경고', () => {
-    const noCaution = def({ build: () => ({ title: 't', caption: 'c', params: [{ label: '값', value: '1' }], cautions: [], tools: [] }) });
-    expect(codes([noCaution])).toEqual(['warning:no_caution']);
-  });
-
-  it('검토 전(draft) 규칙은 경고로 알린다', () => {
-    const issues = validateRuleDefs([def({ status: 'draft' })]);
-    expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ severity: 'warning', ruleId: 'SP-T-01' });
-    expect(issues[0]!.message).toContain('검토 전');
-  });
-
-  it('다른 규칙도 걸리는 대표 부품이 있으면 overlap 경고 (순서가 앞선 규칙이 쓰인다)', () => {
-    const a = def({ id: 'SP-A-01', sample: { name: '시험 부품 A' }, match: /시험/ });
-    const b = def({ id: 'SP-B-01', sample: { name: '시험 부품 B' }, match: /시험 부품 B/ });
-    const issues = validateRuleDefs([a, b]);
-    expect(issues.map(i => `${i.code}:${i.ruleId}`)).toEqual(['overlap:SP-B-01']);          // b 의 대표 부품에 a 도 걸린다
-    expect(issues[0]!.message).toContain('SP-A-01');
-    // 분류로 갈라지면 겹치지 않는다
-    const c = def({ id: 'SP-C-01', sample: { name: '시험 부품', className: '볼트' }, classes: ['볼트'] });
-    const d = def({ id: 'SP-D-01', sample: { name: '시험 부품', className: '커버' }, classes: ['커버'] });
-    expect(validateRuleDefs([c, d])).toEqual([]);
-  });
-
-  it('대표 부품에도 걸리지 않는 규칙은 unused 경고', () => {
-    expect(codes([def({ sample: { name: '전혀 다른 것' } })])).toEqual(['warning:unused']);
-  });
-
-  it('지금 정의된 규칙 11개: 오류는 없고, 경고는 검토 전 규칙 둘뿐이다', () => {
-    const issues = validateRules();
-    expect(issues.filter(i => i.severity === 'error')).toEqual([]);
-    expect(issues.map(i => i.ruleId).sort()).toEqual(['SP-PRS-01', 'SP-WLD-01']);
-    expect(issues.every(i => i.severity === 'warning' && i.message.includes('검토 전'))).toBe(true);
-  });
-});

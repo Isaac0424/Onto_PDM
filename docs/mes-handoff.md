@@ -1,4 +1,6 @@
-# MES 발행: 제조 BOM + 작업표준 묶음
+# 작업 표준: 제조 BOM + 작업표준 묶음 (구 "MES 발행")
+
+> **MES 발행 · 내보내기(JSON · CSV) · 발행 이력은 삭제됨(사용자 지시, 2026-11-11).** 이 문서는 **묶음의 내용**(제조 BOM, 작업 단계, 규칙 값 · 주의사항 · 공구)을 설명하는 용도로 남기고, 아래의 발행 규칙(같은 리비전은 한 번만 등)과 "MES로 넘긴다" 표현, 내보내기 형식은 삭제된 기능의 기록이다. 묶음은 PDM 안의 "작업 표준" 화면(`/mes`)에서 엔지니어가 미리 보며 확인하고, 작업 모드가 읽을 확정본의 바탕이 된다([worker-view-proposal.md](worker-view-proposal.md)).
 
 PDM이 승인한 설계 정보를 제조(MES)로 넘기는 묶음의 형식과 규칙. 화면: `/mes` ([web/src/pages/mes/MesPage.tsx](../web/src/pages/mes/MesPage.tsx)), 만드는 곳: [web/src/api/mock/mesApi.ts](../web/src/api/mock/mesApi.ts). 요구사항은 [PRD.md](PRD.md) 6.6(F-MES-1~4).
 

@@ -44,11 +44,10 @@ PYTHONUTF8=1 .venv/Scripts/python -m pytest -m neo4j tests/neo4j -q   # 일회�
 | GET | `/products/{code}/bom` | 제품 최상위 조립품 + BOM |
 | GET | `/documents` | 문서 연결 |
 | POST | `/cad/match` | CAD 부품 이름 → 보유 품번 (일치 · 후보 · 없음) |
-| POST | `/bom-sheet/match` | BOM 시트 줄 → 보유 품번 |
 | POST | `/assembly/guides` | 부품별 조립 안내 (규칙이 있는 부품만) |
-| GET | `/rules` `/rules/validate` `/rules/{id}` | 조립 규칙 목록 · 검증 · 상세 |
-| GET/POST/PUT | `/requests` `/requests/{id}` | 등록 요청 임시저장 |
-| POST | `/requests/{id}/submit` | 제출 (중복 후보가 붙는다. OPMS 로 보내지는 않는다) |
+| GET | `/rules` `/rules/{id}` | 조립 규칙 목록 · 상세 (읽기 전용) |
+
+`/bom-sheet/match` · `/rules/validate` · `/requests*`(등록 요청)는 삭제됨(사용자 지시, 2026-11-11). `/items*` 조회 라우트는 품목 화면이 없어졌지만 판단 필요로 남겼다.
 
 ## 계약
 
@@ -81,7 +80,7 @@ export NEO4J_URI=bolt://127.0.0.1:7687 NEO4J_USER=neo4j NEO4J_PASSWORD=...
 ## 한계 (하지 않은 것)
 
 - **PostgreSQL `pdm` 스키마 · 마이그레이션 러너(`onto-pdm migrate`) · `PgPdmStore`** 없음. 저장은 메모리뿐이라 재시작하면 요청 임시저장 등이 사라진다.
-- **OPMS 호출 없음.** 등록 요청 제출은 중복 후보만 붙이고 OPMS 로 보내지 않는다. 품번 예약 · `:Part` 생성도 없다.
+- **OPMS 호출 없음.** 등록 요청은 삭제됨(사용자 지시, 2026-11-11). 품번 예약 · `:Part` 생성도 없다.
 - **인증 없음.** 머리 `X-PDM-User` 를 믿는다.
 - **웹 HTTP 클라이언트 없음.** `web/src/api/http.ts` 는 만들지 않았다 (웹은 계속 목 API). camelCase ↔ snake_case 변환은 그때 한다.
 - MES 패키지 · 발행 API 는 계약 모델만 있고 라우트는 없다.

@@ -25,6 +25,8 @@
 
 > **방향 정리 (2026-11-11, 사용자 확인)**: PDM은 **CAD 파일과 사양서를 관리하는 프로그램**이다. CAD · 부품을 분석해 **OPMS로 등록 요청을 보내고**, 3D 시각화(explode-studio)는 핵심 기능으로 유지한다. 메인 화면은 CAD 3D + 온톨로지다. 따라서 첫 수직 조각의 우선순위는 품목 목록 읽기보다 **① CAD 분석 결과 저장(`cad_product` · `cad_usage`) ② 보유 품번 매칭 API(설계 6장) ③ OPMS 등록 요청 전송**이다. 화면은 이미 목 API(`matchCadParts`, `savePartRequest` · `submitPartRequest`)로 이 흐름을 돌린다 (`web/src/pages/studio/`).
 
+> **2026-11-11 사용자 지시로 관리 기능을 삭제했다**: 등록 요청(`/requests`), BOM 시트 매칭(`/bom-sheet/match`), 규칙 검증(`/rules/validate`), MES 발행 모델이 백엔드에서 삭제됐다(`PartRequest` · `BomSheet*` · `MesPublication` · `RuleIssue` 계약과 store 메서드). 아래 "신규 품번 받기"(S6)와 5장 1번은 **삭제된 흐름의 기록**이다. 품목 · BOM 조회 라우트, 그래프 발행기, PG 스키마는 "판단 필요"로 남아 있다.
+
 ## 연동 결정 (2026-11-11, 사용자가 "추천대로"로 확정, main-07 전달)
 
 상세 계획은 [fit-check-plan.md](fit-check-plan.md) 8장. 구현은 아직 하지 않았다.
@@ -72,9 +74,9 @@
 | S3 | `PdmStore` Protocol + 메모리 · PG 구현, `GET /api/v1/pdm/items`, `/items/{item_no}`, PG `RAISE`/SQLSTATE → `ApiException` 코드 사상, 합성 앱 | S1, S2 | `TestClient`로 메모리 저장소 분기별, testcontainers로 PG. 분류 · 재료는 `ctx.products.get_part_detail`로 읽어 덧붙임 |
 | S4 | 그래프 발행기: `neo4j/schema.cypher` 적용(키는 `uid`), outbox 한 건 처리(한 Neo4j 트랜잭션에서 `MATCH (p:Part {part_no})` → `MERGE` → `checks.cypher` 위반이면 롤백 → `published_at`). `:Part`가 없으면 만들지 않고 `last_error='part_missing'` | S1, S3 | `@pytest.mark.neo4j`: OPMS 시드(P-00000000001~3)를 올린 뒤 발행, 재발행 멱등, OPMS `reconcile`이 새 위반을 내지 않는지 |
 | S5 | 웹 `src/api/http.ts`(OPMS `client.ts`의 `request()`/`ApiError` 규약), `createApi()`의 `VITE_API_MODE=http`, `vite.config.ts` 프록시, `X-PDM-User` 머리 | S3 | vitest에서 `fetch` 대역으로 어댑터 단위 시험, `REGISTRY_BACKEND=gold` 서버와 연결해 목록 · 상세 |
-| S6~ | 쓰기(품목 · 리비전 · BOM · 승인), OPMS 클라이언트(매칭 `POST /parts/match-batch`, 검토 경로 A-01~A-03 · A-09/A-10), `PDM_MODE` 모드 분리, 파일 업로드 · 스트리밍, 인증, 분류 에이전트 | S1~S5 | OPMS API가 구현되기 전에는 고정 응답표 mock 어댑터 |
+| S6~ | ~~쓰기(품목 · 리비전 · BOM · 승인)~~ 삭제됨, OPMS 클라이언트(매칭 `POST /parts/match-batch`. 검토 경로 A-01~A-03 · A-09/A-10은 삭제됨), `PDM_MODE` 모드 분리(DB 쪽만 판단 필요), 파일 업로드 · 스트리밍, 인증, 분류 에이전트 | S1~S5 | OPMS API가 구현되기 전에는 고정 응답표 mock 어댑터 |
 
-### 신규 품번 받기 (S6, OPMS 검토 경로)
+### 신규 품번 받기 (S6, OPMS 검토 경로) — **삭제됨(사용자 지시)**, 기록으로만 남김
 PDM은 품번을 예약하거나 만들지 않는다(`linked`). 자세한 표는 [fit-check-plan.md](fit-check-plan.md) 8.6.
 1. 매칭이 없는 부품(`/parts/match-batch` 결과 후보 없음)에 대해 사람이 "등록 요청"을 만든다. 요청 기록에 OPMS `doc_id`를 저장한다.
 2. OPMS A-01로 올리고 A-02로 처리를 시작한다(또는 OPMS 자동 시작). A-03을 폴링해 상태를 `내 등록 요청`에 보인다.
@@ -100,7 +102,7 @@ PDM은 품번을 예약하거나 만들지 않는다(`linked`). 자세한 표는
 
 **첫 수직 조각(S1~S5)에는 필요한 OPMS 변경이 없다.** 합성 앱으로 `app.py`를 건드리지 않고 붙인다. 아래는 이후 단계 또는 선택 사항이다.
 
-1. **신규 `:Part` 생성 경로: 요청하지 않는다(결정됨).** 신규 품번은 OPMS의 기존 검토 경로(A-01 → A-02 → A-03 → 사람 승인 → A-09 · A-10)로 받는다. OPMS에 `record_origin='pdm'`이나 `register_external_part` 같은 외부 등록 입구를 만들어 달라고 요청하지 않는다. OPMS에 부탁할 것은 별도 입구가 아니라 아래 두 가지 **읽기 · 전달 약속**이다.
+1. **신규 `:Part` 생성 경로: 요청하지 않는다(결정됨). 신규 품번 요청 자체도 삭제됨(사용자 지시).** 신규 품번은 OPMS의 기존 검토 경로(A-01 → A-02 → A-03 → 사람 승인 → A-09 · A-10)로 받는다. OPMS에 `record_origin='pdm'`이나 `register_external_part` 같은 외부 등록 입구를 만들어 달라고 요청하지 않는다. OPMS에 부탁할 것은 별도 입구가 아니라 아래 두 가지 **읽기 · 전달 약속**이다.
    - 요청 ↔ 품번 전달: 문서 `doc_id` ↔ `part_no` 대응과 완료 통지(OPMS가 초안 작성 중).
    - 매칭 API: `POST /parts/match`(+ `match-batch`), 계약 버전 5 → 6(fit_check와 함께, 미구현).
 2. (선택) 합성 앱 대신 정식 확장 지점: `src/registry/api/app.py`에 PDM 라우터 포함 한 줄 또는 훅. 합성 앱이 불편해지면 요청한다.

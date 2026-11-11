@@ -71,9 +71,7 @@ node --test server/vault.test.mjs
 
 - 모든 화면이 오류 없이 열린다
 - 3D 뷰어가 그려진다
-- 승인하면 품번이 발급된다
-- 분류 제안 승인이 반영된다
-- 임시저장이 새로고침 뒤에도 남는다
+- (품번 발급 · 분류 제안 승인 · 임시저장 시험은 관리 기능 삭제와 함께 없앴다)
 - 모바일(390px)에서 화면이 가로로 넘치지 않는다
 
 ```bash
@@ -157,7 +155,7 @@ tools/            explode-studio 소스 생성 스크립트
 ## 설계 문서와 표준
 
 - [docs/attribute-extraction.md](docs/attribute-extraction.md): 속성 추출(CAD · 이름 · 사양서 · BOM 시트): 근거 · 신뢰도 · 한계 · 사람이 확정하는 흐름
-- [docs/mes-handoff.md](docs/mes-handoff.md): MES 발행 묶음(JSON · CSV) 형식과 규칙
+- [docs/mes-handoff.md](docs/mes-handoff.md): 작업 표준 묶음 형식(MES 발행 · 내보내기는 삭제됨(사용자 지시, 2026-11-11))
 - [backend/README.md](backend/README.md): FastAPI 백엔드 · Neo4j 그래프 발행기 (설치 · 실행 · 시험)
 - [docs/PRD.md](docs/PRD.md): **제품 요구사항(PRD)**: 목표 · 기능 요구(ID · 우선순위 · 상태) · 속성 추출 가능 범위 · 단계 계획 · 열린 질문
 - [docs/pdm-design.md](docs/pdm-design.md): 기능 · 프로세스 · 매칭 규칙 · DB · 트랜잭션과 동시성 · API

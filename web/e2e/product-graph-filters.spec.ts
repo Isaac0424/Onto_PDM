@@ -51,8 +51,8 @@ test('제품 연결 그래프: 상태 필터 · 검색 · 사용처 경로가 3D
   await expect(panel.getByRole('heading', { level: 2, name: 'J1 관절 모듈' })).toBeVisible();
   expect(errors).toEqual([]);
 
-  // MES 발행 링크: 제품과 지금의 BOM 기준(최신)을 담아 /mes 로 간다
-  await page.locator('.pg-head').getByRole('link', { name: 'MES 발행' }).click();   // 사이드바 메뉴에도 같은 이름이 있다
+  // 작업 표준 링크: 제품과 지금의 BOM 기준(최신)을 담아 /mes 로 간다
+  await page.locator('.pg-head').getByRole('link', { name: '작업 표준' }).click();   // 사이드바 메뉴에도 같은 이름이 있다
   await expect(page).toHaveURL(/\/mes\?product=HCR3A&rule=latest$/);
 });
 

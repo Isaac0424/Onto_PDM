@@ -15,18 +15,8 @@ const SCREENS: [string, string][] = [
   ['/products/HCR3A', '협동로봇 3 kg'],
   ['/rules', '조립 규칙'],
   ['/rules/SP-WLD-01', '조립 규칙'],
-  ['/items', '품목'],
-  ['/items/P-00000000100?tab=overview', 'HCR3A 본체'],
-  ['/items/P-00000000100?tab=bom', 'HCR3A 본체'],
-  ['/items/P-00000000110?tab=used', '베이스 조립품'],
-  ['/items/P-00000000121?tab=docs', 'J1 감속기'],
-  ['/items/P-00000000100?tab=history', 'HCR3A 본체'],
   ['/products', '제품'],
-  ['/requests', '내 등록 요청'],
-  ['/requests/new', '새 등록 요청'],
-  ['/admin/requests', '등록 요청 검토'],
-  ['/admin/proposals', '분류 제안 검토'],
-  ['/admin/publish', '그래프 발행 상태'],
+  ['/mes?product=HCR3A', '작업 표준'],
 ];
 
 test('모든 화면이 오류 없이 열린다', async ({ page }) => {
@@ -38,13 +28,6 @@ test('모든 화면이 오류 없이 열린다', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('3D 탭에서 분해도 뷰어가 그려진다', async ({ page }) => {
-  const errors = collectErrors(page);
-  await page.goto('/items/P-00000000120?tab=viewer');
-  await expect(page.locator('.viewer-host canvas').first()).toBeAttached({ timeout: 20_000 });
-  expect(errors).toEqual([]);
-});
-
 test('메인 화면: 3D 홀로그램 + 제조 순서 + 온톨로지, 부품을 고르면 그 부품의 온톨로지가 보인다', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/');
@@ -52,18 +35,16 @@ test('메인 화면: 3D 홀로그램 + 제조 순서 + 온톨로지, 부품을 �
 
   const steps = page.getByRole('region', { name: '제조 순서' });
   await expect(steps.getByText(/CAD 구조에서 나눈 \d+단계/)).toBeVisible();
-  await expect(steps.getByRole('link', { name: 'P-00000000160' })).toBeVisible();          // 전원 버튼: 보유 품번으로 확정
+  await expect(steps.locator('.chip-ok', { hasText: 'P-00000000160' })).toBeVisible();       // 전원 버튼: 보유 품번으로 확정
   await expect(page.getByRole('img', { name: /예시 모델 온톨로지 그래프/ })).toBeVisible();     // 고르기 전: 모델 전체
 
   await steps.locator('.part-row', { hasText: '전원 버튼' }).click();
   await expect(page.getByRole('img', { name: '전원 버튼 온톨로지 그래프' })).toBeVisible();
   await expect(page.getByText('전기 · 전자 › 스위치 · 버튼')).toBeVisible();
 
+  // 등록 요청은 삭제됨(사용자 지시): 미보유 부품에도 요청 버튼이 없다
   await steps.locator('.part-row', { hasText: '제어 기판' }).click();
-  await page.getByRole('button', { name: 'OPMS에 등록 요청' }).click();
-  await expect(page.getByText(/OPMS 등록 요청 #\d+ 전송됨/)).toBeVisible();
-  await page.goto('/requests');
-  await expect(page.getByText('제어 기판')).toBeVisible();                               // 보낸 요청이 내 등록 요청에 있다
+  await expect(page.getByRole('button', { name: /OPMS (에 )?등록 요청/ })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -190,59 +171,16 @@ test('조립 규칙: 목록 · 공정 필터 · 상세(조건표) · 온톨로�
   expect(errors).toEqual([]);
 });
 
-test('BOM 트리: 접기 · 자식 품목으로 이동', async ({ page }) => {
-  await page.goto('/items/P-00000000100?tab=bom');
-  const bom = page.getByRole('table', { name: 'BOM' });
-  await expect(bom.getByRole('link', { name: 'P-00000000001' })).toHaveCount(2);
-  await page.getByRole('button', { name: '모두 접기' }).click();
-  await expect(bom.getByRole('link', { name: 'P-00000000001' })).toHaveCount(0);
-  await page.getByRole('button', { name: '모두 펼치기' }).click();
-  await bom.getByRole('link', { name: 'P-00000000121' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'J1 감속기' })).toBeVisible();
-});
-
-test('관리자 모드: 등록 요청 승인으로 품번이 발급되고 작업중 품목이 생긴다', async ({ page }) => {
-  await page.goto('/admin/requests');
-  await page.getByRole('button', { name: '승인 · 품번 발급' }).click();
-  await page.getByRole('tab', { name: /처리됨/ }).click();
-  // 카드에는 중복 후보 링크도 있으므로 "발급 품번" 항목의 링크만 고른다
-  const issued = page.locator('section.card', { hasText: '케이블 클램프' }).locator('dt:text-is("발급 품번") + dd a');
-  await expect(issued).toHaveText(/^P-\d{11}$/);
-  await issued.click();
-  await expect(page.getByRole('heading', { level: 1, name: '케이블 클램프' })).toBeVisible();
-  await expect(page.getByText('승인 전 리비전입니다')).toBeVisible();
-});
-
-test('관리자 모드: 분류 제안을 승인하면 기다리던 에이전트 임시저장에 분류가 들어간다', async ({ page }) => {
-  await page.goto('/admin/proposals');
-  await page.locator('section.card', { hasText: '셀프태핑 나사' }).getByRole('button', { name: '새 분류로 승인' }).click();
-  await page.goto('/admin/requests');
-  await page.getByRole('tab', { name: /임시저장/ }).click();
-  await expect(page.locator('section.card', { hasText: '셀프태핑 나사 M3x6' })).toContainText('체결류 › 셀프태핑 나사');
-});
-
-test('엔지니어: 관리자 메뉴가 없고 관리자 화면은 막힌다', async ({ page }) => {
-  await page.goto('/items');
-  await page.getByLabel('사용자 (데모)').selectOption('2');
-  await expect(page.getByRole('link', { name: '등록 요청 검토' })).toHaveCount(0);
-  await expect(page.getByRole('checkbox', { name: /관리자 모드/ })).toBeDisabled();
-  await page.goto('/admin/requests');
-  await expect(page.getByText(/관리자 모드에서만 볼 수 있습니다/)).toBeVisible();
-});
-
-test('임시저장한 요청은 새로고침해도 남는다', async ({ page }) => {
-  await page.goto('/requests/new');
-  await page.getByLabel(/이름 \(원래 이름\)/).fill('Spacer 3mm');
-  await page.getByRole('button', { name: '임시저장' }).click();
-  await expect(page.getByText(/임시저장했습니다/)).toBeVisible();
-  await expect(page).toHaveURL(/\/requests\/\d+$/);
-  await page.reload();
-  await expect(page.getByLabel(/이름 \(원래 이름\)/)).toHaveValue('Spacer 3mm');
+test('삭제된 관리 화면(품목 · 등록 요청 · BOM 가져오기 · 관리자)은 열리지 않는다', async ({ page }) => {
+  for (const path of ['/items', '/requests', '/bom-import', '/admin/requests']) {
+    await page.goto(path);
+    await expect(page.getByText(/없는 화면입니다/), path).toBeVisible();
+  }
 });
 
 test('모바일(390px)에서 화면이 가로로 넘치지 않는다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  for (const path of ['/', '/products/HCR3A', '/rules', '/items', '/items/P-00000000100?tab=bom', '/items/P-00000000121?tab=docs', '/requests/new', '/admin/requests', '/admin/proposals']) {
+  for (const path of ['/', '/products/HCR3A', '/rules', '/mes?product=HCR3A']) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
     const { scroll, client } = await page.evaluate(() => ({

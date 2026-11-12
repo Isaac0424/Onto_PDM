@@ -87,6 +87,6 @@ export function useStudio(options: { restore?: (s: StudioApi) => Promise<boolean
     canReadGeometry: () => typeof studio.current?.getPartGeometry === 'function',
     /** 부품 하나의 삼각형 메시 (읽기 전용 복사본). 메시가 없으면 null */
     readGeometry: (name: string) => studio.current?.getPartGeometry(name) ?? null,
-    selectPart: (name: string) => studio.current?.selectPart(name, true),
+    selectPart: (nameOrId: string | number) => studio.current?.selectPart(nameOrId, true),
   };
 }

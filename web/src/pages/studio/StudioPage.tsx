@@ -94,7 +94,23 @@ export function StudioPage() {
   const link = !api.opms ? 'none' : opms.status === 'loading' || opms.status === undefined ? 'loading' : opms.status.state === 'ok' ? 'ok' : 'off';
 
   // 부품 형상으로 본 볼트 종류: 고른 부품을 먼저, 작은 부품은 한가한 때 하나씩 분석한다
-  const shapes = useFastenerShapes({ canRead: studio.canReadGeometry, read: studio.readGeometry }, parts, selected?.name, activeKey);
+  const rawShapes = useFastenerShapes({ canRead: studio.canReadGeometry, read: studio.readGeometry }, parts, selected?.name, activeKey);
+  // 형상 분류기가 "OPMS 에 아직 없는 제안"으로 둔 클래스라도 OPMS 가 그 사이 등록했으면(0.20.0: 버튼 · 접시 머리 볼트) 제안이 아니다.
+  // OPMS 의 분류 목록을 읽어 와 맞춘다. 읽지 못하면 분류기 기본값을 그대로 쓴다
+  const [registeredClasses, setRegisteredClasses] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    let alive = true;
+    api.listClasses().then(rows => { if (alive) setRegisteredClasses(new Set(rows.map(c => c.code))); }).catch(() => {});
+    return () => { alive = false; };
+  }, [api, link]);
+  const shapes = useMemo(() => {
+    if (registeredClasses.size === 0) return rawShapes;
+    return new Map([...rawShapes].map(([name, e]): [string, typeof e] => {
+      if (e.status !== 'done' || !e.result || !e.result.candidates.some(c => c.proposed && registeredClasses.has(c.classCode))) return [name, e];
+      const candidates = e.result.candidates.map(c => (c.proposed && registeredClasses.has(c.classCode) ? { ...c, proposed: false } : c));
+      return [name, { ...e, result: { ...e.result, candidates } }];
+    }));
+  }, [rawShapes, registeredClasses]);
 
   // 속성 후보: CAD 형상 · 부품 이름에서 뽑은 것. 확정해야 부품 속성이 된다
   const cadCands = useMemo(() => {
@@ -541,8 +557,8 @@ export function StudioPage() {
         <OpmsStatusLine status={opms.status} onRetry={() => void opms.retry()} />
         <AssemblySteps
           layers={layers} parts={parts} matches={effective} analyzing={analyzing} connected={api.connected || !!api.opms} step={studio.step}
-          {...(selected ? { selectedName: selected.name } : {})}
-          onStep={studio.goStep} onSelect={studio.selectPart}
+          {...(selected ? { selectedName: selected.name, selectedId: selected.id } : {})}
+          onStep={studio.goStep} onSelect={(name, id) => studio.selectPart(id ?? name)}
         />
         <div className="seg inspector-tabs" role="tablist" aria-label="부품 정보">
           <button type="button" role="tab" aria-selected={tab === 'onto'} onClick={() => setTab('onto')}>온톨로지</button>

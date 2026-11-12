@@ -45,7 +45,7 @@ vi.mock('explode-studio', () => ({
       },
       root,
       go: (n: number) => emit('step', { step: n, layer: n - 2 }),
-      selectPart: (name: string) => { const p = PARTS.find(x => x.name === name)!; emit('select', { id: p.id, name: p.name, layer: p.layer }); },
+      selectPart: (key: string | number) => { const p = PARTS.find(x => typeof key === 'number' ? x.id === key : x.name === key)!; emit('select', { id: p.id, name: p.name, layer: p.layer }); },
       destroy: () => {},
     };
   },

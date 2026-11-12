@@ -116,7 +116,11 @@ export function cubeStl(name: string, size = 10): Buffer {
  * 새 창(context.newPage)에도 같은 가짜 서버가 걸린다 (브라우저 컨텍스트 단위).
  */
 export const test = base.extend<{ server: FakeServer }>({
-  server: [async ({ context }, use) => { await use(await fakeServer(context)); }, { auto: true }],
+  server: [async ({ context }, use) => {
+    // 등록한 CAD 목록은 기본이 접힘이다. 시험은 카드를 바로 누르므로 펼친 채 시작한다 (이미 정해 둔 값은 덮지 않는다)
+    await context.addInitScript(() => { try { if (window.localStorage.getItem('onto-pdm.cad.lib-open') === null) window.localStorage.setItem('onto-pdm.cad.lib-open', '1'); } catch { /* 무시 */ } });
+    await use(await fakeServer(context));
+  }, { auto: true }],
 });
 
 /** 제조 순서 패널의 부품 행 */

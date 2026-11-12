@@ -47,7 +47,7 @@ vi.mock('explode-studio', () => ({
       getLayers: () => LAYERS,
       root,
       go: (n: number) => emit('step', { step: n, layer: n - 2 }),
-      selectPart: (name: string) => { const p = PARTS.find(x => x.name === name)!; emit('select', { id: p.id, name: p.name, layer: p.layer }); },
+      selectPart: (key: string | number) => { const p = PARTS.find(x => typeof key === 'number' ? x.id === key : x.name === key)!; emit('select', { id: p.id, name: p.name, layer: p.layer }); },
       destroy: () => {},
     };
     if (viewer.canRead) {
@@ -90,18 +90,19 @@ const socketGuide = (p: AssemblyPartInput): AssemblyGuide | undefined => p.faste
     }
   : undefined;
 
-function testApi(): PdmApi {
+function testApi(classCodes: string[] = []): PdmApi {
   return {
     ...createEmptyApi(),
     connected: true,
+    listClasses: async () => classCodes.map(code => ({ iri: `cls:${code}`, code, labelKo: code, kind: 'part' as const })),
     matchCadParts: async (names, hints = {}) => names.map(n => matchOne(n, hints[n])),
     getAssemblyGuides: async parts => { guideInputs.push(parts); return parts.flatMap(p => socketGuide(p) ?? []); },
   };
 }
 
-async function renderPage() {
+async function renderPage(classCodes: string[] = []) {
   await seedCad();
-  const api = testApi();
+  const api = testApi(classCodes);
   return render(
     <SessionProvider api={api}>
       <MemoryRouter><StudioPage /></MemoryRouter>
@@ -166,6 +167,20 @@ describe('형상으로 본 볼트 종류 (속성 패널)', () => {
     expect(body).toContain('"parent": "Bolt"');
     expect(body).toContain('OPMS 미등록 제안 클래스');                                       // 클래스를 고른 형상 근거가 실린다
     expect(body).toContain('"key": "threadSize"');
+  });
+
+  it('OPMS 가 그 분류를 등록했으면(버튼 헤드 볼트가 분류 목록에 있으면) 제안(미등록)이 아니고 요청 초안도 없다', async () => {
+    const user = userEvent.setup();
+    await renderPage(['HexBolt', 'SocketHeadBolt', 'ButtonHeadBolt']);
+    await pick(user, 'PRT-B1');
+
+    const block = await shapeBlock();
+    const first = within(within(block).getByRole('list', { name: '볼트 종류 후보' })).getAllByRole('listitem')[0]!;
+    expect(within(first).getByText('버튼헤드볼트')).toBeInTheDocument();
+    expect(within(first).queryByText('제안(미등록)')).not.toBeInTheDocument();
+    await user.click(within(first).getByRole('button', { name: '버튼헤드볼트 이 종류로 확정' }));
+    expect(within(first).getByText('확정')).toBeInTheDocument();
+    expect(within(block).queryByText('OPMS 분류 등록 요청 초안')).not.toBeInTheDocument();
   });
 
   it('등록된 분류(소켓 헤드)는 요청 초안이 없다', async () => {

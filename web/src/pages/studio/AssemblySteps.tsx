@@ -5,6 +5,8 @@ export interface StepRow {
   name: string;
   ko: string;
   count: number;
+  /** 이 단계에 들어 있는 같은 이름 부품의 번호들. 같은 이름이 다른 단계에도 있어도 이 행만 가려낸다 */
+  ids: number[];
 }
 
 /** 한 단계(층)에 들어가는 부품을 CAD 이름별로 묶는다 */
@@ -14,8 +16,8 @@ export function rowsOf(layer: LayerInfo, parts: PartInfo[]): StepRow[] {
     const p = parts[id];
     if (!p) continue;
     const row = byName.get(p.name);
-    if (row) row.count += 1;
-    else byName.set(p.name, { name: p.name, ko: p.ko, count: 1 });
+    if (row) { row.count += 1; row.ids.push(p.id); }
+    else byName.set(p.name, { name: p.name, ko: p.ko, count: 1, ids: [p.id] });
   }
   return [...byName.values()];
 }
@@ -56,7 +58,7 @@ export function MatchChip({ match, analyzing = false }: { match?: CadPartMatch; 
  * 보유하지 않은 부품은 CAD 이름 그대로, 이름으로 추정한 온톨로지 분류가 있으면 함께 표시한다.
  */
 export function AssemblySteps({
-  layers, parts, matches, analyzing, connected = true, step, selectedName, onStep, onSelect,
+  layers, parts, matches, analyzing, connected = true, step, selectedName, selectedId, onStep, onSelect,
 }: {
   layers: LayerInfo[];
   parts: PartInfo[];
@@ -67,8 +69,10 @@ export function AssemblySteps({
   connected?: boolean;
   step: number;
   selectedName?: string;
+  /** 고른 부품의 번호. 있으면 그 부품이 든 행만 진해진다 (같은 이름이 다른 단계에도 있어도 함께 진해지지 않는다) */
+  selectedId?: number;
   onStep(step: number): void;
-  onSelect(name: string): void;
+  onSelect(name: string, id?: number): void;
 }) {
   const names = [...new Set(parts.map(p => p.name))];
   const count = { matched: 0, suggested: 0, none: 0, waiting: 0, unreachable: 0 };
@@ -115,7 +119,9 @@ export function AssemblySteps({
               <ul className="step-parts">
                 {rows.map(row => (
                   <li key={row.name}>
-                    <button type="button" className={`part-row ${selectedName === row.name ? 'part-on' : ''}`} onClick={() => onSelect(row.name)}>
+                    <button type="button" className={`part-row ${(selectedId !== undefined ? row.ids.includes(selectedId) : selectedName === row.name) ? 'part-on' : ''}`}
+                      aria-current={(selectedId !== undefined ? row.ids.includes(selectedId) : selectedName === row.name) ? 'true' : undefined}
+                      onClick={() => onSelect(row.name, row.ids[0])}>
                       <span className="part-name">{row.name}{row.ko && <small>{row.ko}</small>}</span>
                       {row.count > 1 && <span className="part-qty">×{row.count}</span>}
                       {connected && <MatchChip match={matches.get(row.name)} analyzing={analyzing?.has(row.name) ?? false} />}

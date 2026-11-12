@@ -143,3 +143,46 @@ Neo4j **Community**에는 고유 제약만 있고 존재 · 타입 · 관계 개
 - 일부러 망가뜨린 데이터에서 검사 27개가 각각 위반을 잡고, 예상 밖 위반은 없다. 모든 검사에 이 시험이 있는지도 확인한다
 
 확인하지 **못한** 것: 실제 OPMS DB(`ontology sync` · 등록이 만든 `:Class` · `:Concept` · `:Part`)와의 결합. 시험은 그 일부를 흉내 낸 `opms-standin.cypher` 위에서 돌렸다.
+
+## 9. 변경 영향 분석 라벨 (설계 변경 · BRK-M8)
+
+설계: [change-impact-ontology.md](change-impact-ontology.md)(개념 모델) · [change-impact-design.md](change-impact-design.md) 8장(발행). 이 장은 그것을 Neo4j 파일로 옮긴 결과다. 원칙은 앞 장과 같다: OPMS 라벨에는 쓰지 않고, 승인된 것만 올리고, 존재 · 타입 규칙은 검사 쿼리가 한다.
+
+| 파일 | 내용 |
+|---|---|
+| [neo4j/changes-schema.cypher](../neo4j/changes-schema.cypher) | 새 라벨의 고유 제약 14개 · 인덱스 4개 (`IF NOT EXISTS`, `schema.cypher` 다음에 실행) |
+| [neo4j/changes-checks.cypher](../neo4j/changes-checks.cypher) | 변경 영향 검사 36개. `checks.cypher` 와 같은 형식(`// @이름`, 위반이 없으면 통과) |
+| [neo4j/changes-queries.cypher](../neo4j/changes-queries.cypher) | 사용처 개정 · 작업지시 · 발주 · 재고 · 범위 필터 · 개정 비교 · 변경 영향 질의 7개 |
+| [neo4j/changes-sample.cypher](../neo4j/changes-sample.cypher) | BRK-M8 기준선 R00 + 승인된 변경 2건(SC-2 일부 범위 적용, SC-3 개정). 멱등 |
+| [neo4j/test/changes-opms-standin.cypher](../neo4j/test/changes-opms-standin.cypher) | OPMS `:Part` 대역 추가분(P-…15 · 22 · 23 · 25). 시험 전용 |
+| [neo4j/test/changes-break.cypher](../neo4j/test/changes-break.cypher) | 일부러 망가뜨린 데이터. 새 검사마다 위반을 내는 케이스가 있다 |
+| [neo4j/test/verify_changes.py](../neo4j/test/verify_changes.py) | 위 전부를 일회용 Neo4j 5.26 컨테이너에서 확인. `python neo4j/test/verify_changes.py` (기존 `verify.py` 의 도구를 재사용) |
+
+### 9.1 라벨 · 관계
+
+| 소유 | 라벨 | 고유 키 | 메모 |
+|---|---|---|---|
+| PDM (새) | `ChangeRequest` · `ChangeOrder` | `code` | 승인된 지시(`approved` · `implemented`)만 있다. `ChangeOrder.approved_run_id` 가 승인 때 본 분석이다 |
+| PDM (새) | `ChangeTarget` · `ApplicabilityScope` · `ImpactFinding` · `Disposition` · `ReviewSignoff` | `target_key` · `scope_key` · `finding_key` · `disposition_key` · `review_key` | 키는 `<지시 코드>#<PG id>` 꼴(지시마다 id 가 다시 시작해도 겹치지 않는다) |
+| PDM (새) | `OntologyImpact` | `oi_key` (`<from>><to>`) | 온톨로지 버전 변경 **읽기 보고**. 개정도 요청도 만들지 않는다 |
+| PDM (새) | `RevisionAttribute` · `FastenedJoint` | `attr_key` · `joint_key` | 판 두께 같은 PDM 소유 수치 · 체결 접합부 |
+| 외부 읽기 사본 | `WorkOrder` · `PurchaseOrderLine` · `StockLot` | `wo_no` · `po_line_key` · `lot_key` | ERP · MES 가 주인. `source_system`(`ERP` · `MES` · `fixture`)과 `as_of` 필수 |
+| PDM (기존) | `PdmItem` · `ItemRevision` | 기존 | 새 속성: `PdmItem.item_no`(고유) · `opms_registered` |
+
+관계(요약): `(ChangeOrder)-[:ISSUED_FROM]->(ChangeRequest)` · `[:HAS_TARGET]->(ChangeTarget)` · `[:HAS_FINDING]->(ImpactFinding)` · `[:HAS_DISPOSITION]->(Disposition)` · `[:HAS_REVIEW]->(ReviewSignoff)`, 대상은 `[:CHANGES]->(ItemRevision)`(바꾸는 품목의 현재 개정) · `[:IN_PARENT]->(ItemRevision)`(교체 · BOM 편집이면 조립품 개정) · `[:REPLACES]->(PdmItem)` · `[:RESULTED_IN]->(ItemRevision)`(승인으로 생긴 새 개정) · `[:CASCADES_TO]->(ItemRevision)`(연쇄로 생긴 상위 새 개정) · `[:SCOPED_BY]->(ApplicabilityScope)`, 영향은 `(ImpactFinding)-[:AFFECTS]->(ItemRevision | FastenedJoint | WorkOrder | PurchaseOrderLine | StockLot)` · `[:CAUSED_BY]->(ChangeTarget)` · `[:SUPERSEDES]->(ImpactFinding)`, 처분은 `(Disposition)-[:DECIDES]->(ImpactFinding)` · `[:SCOPED_BY]->(ApplicabilityScope)`, 외부 사본은 `(WorkOrder)-[:USES_BOM]->(ItemRevision)` · `(PurchaseOrderLine)-[:ORDERS]->(PdmItem)` · `(StockLot)-[:STOCK_OF]->(PdmItem)`, 접합부는 `(ItemRevision)-[:HAS_JOINT]->(FastenedJoint)-[:CLAMPS {stack_order}]->(PdmItem)` · `[:USES_BOLT | :USES_NUT | :USES_WASHER]->(PdmItem)` · `(ItemRevision)-[:HAS_ATTR]->(RevisionAttribute)`.
+
+### 9.2 `item_one_part` 예외 (OPMS 에 없는 가공품 · 조립품)
+
+OPMS 에는 조립품 · 가공품 분류와 등록 경로가 없어 판 · 모듈 · 체결 세트는 `:Part` 를 가질 수 없다(앞 장 6장의 "조립품 분류" 부탁). `item_one_part`(기존 검사)는 다음만 허용하도록 좁혔다: `item_type` 이 `part`(가공품) 또는 `assembly`(조립품)이고 `opms_registered = false` 이면서 `OF_PART` 가 없는 품목. 규격품(`standard`) · 구매품(`purchased`)은 예외가 아니다. 표시와 `item_no` · `OF_PART` 가 맞는지는 `unregistered_item_consistent`(새 검사)가 본다. `neo4j/test/break.cypher` 에 예외가 통하는 품목(#997)과 안 통하는 품목(#996)을 더했다. 이 변경은 개발 설계 10.3-1 의 제안이다.
+
+### 9.3 확인한 것
+
+`python neo4j/test/verify_changes.py` (Docker 필요, 포트를 열지 않는 임시 컨테이너 `neo4j:5.26.32-community`, 끝나면 지움): **85개 통과**.
+
+- 기존 검사 27개와 기존 예시 데이터가 그대로 통과하고, `item_one_part` 예외는 가공품에만 통한다(규격품 · 표시 없는 품목은 여전히 위반)
+- BRK-M8 데이터가 기존 검사 27개 + 새 검사 36개를 모두 통과하고, 다시 올려도 노드 · 관계 수가 같다(멱등)
+- 새 파일은 OPMS 소유 라벨에 노드 · 라벨 · 속성을 쓰지 않는다(`:Part` 개수 · 속성 수 · 라벨 수와 OPMS 라벨별 노드 수가 그대로)
+- 질의: SC-1 너트 P-…22 → 영향 BOM 개정 4개(체결 세트 · 모듈의 R00 · R01), 작업지시 3건, 미입고 발주 120, 재고 로트 2개. SC-2 상판 → 모듈 R00 · R01, 일련번호 71 이후 범위에서 `WO-FX-0002` 부분 · `WO-FX-0003` 전부. 체결 세트 R00 vs R01 개정 비교(볼트 제거 · 플랜지볼트 추가 · 와셔 8 → 4)
+- 일부러 망가뜨린 데이터에서 새 검사 36개가 각각 위반을 잡고, 예시 데이터는 위반으로 잡히지 않는다
+
+확인하지 **못한** 것: 실제 OPMS DB 와의 결합(시험은 대역 위에서 돌렸다), 발행기(`backend/src/onto_pdm/graph/publisher.py`)가 이 라벨들을 쓰는 것(다음 단계, 아직 없다), 승인 전 지시를 그래프에 올리는 안(승인본만 올린다).

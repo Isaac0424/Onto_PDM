@@ -59,6 +59,11 @@ MATCH (i:PdmItem)-[:OF_PART]->(:Part {part_no: 'P-00000000001'}) SET i.mass_kg =
 // item_one_part: :Part 에 붙지 않은 PDM 품목
 CREATE (:PdmItem {pdm_item_id: 999, item_type: 'part', name: 'orphan', uom: 'EA'});
 
+// item_one_part 의 예외: opms_registered = false 인 가공품은 :Part 없이도 위반이 아니다(#997 은 잡히면 안 된다).
+//   규격품(standard)은 같은 표시가 있어도 예외가 아니다(#996 은 잡혀야 한다) — neo4j/test/verify_changes.py 가 subject 로 확인한다.
+CREATE (:PdmItem {pdm_item_id: 997, item_type: 'part', name: 'unregistered plate', uom: 'EA', opms_registered: false, item_no: 'X-997'});
+CREATE (:PdmItem {pdm_item_id: 996, item_type: 'standard', name: 'unregistered standard', uom: 'EA', opms_registered: false, item_no: 'X-996'});
+
 // part_one_item: 같은 품번에 PDM 품목이 하나 더
 MATCH (p:Part {part_no: 'P-00000000001'})
 CREATE (:PdmItem {pdm_item_id: 998, item_type: 'part', name: 'duplicate', uom: 'EA'})-[:OF_PART]->(p);

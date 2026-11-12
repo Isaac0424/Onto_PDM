@@ -3,13 +3,46 @@
 | 항목 | 내용 |
 |---|---|
 | 버전 | v0.1 초안 (2026-11-12) |
-| 상태 | **설계만 있다. 코드 · 스키마 · 화면은 아직 없다.** 3장의 라벨 · 관계와 9장의 검사 규칙은 초안이고, Cypher는 Neo4j에서 돌려 보지 않았다(시험 전). "판단 필요"는 사용자가 정할 것 |
+| 상태 | **개념 모델은 구현됐다**(`backend/src/onto_pdm/changes/models.py` · `db/changes.sql`, 커밋 `b28c69b`, 2026-11-12). **그래프(Neo4j) 쪽은 아직이다**: 이 문서의 라벨 · 관계 · 9장 검사 · 8장 질의는 별도 묶음이 `neo4j/changes-*.cypher`로 옮기는 중이고, 이 문서의 Cypher 초안은 갱신 시점에 돌려 본 것이 아니다. 구현에서 이름이 달라진 곳은 아래 "구현과의 이름 대응"에 적었다. "판단 필요"는 사용자가 정할 것 |
 | 한 줄 요약 | 규격 · 재질 · 치수 · 구성 부품을 바꾸려 할 때 **어디까지 영향이 가는지 찾고(`ImpactFinding`), 그중 무엇을 어떻게 바꿀지는 따로 결정한다(`Disposition`).** 영향은 BOM → 작업지시 → 발주 · 재고로 따라가고, 적용 범위는 날짜 · 사업장 · 로트 · 일련번호로 좁힌다 |
 | 관련 문서 | [change-impact-prd.md](change-impact-prd.md)(요구사항 · 이 문서의 F-CHG-n) · [change-impact-design.md](change-impact-design.md)(개발 설계) · [neo4j-lpg-design.md](neo4j-lpg-design.md)(그래프 모델 · 소유 라벨) · [fit-check-plan.md](fit-check-plan.md)(OPMS 적합성 판정) · [fastener-classification.md](fastener-classification.md)(볼트 분류) · [worker-view-proposal.md](worker-view-proposal.md)(조회 전용 작업 화면) |
 
 표기: ✅ 있음 · 🟡 일부 · ⬜ 없음 · **판단 필요** = 사용자가 정할 것 · *추정* = 읽은 근거로 짐작한 것. 근거는 `파일:줄`. 날짜는 절대 날짜.
 
 > **근거 기준**: OPMS는 `D:\ernest_hemingway_OPMS`의 **PDM 브랜치**만 읽었다(HEAD `03331ba`, 온톨로지 0.19.0 — `holeDepth` · `fit_check` 1개는 커밋 `58ffed2`. 처음 조사 때는 `7d1e484`(0.18.0)였고 그 뒤 OPMS가 앞서 나갔다). OPMS는 읽기만 했고 수정하지 않았다. 이 PDM 저장소는 작업 트리 상태 그대로 읽었다.
+
+### 구현과의 이름 대응 (2026-11-12, 커밋 `b28c69b`)
+
+이 문서의 이름과 구현(계약 · 도메인 모델 · PG 표)이 다른 곳이다. 코드가 정본이고, **그래프 라벨 · 속성은 아래 오른쪽 이름을 따른다.**
+
+| 구분 | 이 문서(개념) | 구현 | 근거 |
+|---|---|---|---|
+| 변경 종류 | `change_kind`: `replace` · `revise` · `bom_edit` · `attribute_edit` | 계약 · 도메인은 같은 값. **PG `change_target.kind`는 `replacement · revision · bom_line`** — `replace→replacement`, `revise`와 `attribute_edit→revision`(서비스가 둘을 같게 다룬다), `bom_edit→bom_line`. 변환은 PG 저장소가 연결될 때 한다(아직 없음) | `changes/models.py:25` · `service.py:514-521` · `db/changes.sql:156-168` |
+| 영향 심각도 | `none · review · affected · blocked` | 같음 | `models.py:27` |
+| 적용 범위 판정 | `pass · full · none · partial · unknown` | 4값 `inside · outside · partial · unknown`(`pass`와 `full`은 `inside`로 합쳐진다) | `changes/scope.py` |
+| 작업지시 | `planned_start` · `actual_start` · `routing_rev` | `start_date`(날짜 기준은 `start_date`, 없으면 `due_date`) · `due_date` · `process_rev`. `serial_prefix`는 없다 | `models.py:556-570` · `scope.py:35-38` |
+| 발주 항목 | `ordered_rev` · `qty_open` · `promised_date` | `item_rev` · `qty_received`(미입고 = `qty_ordered − qty_received`) · `due_date` | `models.py:581-591` |
+| 재고 로트 | `quality_status`: `available · quarantine · blocked` | `status`: `available · quarantine · hold`(문서의 `blocked`는 `hold`) | `models.py:39` |
+| 항목 키 | `ItemRevision`/`PdmItem` id | 도메인 모델은 품번 문자열 `item_no`. PG id 변환은 저장소 계층 | C0-코어 |
+| 영향 종류 `FindingKind` | `bom_usage · product · work_order · purchase_order_line · stock_lot · fit_pair · fit_grip · strength_grade` | 위에 **`substitute`**(대체 후보 판정) 추가 | `models.py:29-32` |
+| 오류 코드 | — | `IMPACT_STALE` · `BLOCKED_FINDINGS` · `DISPOSITION_REQUIRED` · `REVIEW_REQUIRED` · `REVISION_CHANGES_IDENTITY` 등(`ChangeErrorCode`). `ontology` 종류 대상은 400이 아니라 **422** | `models.py:97-119` |
+| 상태 전이 | `can_transition(from, to)` | `can_transition(machine, from, to)`(요청 · 지시 두 기계) | `models.py:216` |
+
+**처분 `action` 이름**(7.1절의 이름 → 구현). 구현의 선택지는 대상 종류별로 정해져 있다(`ALLOWED_ACTIONS`).
+
+| 이 문서(7.1) | 구현 | 비고 |
+|---|---|---|
+| `accept_as_is` | `use_as_is` | 완료분 |
+| `continue_old_revision` | 작업지시 `continue_old` · 발주 `receive_and_use` | 대상에 따라 다르다 |
+| `switch_to_new_revision` | `apply_new` | 미착수 작업 |
+| `hold` · `rework` · `retrofit` | **구현하지 않았다** | 진행 중 작업의 별도 검토는 `change_in_progress`, 취소 후 재발행은 `cancel_reissue`로 둔다 |
+| `amend_order` · `cancel_order` | `amend` · `cancel` | |
+| `use_up_stock` · `quarantine_stock` · `return_to_supplier` · `scrap_stock` | `use_up` · `quarantine` · `return` · `scrap` | |
+| `substitute_by_approval` | `choose_substitute` | 적합성 finding |
+| (없음) | `block_change` · `review_with_design` · `acknowledge` · `accept_risk` | `accept_risk`는 **`blocked`에 쓸 수 없다**(기본). 사용자 결정 대기 |
+| `no_action_needed` | 같음 | `review`를 닫는 길. 모든 대상에 허용 |
+
+처분이 필요한 것: `affected`(없으면 승인 불가 `DISPOSITION_REQUIRED`). `blocked`가 남으면 승인 불가(`BLOCKED_FINDINGS`). 필요한 검토: `design`은 항상, `purchasing` · `production`은 발주 · 재고 / 작업지시 영향이 `affected`일 때.
 
 ## 1. 무엇을 풀려는가
 
@@ -529,9 +562,9 @@ MERGE (s1)-[:STOCK_OF]->(nut);
 
 | 대상 | 판정 | 처분 |
 |---|---|---|
-| `WO-FX-0001` completed, 일련번호 1~50 | 일련번호 `none` → **범위 밖** | `accept_as_is` |
-| `WO-FX-0002` in_progress, 일련번호 51~80 | 일련번호 `partial`(71~80만 겹침) → **부분** | `hold` + 분할: 51~70은 옛 개정으로 마무리, 71~80은 별도 변경 검토 |
-| `WO-FX-0003` released, 일련번호 81~120, 사업장 S2 | 모두 `full` | `switch_to_new_revision` |
+| `WO-FX-0001` completed, 일련번호 1~50 | 일련번호 `none` → **범위 밖** | `accept_as_is`(구현: SC-2 범위에서는 영향 목록에 나오지 않는다. 범위가 전체인 SC-1에서는 `none` · `use_as_is`) |
+| `WO-FX-0002` in_progress, 일련번호 51~80, 시작 2026-11-02 | 일련번호만 보면 `partial`(71~80만 겹침)이지만 **날짜가 `none`**(시작일 2026-11-02 < 효력일 2026-12-01) → 하나라도 `none`이면 **범위 밖**(구현: `scope.py` `_combine`) | 영향 목록에서 빠진다(시험 `test_changes_scenarios.py`가 고정). 진행 중 작업을 `review`로 남길지는 **사용자 결정 대기**([PRD 11장 11](change-impact-prd.md)). 분할 제안(51~70은 옛 개정, 71~80은 별도 검토)은 구현하지 않았다 |
+| `WO-FX-0003` released, 일련번호 81~120, 사업장 S2, 시작 2026-12-01 | 모두 `full`(구현: `inside`) | `switch_to_new_revision`(구현: `apply_new`) |
 | `PO-FX-100/10` 너트(SC-1 아님, 참고) | 날짜 · 사업장 | `amend_order` 등 구매 판단 |
 
 ## 8. 질의 초안 (`neo4j/queries.cypher` 스타일, 시험 전)
@@ -682,6 +715,8 @@ OPMS의 `revalidation_impacts`(`src/registry/ontology/diff.py:249`)는 온톨로
 가드는 9장 `no_ontology_version_as_revision` · `ontology_impact_no_revision`이다.
 
 ### 10.4 열린 문제 (판단 필요)
+
+> 구현 시점(2026-11-12) 갱신: **1번**은 PDM 품목으로 두고 "OPMS 미등록"으로 표시하는 **가정으로 진행**했다. **2번**은 PG 정본 + 승인 후 발행이 구현에 반영됐고(3D 영향 그래프는 백엔드 `GET /changes/{id}/impact/graph`가 만든다), 발행기는 아직 없다. **3번**은 시연용 가정 그대로다. **4번**은 입력 경로(API · 화면)가 없어 지금은 시험 픽스처와 DB 표로만 들어간다. **5번**은 새 표 `stock_lot`으로 정해졌다(`db/changes.sql`). 나머지는 미결이다.
 
 | # | 질문 | 이유 · 제안 |
 |---|---|---|

@@ -23,6 +23,7 @@ from pydantic import ValidationError
 
 from onto_pdm.changes import dispositions as dispo
 from onto_pdm.changes import impact as impact_mod
+from onto_pdm.changes import ontology_impact as onto_mod
 from onto_pdm.changes import scope as scope_mod
 from onto_pdm.changes.adapters import ChangeExternalSource, ChangeSpecSource, PdmBomSource, system_session
 from onto_pdm.changes.fit import PdmTemporaryFitJudge
@@ -37,6 +38,7 @@ from onto_pdm.changes.models import (
     ChangeTarget,
     Disposition,
     FasteningJoint,
+    OntologyImpact,
     ImpactFinding,
     ImpactRun,
     PurchaseOrderLine,
@@ -76,6 +78,7 @@ from onto_pdm.contracts import (
     ImpactGraphNode,
     ImpactGraphView,
     ImpactRunView,
+    OntologyImpactItemView,
     OntologyImpactView,
     PurchaseOrderLineFeedIn,
     StockLotFeedIn,
@@ -126,6 +129,7 @@ class ChangeService:
         self._lock = threading.RLock()
         self.audit: list[dict[str, Any]] = []          # 감사 기록(메모리 수준). PG 에서는 audit_log 트리거가 한다
         self._revision_scopes: dict[tuple[str, str], tuple[ApplicabilityScope, ...]] = {}   # 부분 적용 개정의 적용 범위
+        self._seen_ontologies = onto_mod.SeenSnapshots()         # 이미 본 온톨로지 스냅샷(버전 → 스냅샷). OPMS 에 옛 버전이 없을 때 비교용
 
     # ------------------------------------------------------------------ 공통
 
@@ -627,7 +631,7 @@ class ChangeService:
         return _graph(order, self._changes.list_targets(order.code), run)
 
     def ontology_impact(self, from_version: str | None, to_version: str | None) -> OntologyImpactView:
-        """온톨로지 버전 변경 보고(읽기). 부품 개정이나 변경 지시를 만들지 않는다(F-CHG-10). OPMS 를 읽을 수 없으면 503."""
+        """저장된 온톨로지 버전 변경 보고(읽기). 부품 개정이나 변경 지시를 만들지 않는다(F-CHG-10). OPMS 를 읽을 수 없으면 503."""
         self._part_source().ontology_version()                 # OPMS_NOT_CONFIGURED · OPMS_UNAVAILABLE 을 그대로 낸다
         rows = self._changes.list_ontology_impacts()
         if from_version:
@@ -636,10 +640,55 @@ class ChangeService:
             rows = [r for r in rows if r.to_version == to_version]
         if not rows:
             raise not_found("ONTOLOGY_IMPACT_NOT_FOUND", "해당 온톨로지 버전 변경 보고가 없어요")
-        r = rows[-1]
-        return OntologyImpactView(from_version=r.from_version, to_version=r.to_version, computed_at=r.computed_at.isoformat(),
-                                  rules_changed=list(r.summary.rules_changed), parts_flagged=list(r.summary.parts_flagged),
-                                  change_request_code=r.change_request_code)
+        return _ontology_view(rows[-1])
+
+    def compute_ontology_impact(self, from_version: str | None = None, to_version: str | None = None) -> OntologyImpactView:
+        """두 온톨로지 버전을 비교해 영향받는 부품 · 체결부 **보고**를 만들어 저장한다(F-CHG-10).
+
+        개정 · 변경 지시 · `ItemRevision` 을 만들지 않는다(보고만 `ChangeStore` 에 쌓는다). 새 버전은 지정하지 않으면 OPMS 의 현재 버전이다.
+        옛 버전은 OPMS(`:OntologyVersion {version}`)에서 읽고, 없으면 이 서비스가 이미 본 스냅샷으로 대신하며, 그것도 없으면 404 `ONTOLOGY_VERSION_NOT_FOUND`.
+        """
+        with self._lock:
+            old, new = onto_mod.resolve_pair(onto_mod.ReaderSnapshotHistory(self._opms), self._seen_ontologies, from_version, to_version)
+            if old.version == new.version:
+                raise _bad(422, "ONTOLOGY_VERSIONS_EQUAL", "비교할 두 온톨로지 버전이 같아요")
+            item_nos, joints = self._bom_usage()
+            report = onto_mod.build_report(old, new, parts=onto_mod.used_part_attrs(self._opms, item_nos), joints=joints, computed_at=self._now())
+            stored = self._changes.add_ontology_impact(report)
+            self._log(None, "ontology_impact.compute", from_version=old.version, to_version=new.version, items=len(stored.items))
+            return _ontology_view(stored)
+
+    def observe_ontology(self) -> str:
+        """지금 OPMS 의 온톨로지 스냅샷을 기억해 둔다(나중에 OPMS 가 앞서 나가도 '그때 본 것'과 비교할 수 있게). 현재 버전 문자열을 돌려준다."""
+        snap = onto_mod.ReaderSnapshotHistory(self._opms).current()
+        with self._lock:
+            self._seen_ontologies.observe(snap)
+        return snap.version
+
+    def _bom_usage(self) -> tuple[set[str], list[FasteningJoint]]:
+        """승인된 BOM 에 쓰인 품번 전부와, 그 조립품의 현재 승인본에 붙은 체결부. 읽기 전용(시스템 관점)."""
+        bom = self._bom()
+        item_nos: set[str] = set()
+        assemblies: set[str] = set()
+
+        def walk(nodes: Sequence[Any]) -> None:
+            for n in nodes:
+                item_nos.add(n.item.item_no)
+                if n.children:
+                    assemblies.add(n.item.item_no)
+                    walk(n.children)
+
+        for p in self._pdm.list_products():
+            tree = self._pdm.get_product_bom(system_session(), p.code, "released")
+            item_nos.add(tree.root_item.item_no)
+            assemblies.add(tree.root_item.item_no)
+            walk(tree.nodes)
+        joints: list[FasteningJoint] = []
+        for a in sorted(assemblies):
+            rev = bom.current_revision(a)
+            if rev is not None:
+                joints.extend(self._changes.list_joints(a, rev.rev))
+        return item_nos, joints
 
     # ------------------------------------------------------------------ 외부 feed (읽기 사본 받기)
 
@@ -722,6 +771,15 @@ def _first_message(e: Exception) -> str:
 def _invalid(e: ValidationError) -> ApiException:
     return _bad(422, "INVALID_REQUEST", "요청 값이 올바르지 않아요: " + _first_message(e),
                 {"errors": [{"loc": [str(x) for x in err["loc"]], "msg": err["msg"]} for err in e.errors()]})
+
+
+def _ontology_view(r: OntologyImpact) -> OntologyImpactView:
+    return OntologyImpactView(
+        from_version=r.from_version, to_version=r.to_version, computed_at=r.computed_at.isoformat(),
+        rules_changed=list(r.summary.rules_changed), parts_flagged=list(r.summary.parts_flagged),
+        items=[OntologyImpactItemView(kind=i.kind, subject=i.subject, reason_code=i.reason_code, ref=i.ref, before=i.before, after=i.after,
+                                      message=i.message) for i in r.items],
+        change_request_code=r.change_request_code)
 
 
 def _scope_from(sc: ChangeScopeIn) -> ApplicabilityScope:

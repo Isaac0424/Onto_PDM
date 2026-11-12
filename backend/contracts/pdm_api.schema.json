@@ -124,6 +124,9 @@
     "ImpactGraphView": {
       "$ref": "#/$defs/ImpactGraphView"
     },
+    "OntologyImpactItemView": {
+      "$ref": "#/$defs/OntologyImpactItemView"
+    },
     "OntologyImpactView": {
       "$ref": "#/$defs/OntologyImpactView"
     },
@@ -3114,6 +3117,73 @@
       "title": "MesWorkStep",
       "type": "object"
     },
+    "OntologyImpactItemView": {
+      "additionalProperties": false,
+      "description": "보고의 한 줄. 어느 품번 · 체결부가 왜 후보인지(이유 코드, 바뀌기 전 · 후 값). 처분이나 개정을 가리키지 않는다.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "part",
+            "joint"
+          ],
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "reason_code",
+        "ref",
+        "before",
+        "after",
+        "message"
+      ],
+      "title": "OntologyImpactItemView",
+      "type": "object"
+    },
     "OntologyImpactView": {
       "additionalProperties": false,
       "description": "GET /changes/ontology-impact. 읽기 보고다. 부품 개정이나 변경 지시를 만들지 않는다(F-CHG-10).",
@@ -3139,6 +3209,13 @@
           },
           "type": "array"
         },
+        "items": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/OntologyImpactItemView"
+          },
+          "type": "array"
+        },
         "change_request_code": {
           "anyOf": [
             {
@@ -3157,6 +3234,7 @@
         "computed_at",
         "rules_changed",
         "parts_flagged",
+        "items",
         "change_request_code"
       ],
       "title": "OntologyImpactView",

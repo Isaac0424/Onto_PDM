@@ -592,6 +592,18 @@ class ImpactGraphView(ContractModel):
     edges: list[ImpactGraphEdge]
 
 
+class OntologyImpactItemView(ContractModel):
+    """보고의 한 줄. 어느 품번 · 체결부가 왜 후보인지(이유 코드, 바뀌기 전 · 후 값). 처분이나 개정을 가리키지 않는다."""
+
+    kind: Literal["part", "joint"]
+    subject: str
+    reason_code: str
+    ref: str | None = None
+    before: str | None = None
+    after: str | None = None
+    message: str = ""
+
+
 class OntologyImpactView(ContractModel):
     """GET /changes/ontology-impact. 읽기 보고다. 부품 개정이나 변경 지시를 만들지 않는다(F-CHG-10)."""
 
@@ -600,6 +612,7 @@ class OntologyImpactView(ContractModel):
     computed_at: str
     rules_changed: list[str]
     parts_flagged: list[str]
+    items: list[OntologyImpactItemView] = []
     change_request_code: str | None = None
 
 
@@ -737,6 +750,7 @@ RESPONSE_MODELS: tuple[type[ContractModel], ...] = (
     ChangeReviewView,
     ChangeExport,
     ImpactGraphView,
+    OntologyImpactItemView,
     OntologyImpactView,
     FeedResult,
 )

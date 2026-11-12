@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 버전 | v0.1 초안 (2026-11-12) |
-| 상태 | **제안만 있다. 코드는 아직 한 줄도 없다.** 사용자 확인 전. 10장 "판단 필요" 항목이 정해지면 v0.2 |
+| 상태 | **C0~C4 구현됨(메모리 저장소 위)** — 1.3절, 커밋 `b28c69b`(2026-11-12). PG 저장소 연결 · Neo4j 발행기 · `OntologyImpact` 계산은 아직. 1.2절은 **구현 전(작성 시점)의 출발점**이다. 10장 "판단 필요" 중 사용자 결정 대기 항목이 정해지면 v0.2 |
 | 한 줄 요약 | `BRK-M8`(M8 볼트·너트·와셔로 체결하는 브래킷 모듈) 하나를 기준으로, **부품 개정·교체가 일어났을 때 어느 BOM · 작업지시 · 발주 · 재고에 영향이 가는지 찾고, 볼트·너트 체결이 아직 맞는지 다시 판정하고, 항목마다 사람이 처분(어떻게 할지)을 정해 승인하는 흐름**을 PDM에 더한다 |
 | 관련 문서 | [change-impact-prd.md](change-impact-prd.md)(요구 · 범위) · [change-impact-ontology.md](change-impact-ontology.md)(객체 · 관계 · 라벨) · [pdm-design.md](pdm-design.md) · [neo4j-lpg-design.md](neo4j-lpg-design.md) · [backend-plan.md](backend-plan.md) · [fit-check-plan.md](fit-check-plan.md) |
 | 기준 | OPMS `PDM` 브랜치 `03331ba` (온톨로지 0.19.0 — `holeDepth`·`fit_check` 1개는 커밋 `58ffed2`. 처음 조사 때는 `7d1e484`였다) · 이 저장소 `Isaac0424/change-impact-bolt-nut`(`6d6013c`에서 분기) |
@@ -21,7 +21,7 @@
 | Neo4j 발행 라벨 · 검사 · 질의 이름 | OPMS 쪽 구현(읽기만 한다. 요청서는 5.5) |
 | 시험 전략 · 구현 단계 | ERP · MES 쓰기, 구매 · 재고 계산, 원가(PRD 비목표) |
 
-### 1.2 현재 코드 상태 (어디서 시작하나)
+### 1.2 작성 시점의 코드 상태 (구현 전 출발점 — 현재 상태는 1.3절)
 
 | 필요한 것 | 상태 | 근거 · 메모 |
 |---|---|---|
@@ -38,6 +38,42 @@
 | 개정별 사양 값(판 두께 등) | ⬜ | `item_revision`에 속성 열이 없다(`description` · `change_note`뿐). 새 표가 필요(3.3 `revision_spec`) |
 
 **시작점 결론**: 영향 탐색 엔진과 판정 어댑터는 **DB 없이 메모리 저장소 위에서 순수 함수로** 먼저 만들 수 있다(C1). PG 표는 같은 모양으로 이어 붙인다(C3). 이렇게 하면 PG 저장소 미구현이라는 위험(10.2)이 영향 분석 자체를 막지 않는다.
+
+### 1.3 구현 현황과 설계에서 달라진 점 (2026-11-12, 커밋 `b28c69b`)
+
+| 단계 | 상태 | 확인 |
+|---|---|---|
+| C0 모델 · 계약 · 픽스처 | ✅ | `pytest` 303 → 337 → 376(픽스처 · 저장소). 계약 버전 `"1"` 유지(새 모델만 추가) |
+| C1 엔진 · 판정 | ✅ | 479개. 그립 여유 · `warn_within` · shortfall 경계를 바꾸면 시험이 깨지는 것을 확인 |
+| C2 서비스 · API · feed | ✅ **메모리 저장소 위** | 518개. 변이(이전 개정 항상 폐기 · 승인 조건 생략 · feed 토큰 비교 생략 · stale 생략)마다 시험이 깨짐 |
+| C3 DB | 🟡 SQL · 시험 ✅, **백엔드 연결 ⬜** | PGlite 33개(일회용 `postgres:16`에서 70개). `PgChangeStore`는 없다 |
+| C4 웹 | ✅ | `vitest` 512개 · `typecheck` · `build` · Playwright `changes.spec.ts` 4개. 기존 e2e `app.spec.ts:88` 1개 실패(이 기능과 무관해 보이나 변경 전과 비교 못 함) |
+| C5 그래프 · OPMS 정식 | 🟡 Neo4j 라벨 · 검사 · 질의 작성 중(별도 묶음), 요청서 초안 ✅(전달 전). **발행기 · `OntologyImpact` 계산 · OPMS 판정 교체 ⬜** | 실제 OPMS 0.19.0을 읽기 전용으로 읽어 SC-1 · SC-2 수치 확인 |
+
+**설계와 다르게 구현한 것**(코드가 정본):
+
+| # | 설계 | 구현 | 근거 |
+|---|---|---|---|
+| 1 | `change_target.kind` = `revision · replacement · bom_line` (3.2) | 계약 · 도메인 `change_kind` = `replace · revise · bom_edit · attribute_edit`. 변환 `replace→replacement` · `revise`, `attribute_edit→revision` · `bom_edit→bom_line`은 PG 저장소가 연결될 때 한다 | `changes/models.py:25` · `service.py:514-521` · `db/changes.sql:156` |
+| 2 | 처분 선택지 4.7 | `no_action_needed`(모든 대상에서 `review`를 닫는 길)와 `acknowledge`(사용처 · 제품) 추가 | `models.py:41-52` |
+| 3 | `FindingKind` 8종 | `substitute`(대체 후보 판정) 추가 | `models.py:29-32` |
+| 4 | 오류 코드 6장 | `ChangeErrorCode`에 한 곳 정의: `IMPACT_STALE`(`STALE_IMPACT` 아님) · `IMPACT_PARTIAL` · `IMPACT_NOT_COMPUTED` · `SCOPE_REQUIRED` · `SCOPE_OVERLAP` · `TARGET_NOT_RELEASED` · `CHANGE_NOT_APPROVED` · `FEED_NOT_CONFIGURED` 등. **`ontology` 종류 대상은 400 `ONTOLOGY_NOT_A_TARGET`이 아니라 422**(계약 열거형이 먼저 거부) | `models.py:97-119` |
+| 5 | `can_transition(from, to)` | `can_transition(machine, from, to)` — 요청 · 지시 두 상태 기계 | `models.py:216` |
+| 6 | 모델 키 `item_id` | 도메인 모델은 품번 문자열 `item_no`. PG id 변환은 저장소 계층 | C0-코어 |
+| 7 | 승인 = 한 트랜잭션에서 새 개정 발행(3.6) | **`InMemoryPdmStore`에서만** 된다. 다른 저장소는 503 `PDM_STORE_READ_ONLY`. PG 쪽은 DB 함수 `approve_change_order`가 같은 의미로 하지만 백엔드가 호출하지 않는다 | `service.py:489-494` · `db/changes.sql` |
+| 8 | 구매 · 생산 검토 자격 `app_user_function` | **서비스는 역할로 갈음**: design 검토는 viewer를 뺀 모두, purchasing · production은 승인자 · 관리자. `app_user_function` 표와 검토 자격 트리거는 DB에만 있다 | `service.py:374-378` · `db/changes.sql:37` |
+| 9 | 필요한 검토 "function" | design은 항상, purchasing은 발주 · 재고 영향이 `affected`일 때, production은 작업지시 영향이 `affected`일 때 | `service.py:432-441` |
+| 10 | 요청 접수 | `accept`는 승인자 · 관리자만(`draft → submitted → accepted`). 작성자는 `submit`으로 지시를 검토에 올린다. 요청 제출 전용 경로는 없다 | `service.py:398-408` |
+| 11 | `effective_revision_at` | DB 함수와 서비스 메서드만 있고 **라우트는 없다** | `service.py:598` |
+| 12 | `revision_spec` · `change_target` · `fastening_joint`(3.2 · 3.3) | DB에서 `revision_spec`에 대리키 `id`(감사 트리거가 `NEW.id`를 쓴다) · `change_target.new_quantity`(`bom_line` 종류의 이후 수량) 추가. **`fastening_joint`는 제품 조립품이 아니라 볼트 · 너트 · 와셔를 BOM으로 직접 갖는 체결 세트 개정에 붙인다**(교체 때 새 개정으로 BOM과 함께 복사 · 치환이 닫힌다) | `db/changes.sql:156-212` |
+| 13 | `GET /changes/ontology-impact` | 저장된 보고만 돌려준다. 두 버전 사이의 변경을 **계산하지 않는다** | `service.py:629-640` |
+| 14 | 재분석 때 이전 처분을 새 영향의 제안으로 가져오기 | `dispositions.carry_over_suggestions`는 있으나 서비스에 **연결하지 않았다** | `changes/dispositions.py` · `service.py`(호출 없음) |
+| 15 | 판 두께 · 체결 구성 입력 | **API · 화면이 없다**. 시험 픽스처, DB 표, 승인 때 복사(`_carry_specs_and_joints`)로만 들어간다 | `service.py:580` · `api/changes_routes.py`(경로 없음) |
+| 16 | 설정 | 환경변수 `PDM_FEED_TOKEN`(없으면 feed 403 `FEED_NOT_CONFIGURED`) · `PDM_FIXTURE=brk-m8`(또는 `brk-m8:sc1` · `brk-m8:sc2`일 때만 **빈 시드 저장소**에 픽스처 로드. 기본 시드에는 `P-00000000001`이 다른 부품이라 `FixtureConflict`) · feed 헤더 `X-PDM-Feed-Token` | `api/app.py:172-183` · `fixtures/brk_m8.py:43` |
+
+**라우트(`/api/v1/pdm`)**: `GET/POST /changes` · `GET /changes/{id}` · `GET /changes/ontology-impact` · `POST/DELETE /changes/{id}/targets[/{tid}]` · `PUT /changes/{id}/targets/{tid}/scope` · `POST/GET /changes/{id}/impact` · `GET /changes/{id}/impact/graph` · `PUT /changes/{id}/dispositions/{finding_id}` · `POST /changes/{id}/reviews` · `POST /changes/{id}/accept|submit|approve|reject` · `GET /changes/{id}/export` · `POST /feeds/work-orders|purchase-order-lines|stock-lots`.
+
+**이름 대응(그래프 ↔ PG)**: 온톨로지 설계의 "구현과의 이름 대응"([change-impact-ontology.md](change-impact-ontology.md))이 처분 · 작업지시 · 발주 · 재고의 이름 차이를 정리한다.
 
 ## 2. 아키텍처
 
@@ -669,7 +705,7 @@ feed 는 **웹에서 부르지 않는다**(서버 전용). **데이터가 없을
 | ID | 입력 | 기대(수치 포함) |
 |---|---|---|
 | **SC-1** 너트 교체 | 체결 세트의 너트를 `P-…22` → `P-…23`(피치 1.0)로 **교체**, 범위 전체 | ① `fit_pair`(볼트 P-…01 ↔ 너트 P-…23): OPMS `bolt_nut` match `pitch` 1.25 ≠ 1.0 → `mismatch` → verdict **`no`** · severity **blocked** · reason `pitch` 1.25/1.0. ② `fit_grip`: 새 너트 `nutHeight` 6.8(OPMS 개발 DB 확인 2026-11-12) → 필요 16 + 3.2 + 6.8 + 2.5 = 28.5 ≤ 30 → verdict `ok` · severity none. (같은 시험에서 `nutHeight`를 비운 픽스처 너트로는 `unknown`(`value_missing`) · review가 나와야 한다 — "통과"로 나오면 실패.) ③ `strength_grade`: 볼트 A2-70 ↔ 새 너트 A2-70 같음 → finding 없음. ④ 체결 세트 → `BRK-M8` 사용처(`bom_usage`·`product`) 2건 none(정보). ⑤ 재고 · 발주에서 구 너트(`P-…22`) 항목이 `stock_lot`/`purchase_order_line` finding(affected) 으로. ⑥ 승인 시도: 처분 없으면 409 `DISPOSITION_REQUIRED`(finding_ids에 ①②), ① `blocked`는 변경안을 고쳐(예: 볼트도 피치 1.0으로 교체) 풀리기 전에는 409 `BLOCKED_FINDINGS`로 승인할 수 없다(`accept_risk` 예외는 10.3 판단 필요) |
-| **SC-2** 판 두께 개정 | 상판 브래킷을 **개정**(R00 → R01, `thickness` 8 → 12), 범위는 일련번호 #120 이상 · `applies='new'` | ① `where_used(상판)` → `BRK-M8` 1건(상위 BOM 줄은 바뀌지 않음 — 4.2). ② `fit_grip`: 필요 = 12+8 + 3.2 + 6.8 + 2.5 = **32.5**, 볼트 30 → margin **−2.5** → verdict **`no`**(shortfall gap 2.5) · severity **blocked**. ③ 후보 `P-…15`(플랜지 M8×40): 길이 40 ≥ 필요 → 길이 판정은 통과(와셔 수 1이면 30.9, 2이면 32.5, 둘 다 ≤ 40)이나 ④ **전체 verdict `conditional`**: 분류가 `HexFlangeBolt`로 달라 OPMS `substitutes`(플랜지볼트가 육각볼트+평와셔를 대신) 규칙을 거치고, 강도등급 A4-80 ↔ 기존 A2-70 **순서 비교 불가 → `review`**, 와셔 수 변경은 사람이 확인. ⑤ 작업지시: 완료분 `use_as_is`(none), 진행 중 중 일련번호 구간이 #120 경계를 걸치면 `partial` → affected, 범위 밖이면 영향 없음. ⑥ 개정이 `thickness`만 바꿨으므로 `REVISION_CHANGES_IDENTITY`는 **발생하지 않는다**(같은 품번 안의 값) |
+| **SC-2** 판 두께 개정 | 상판 브래킷을 **개정**(R00 → R01, `thickness` 8 → 12), 범위는 효력일 2026-12-01 · 사업장 S1·S2 · 일련번호 #71 이후 · `applies='new'`(픽스처 `brk_m8.py`의 `sc2`와 같다) | ① `where_used(상판)` → `BRK-M8` 1건(상위 BOM 줄은 바뀌지 않음 — 4.2). ② `fit_grip`: 필요 = 12+8 + 3.2 + 6.8 + 2.5 = **32.5**, 볼트 30 → margin **−2.5** → verdict **`no`**(shortfall gap 2.5) · severity **blocked**. ③ 후보 `P-…15`(플랜지 M8×40): 길이 40 ≥ 필요 → 길이 판정은 통과(와셔 수 1이면 30.9, 2이면 32.5, 둘 다 ≤ 40)이나 ④ **전체 verdict `conditional`**: 분류가 `HexFlangeBolt`로 달라 OPMS `substitutes`(플랜지볼트가 육각볼트+평와셔를 대신) 규칙을 거치고, 강도등급 A4-80 ↔ 기존 A2-70 **순서 비교 불가 → `review`**, 와셔 수 변경은 사람이 확인. ⑤ 작업지시: `WO-FX-0003`(미착수, 81~120, S2, 시작 2026-12-01)만 범위 안(`inside`) → affected · `apply_new`. `WO-FX-0001`(완료, 1~50)은 일련번호가 밖, `WO-FX-0002`(진행 중, 51~80, S1)는 일련번호가 71~80에서 겹치지만 **시작일(2026-11-02)이 효력일보다 앞서 날짜가 밖** → 하나라도 밖이면 범위 밖이라 둘 다 영향 목록에서 빠진다(`test_changes_scenarios.py`가 고정). 진행 중 작업을 `review`로 남길지는 사용자 결정 대기. ⑥ 개정이 `thickness`만 바꿨으므로 `REVISION_CHANGES_IDENTITY`는 **발생하지 않는다**(같은 품번 안의 값) |
 | **SC-3** 개정 vs 교체 | (a) 볼트 `P-…01`을 `length` 30 → 40 으로 **개정** 시도 (b) 같은 변경을 `P-…15`로 **교체** 등록 (c) 상판 도면 공차만 바꾼 **개정** | (a) 422 `REVISION_CHANGES_IDENTITY`("규격이 바뀌면 새 품번이에요"). (b) 허용 — 교체 대상으로 등록, 새 `P-…15`가 BOM 줄을 대신하므로 부모(체결 세트) 새 개정이 함께 필요. (c) 허용 — `revision_spec`의 식별 키가 아니라(공차) 같은 품번 안의 개정이고 BOM 줄은 그대로. 추가로 `POST /changes/{id}/targets`에 `kind:'ontology'` 시도 → 400 `ONTOLOGY_NOT_A_TARGET`, `GET /changes/ontology-impact?from=0.18.0&to=0.19.0`는 보고만 돌려주고 `item_revision`이 **하나도 생기지 않았음**을 확인 |
 
 공통 확인: 같은 입력으로 두 번 `POST /impact` → 같은 `input_hash` · 같은 finding 순서(결정성). feed 로 새 `as_of` 행을 넣으면 `GET /impact`가 `stale:true` · 승인 409 `IMPACT_STALE`. OPMS 미연결이면 적합성 finding 이 `unknown`이고 `partial:true`, 승인 409 `IMPACT_PARTIAL`.
@@ -680,12 +716,14 @@ feed 는 **웹에서 부르지 않는다**(서버 전용). **데이터가 없을
 
 | 단계 | 산출물 | 완료 기준 | 규모(파일) | 의존 | 병렬 묶음 |
 |---|---|---|---|---|---|
-| **C0** 계약 · 픽스처 | `changes/models.py`, `contracts.py` 모델, `contracts export` 재생성, `brk_m8` 픽스처 3벌, `revision_spec`·`fastening_joint` 도메인 모델 | 계약 시험 통과, 픽스처가 메모리 저장소에 올라 `where_used`가 나온다 | ~8 | — | (직렬 첫 단계) |
-| **C1** 엔진 · 판정 | `impact.py` · `fit.py` · `scope.py` · `dispositions.py` + 단위 시험 | SC-1 ~ SC-3 의 **엔진 수준** 수치가 단위 시험으로 통과(DB · API 없이) | ~10 | C0 | **A** |
-| **C2** API · 저장소(메모리) | `store.py`(메모리) · `service.py` · `changes_routes.py` · `feeds_routes.py` · `opms.mates_rules()` · 라우트 시험 | 6장 전체가 메모리 위에서 동작, 9.2 수락 시험(백엔드) 통과 | ~9 | C1 | — |
-| **C3** DB | `db/changes.sql` · `changes-roles.sql` · `effective_revision_at` · 승인 함수 · `store_pg.py` 초안 + PGlite 시험 | 승인 원자성 · 불변 · outbox · 가드 시험 통과 | ~7 | C0 | **B**(C1과 병렬) |
-| **C4** 웹 | 7장 전부(`PdmApi` 3곳 + 화면 + 영향 그래프 + 시험 + e2e) | 빈 상태 · stale · SC 시나리오 e2e 통과, `pnpm typecheck · test · build` | ~22 | C0(계약) → 실제 연결은 C2 | **C**(C1 · C3과 병렬, `testApi` 대상으로 먼저) |
-| **C5** 그래프 · OPMS 정식 | 8장(라벨 · 검사 · 질의 · 발행기) · `OntologyImpact` · OPMS 요청서 6건 초안 | `verify.py` 확장 시험 통과, 요청서 전달 가능 | ~8 | C2, C3 | **D**(C4와 병렬) |
+| **C0** 계약 · 픽스처 ✅ | `changes/models.py`, `contracts.py` 모델, `contracts export` 재생성, `brk_m8` 픽스처 3벌, `revision_spec`·`fastening_joint` 도메인 모델 | 계약 시험 통과, 픽스처가 메모리 저장소에 올라 `where_used`가 나온다 | ~8 | — | (직렬 첫 단계) |
+| **C1** 엔진 · 판정 ✅ | `impact.py` · `fit.py` · `scope.py` · `dispositions.py` + 단위 시험 | SC-1 ~ SC-3 의 **엔진 수준** 수치가 단위 시험으로 통과(DB · API 없이) | ~10 | C0 | **A** |
+| **C2** API · 저장소(메모리) ✅ | `store.py`(메모리) · `service.py` · `changes_routes.py` · `feeds_routes.py` · `opms.mates_rules()` · 라우트 시험 | 6장 전체가 메모리 위에서 동작, 9.2 수락 시험(백엔드) 통과 | ~9 | C1 | — |
+| **C3** DB 🟡 SQL · 시험 ✅, `store_pg.py` · 백엔드 연결 ⬜ | `db/changes.sql` · `changes-roles.sql` · `effective_revision_at` · 승인 함수 · `store_pg.py` 초안 + PGlite 시험 | 승인 원자성 · 불변 · outbox · 가드 시험 통과 | ~7 | C0 | **B**(C1과 병렬) |
+| **C4** 웹 ✅ | 7장 전부(`PdmApi` 3곳 + 화면 + 영향 그래프 + 시험 + e2e) | 빈 상태 · stale · SC 시나리오 e2e 통과, `pnpm typecheck · test · build` | ~22 | C0(계약) → 실제 연결은 C2 | **C**(C1 · C3과 병렬, `testApi` 대상으로 먼저) |
+| **C5** 그래프 · OPMS 정식 🟡 라벨 · 검사 · 질의 작성 중, 요청서 초안 ✅, 발행기 · `OntologyImpact` · OPMS 교체 ⬜ | 8장(라벨 · 검사 · 질의 · 발행기) · `OntologyImpact` · OPMS 요청서 6건 초안 | `verify.py` 확장 시험 통과, 요청서 전달 가능 | ~8 | C2, C3 | **D**(C4와 병렬) |
+
+상태(2026-11-12): 시험 수 — 백엔드 518 · 웹 512 · DB(PGlite) 33. C2에서 만든 `adapters.py`(엔진 Protocol 구현)와 C1의 `opms/mates.py`는 표에 없던 파일이다. 단계별 상세는 1.3절.
 
 병렬: **C0 이후 A(C1) · B(C3) · C(C4 화면, 계약 기반) 세 묶음을 동시에** 진행하고, C2 는 C1 직후, C5 는 C2 · C3 직후에 시작한다. 파일 소유를 묶음별로 나누면 충돌이 없다(백엔드 `changes/` · `db/` · `web/src/pages/changes/` · `neo4j/` 로 분리됨). 공용 파일(`contracts.py` · `AppShell.tsx` · `App.tsx` · `types.ts`)은 C0 · C4 시작 때 한 번에 바꾼다.
 
@@ -701,6 +739,8 @@ feed 는 **웹에서 부르지 않는다**(서버 전용). **데이터가 없을
 | 그립 길이 공식이 시연용 가정 | 실제 설계 기준이 아님 | 화면 · 내보내기에 "PDM 참고 판정 · 기준 미지정" 표기, 요청서 ② |
 
 ### 10.3 판단 필요 (사용자 결정)
+
+> 2026-11-12 갱신: **[가정으로 진행]** 1(판은 PDM 품목 · "OPMS 미등록") · 3(부분 범위의 두 개정 공존 + `effective_revision_at`, DB와 서비스에 구현) · 4(로트 범위는 목록) · 6(영향 그래프에서 `blocked`만 빨강) · 8(`PDM_FIXTURE`로만 픽스처 로드). **[구현의 현재 동작, 정책은 사용자 결정 대기]** 2(`blocked`는 승인 불가 · `accept_risk`도 422). 7(체결 구성 입력)은 입력 경로가 없다(1.3절 15). 나머지는 미결.
 
 | # | 질문 | 제안 |
 |---|---|---|

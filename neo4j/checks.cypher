@@ -18,10 +18,16 @@
 
 // ---------- 품목 ↔ 품목 마스터 연결 ----------
 
-// PDM 품목은 OPMS 품목 마스터(:Part) 정확히 하나에 붙는다
+// PDM 품목은 OPMS 품목 마스터(:Part) 정확히 하나에 붙는다.
+//   예외: OPMS 에 조립품 · 가공품 분류와 등록 경로가 없어서 :Part 가 없는 가공품(part)과 조립품(assembly)은
+//   opms_registered = false 로 표시하면 :Part 없이 둔다(PDM 품목 번호 item_no 로 구분 — neo4j/changes-checks.cypher 의
+//   unregistered_item_consistent 가 표시와 item_no · OF_PART 가 맞는지 본다). 규격품(standard) · 구매품(purchased)은 예외가 아니다.
+//   (docs/change-impact-design.md 10.3-1, docs/change-impact-ontology.md 10.4-1)
 // @item_one_part
 MATCH (i:PdmItem)
 WHERE COUNT { (i)-[:OF_PART]->(:Part) } <> 1
+  AND NOT ( coalesce(i.opms_registered = false AND i.item_type IN ['part', 'assembly'], false)
+            AND COUNT { (i)-[:OF_PART]->(:Part) } = 0 )
 RETURN 'item_one_part' AS rule, '#' + toString(i.pdm_item_id) AS subject, '품목은 정확히 한 :Part 에 OF_PART 로 붙는다' AS message;
 
 // 한 :Part 에는 PDM 품목이 하나만 (같은 품번이 PDM 에 두 번 들어오면 안 된다)

@@ -457,6 +457,18 @@ class ChangeReview(_Model):
     reviewed_at: AwareDatetime
 
 
+class OntologyImpactItem(_Model):
+    """보고의 한 줄: 어느 품번 · 체결부가 왜 후보로 올랐는지(이유 코드와 바뀌기 전 · 후 값). 읽기 결과이고 어떤 처분 · 개정도 가리키지 않는다."""
+
+    kind: Literal["part", "joint"]
+    subject: str = Field(min_length=1)                   # 품번(part) 또는 체결부 이름(joint)
+    reason_code: str = Field(min_length=1)                # ontology_impact.REASON_CODES
+    ref: str | None = None                                # 규칙 id · 속성 키 · 분류 코드 …
+    before: str | None = None
+    after: str | None = None
+    message: str = ""
+
+
 class OntologyImpactSummary(_Model):
     rules_changed: tuple[str, ...] = ()
     parts_flagged: tuple[str, ...] = ()
@@ -473,6 +485,7 @@ class OntologyImpact(_Model):
     to_version: str = Field(min_length=1)
     computed_at: AwareDatetime
     summary: OntologyImpactSummary = OntologyImpactSummary()
+    items: tuple[OntologyImpactItem, ...] = ()
     change_request_code: str | None = Field(default=None, pattern=_CODE_CR)
 
     @model_validator(mode="after")
@@ -623,6 +636,6 @@ __all__ = [
     "identity_changes", "classify_change_kind",
     # 모델
     "ApplicabilityScope", "ChangeRequest", "ChangeOrder", "ChangeTarget", "FindingBasis", "ImpactFinding", "ImpactRun",
-    "Disposition", "ChangeReview", "OntologyImpactSummary", "OntologyImpact", "RevisionSpec", "ClampedPart",
+    "Disposition", "ChangeReview", "OntologyImpactItem", "OntologyImpactSummary", "OntologyImpact", "RevisionSpec", "ClampedPart",
     "FasteningJoint", "WorkOrderBomRef", "WorkOrder", "PurchaseOrderLine", "StockLot",
 ]
